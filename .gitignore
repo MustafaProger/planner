@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.local/
+data/
+private/
+*доступы*
+*.sqlite
+*.sqlite-*
+*.db
+.DS_Store
+.venv/
+work/
+__pycache__/
+.pytest_cache/
