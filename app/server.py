@@ -55,6 +55,11 @@ def bad(e):return jsonify(error=str(e)),400
 def large(e):return jsonify(error='Файл больше 25 МБ'),413
 @app.get('/')
 def index():return send_from_directory(app.static_folder,'index.html')
+@app.get('/<section>/<page>')
+def page(section,page):
+    pages={'analytics':{'dashboard','statistics','comparison','reconcile'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users'}}
+    if page not in pages.get(section,set()):abort(404)
+    return send_from_directory(app.static_folder,'index.html')
 @app.get('/bootstrap/<token>')
 def bootstrap(token):
     p=DATA/'bootstrap.token'
@@ -173,13 +178,14 @@ def get_audit():
 @auth()
 def connections():
     p=DATA/'connections.json'
-    from app.connections import SOURCES
-    return jsonify(json.loads(p.read_text()) if p.exists() else [{k:v for k,v in s.items() if k!='probe'} for s in SOURCES])
+    from app.connections import SOURCES,with_authorization
+    rows=json.loads(p.read_text()) if p.exists() else [{k:v for k,v in s.items() if k!='probe'} for s in SOURCES]
+    return jsonify(with_authorization(rows,DATA))
 @app.post('/api/connections/check')
 @auth(['admin'])
 def check_connections():
-    from app.connections import check_all
-    results=check_all()
+    from app.connections import check_all,with_authorization
+    results=with_authorization(check_all(),DATA)
     p=DATA/'connections.json';p.write_text(json.dumps(results,ensure_ascii=False,indent=2));os.chmod(p,0o600)
     with db() as c:audit(c,'check connections','Read-only network checks')
     return jsonify(results)

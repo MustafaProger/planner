@@ -95,3 +95,15 @@ def test_carrier_matches_cached_excel_pivot(data):
     assert t['payout']==pytest.approx(1680936.81,abs=0.001) # matches Статистика!Q8, includes unassigned entries
     assigned=sum(r['payout'] for r in data['trips'] if r['carrier']=='ООО \"ЧАРТЕР\"' and r['vehicle'])
     assert assigned==pytest.approx(1613936.81,abs=0.001) # matches Статистика!K8
+
+def test_page_navigation_and_unknown_paths(client):
+    for path in ['/analytics/statistics','/analytics/dashboard','/analytics/comparison','/analytics/reconcile','/planning/calendar','/planning/planner','/data/orders','/data/directories','/data/connections','/data/users']:
+        response=client.get(path)
+        assert response.status_code==200
+        assert b'/static/main.js' in response.data
+    for path in ['/data/local-login.txt','/analytics/unknown','/planning/users','/api/unknown']:
+        assert client.get(path).status_code==404
+    # Serving the shell at a deep link does not grant access to its protected data.
+    anonymous=server.app.test_client()
+    assert anonymous.get('/data/users').status_code==200
+    assert anonymous.get('/api/users').status_code==401

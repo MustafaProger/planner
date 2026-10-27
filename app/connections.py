@@ -24,3 +24,24 @@ def probe(source):
 
 def check_all():
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:return list(pool.map(probe,SOURCES))
+
+
+def with_authorization(results, data_dir):
+    """Keep observed sign-in results separate from unauthenticated network probes."""
+    path = data_dir / 'connections-auth.json'
+    if not path.exists():
+        return results
+    observations = json.loads(path.read_text())
+    merged = []
+    for source in results:
+        row = dict(source)
+        observation = observations.get(row['id'])
+        if observation:
+            row['status'] = observation['status']
+            row['detail'] = observation['detail']
+            row['authorization_checked_at'] = observation['checked_at']
+            row['detail'] += ' Проверка доступа: ' + observation['checked_at'] + '.'
+            if row.get('network'):
+                row['detail'] += ' Последняя проверка сети: ' + row['network'] + '. Она не проверяет пароль или синхронизацию.'
+        merged.append(row)
+    return merged
