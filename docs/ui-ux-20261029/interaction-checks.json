@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-29",
+  "browser": "Chrome via CUA",
+  "sidebar": {
+    "desktop": {
+      "before": {
+        "nav": 720.5,
+        "width": 1440
+      },
+      "after": {
+        "nav": 720.5,
+        "width": 1440
+      }
+    },
+    "mobile": {
+      "before": {
+        "nav": 0,
+        "sidebar": 817,
+        "width": 390
+      },
+      "after": {
+        "nav": 0,
+        "sidebar": 817,
+        "width": 390
+      }
+    }
+  },
+  "table": {
+    "search": {
+      "counter": "1 из 58 строк",
+      "groups": [
+        "А314МА95"
+      ],
+      "visible": 1
+    },
+    "ascending": {
+      "sort": "ascending",
+      "top": [
+        "-11 856,23",
+        "-5 012,18",
+        "-4 625"
+      ]
+    },
+    "descending": {
+      "sort": "descending",
+      "top": [
+        "698 290",
+        "615 311,18",
+        "610 635,23"
+      ]
+    },
+    "scroll": {
+      "clientWidth": 330,
+      "hint": "↔ Таблицу можно прокручивать вправо",
+      "hintHidden": false,
+      "page": 390,
+      "scroll": 40,
+      "scrollWidth": 2757,
+      "viewport": 390
+    }
+  },
+  "guideFinal": [
+    {
+      "documentWidth": 320,
+      "mapTableWidth": 510,
+      "mapViewport": 260,
+      "maxCellWidth": 170,
+      "outside": 0,
+      "rows": 20,
+      "width": 320
+    },
+    {
+      "documentWidth": 390,
+      "mapTableWidth": 510,
+      "mapViewport": 330,
+      "maxCellWidth": 170,
+      "outside": 0,
+      "rows": 20,
+      "width": 390
+    },
+    {
+      "documentWidth": 768,
+      "mapTableWidth": 692,
+      "mapViewport": 692,
+      "maxCellWidth": 305.015625,
+      "outside": 0,
+      "rows": 20,
+      "width": 768
+    },
+    {
+      "documentWidth": 1440,
+      "mapTableWidth": 1092,
+      "mapViewport": 1092,
+      "maxCellWidth": 507.8203125,
+      "outside": 0,
+      "rows": 20,
+      "width": 1440
+    }
+  ],
+  "mutations": "No records saved, deleted or synchronized by browser tests"
+}

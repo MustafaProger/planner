@@ -1,0 +1,67 @@
+{
+  "routes": {
+    "analytics/dashboard": 200,
+    "analytics/statistics": 200,
+    "analytics/comparison": 200,
+    "analytics/reconcile": 200,
+    "analytics/planreport": 200,
+    "analytics/downtime": 200,
+    "analytics/economics": 200,
+    "planning/calendar": 200,
+    "planning/planner": 200,
+    "data/orders": 200,
+    "data/monitoringdata": 200,
+    "data/telemetry": 200,
+    "data/neftmdata": 200,
+    "data/rosneftdata": 200,
+    "data/directories": 200,
+    "control/quality": 200,
+    "control/coverage": 200,
+    "control/fuelcards": 200,
+    "control/expenses": 200,
+    "settings/connections": 200,
+    "settings/excel": 200,
+    "settings/users": 200,
+    "help/guide": 200,
+    "integrations/neftm": 200,
+    "integrations/rosneft": 200,
+    "integrations/monitoring": 200,
+    "integrations/transtrade": 200
+  },
+  "protected_tables_unchanged_after_restart": {
+    "snapshot": true,
+    "users": true,
+    "manual": true,
+    "workspace_meta": true,
+    "catalog": true,
+    "records": true,
+    "tariffs": true,
+    "coverage": true,
+    "card_bindings": true,
+    "expenses": true,
+    "transtrade_orders": true,
+    "transtrade_history": true
+  },
+  "scheduler": {
+    "automatic_scope": "Текущий месяц по МСК; история спутника — последние завершённые сутки.",
+    "interval_seconds": 300,
+    "next_run_at": "2026-10-29T10:30:43.875629+03:00",
+    "server_scheduler": true,
+    "sources": {},
+    "status": "idle",
+    "updated_at": "2026-10-29T10:25:43.875724+03:00"
+  },
+  "fuel_history": {
+    "neftm": {
+      "rows": 140,
+      "complete": true,
+      "synced_at": "2026-10-27T09:32:18.985161+00:00"
+    },
+    "rosneft": {
+      "rows": 176,
+      "complete": true,
+      "synced_at": "2026-10-28T08:14:11.739266+00:00"
+    }
+  },
+  "sqlite_integrity": "ok"
+}

@@ -1,0 +1,70 @@
+{
+  "automatic_run": {
+    "id": "154a27474ccd4ac0ae1fb957bb711d0e",
+    "status": "success",
+    "trigger": "automatic",
+    "from": "2026-10-01",
+    "to": "2026-10-29",
+    "started_at": "2026-10-29T10:30:44.163001+03:00",
+    "last_success_at": "2026-10-29T10:31:24.356386+03:00",
+    "last_finished_at": "2026-10-29T10:31:24.356386+03:00",
+    "interval_seconds": 300,
+    "next_run_at": "2026-10-29T10:35:44.163039+03:00",
+    "sources": {
+      "transtrade": {
+        "name": "ТрансТрейд",
+        "status": "success",
+        "last_success_at": "2026-10-29T10:30:48.865839+03:00",
+        "message": "Получено 842 заявок."
+      },
+      "neftm": {
+        "name": "Нефтьмагистраль",
+        "status": "success",
+        "last_success_at": "2026-10-29T10:30:50.273955+03:00",
+        "message": "Получено 88 операций."
+      },
+      "rosneft": {
+        "name": "Роснефть",
+        "status": "success",
+        "last_success_at": "2026-10-29T10:30:53.755420+03:00",
+        "message": "Получено 289 операций."
+      },
+      "monitoring": {
+        "name": "ГЛОНАССсофт",
+        "status": "success",
+        "last_success_at": "2026-10-29T10:31:24.355233+03:00",
+        "message": "Обновлено 19 объектов. История: 2026-10-28 — 2026-10-28."
+      }
+    },
+    "updated_at": "2026-10-29T10:31:24.357954+03:00"
+  },
+  "protected_tables_and_records_unchanged": {
+    "snapshot": true,
+    "users": true,
+    "manual": true,
+    "tariffs": true,
+    "coverage": true,
+    "card_bindings": true,
+    "expenses": true,
+    "plans": true,
+    "statuses": true,
+    "satellite": true
+  },
+  "august_fuel_preserved": {
+    "neftm": {
+      "rows": 140,
+      "complete": true,
+      "same_rows": true,
+      "same_synced_at": true
+    },
+    "rosneft": {
+      "rows": 176,
+      "complete": true,
+      "same_rows": true,
+      "same_synced_at": true
+    }
+  },
+  "transtrade_total_before": 2958,
+  "transtrade_total_after": 2964,
+  "sqlite_integrity": "ok"
+}

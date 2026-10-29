@@ -1,6 +1,7 @@
 """Replace only the successfully fetched interval; retain every other period."""
 import hashlib
 import json
+import datetime as dt
 from decimal import Decimal
 from pathlib import Path
 
@@ -10,6 +11,57 @@ def read(data_dir,provider):
     if p.exists():return json.loads(p.read_text())
     p=Path(data_dir)/(provider+'-transactions.json')
     return json.loads(p.read_text()) if p.exists() else {'provider':provider,'rows':[],'periods':[]}
+
+def snapshot_for_period(data_dir,provider,start,end):
+    """Read saved operations without syncing or replacing another month's view.
+
+    `periods` lists all known successful fetch intervals. Completeness refers to
+    their union over the requested dates, including successful empty days.
+    Freshness is the oldest of each day's latest known fetch timestamps; it is
+    unknown if any requested day has no coverage or no dated successful fetch.
+    Cards are current provider metadata, not a historical vehicle assignment.
+    """
+    if provider not in ('neftm','rosneft'):
+        raise ValueError('Неизвестный топливный источник.')
+    try:
+        a,b=dt.date.fromisoformat(start),dt.date.fromisoformat(end)
+        if a.isoformat()!=start or b.isoformat()!=end or not 0<=(b-a).days<=30:
+            raise ValueError()
+    except (ValueError,TypeError):
+        raise ValueError('Укажите даты в формате ГГГГ-ММ-ДД и период от 1 до 31 дня.') from None
+    history=read(data_dir,provider)
+    periods=history.get('periods',[])
+    if not periods and history.get('from') and history.get('to'):
+        periods=[{'from':history['from'],'to':history['to'],'synced_at':history.get('synced_at')}]
+    valid=[]
+    for p in periods:
+        try:
+            first,last=dt.date.fromisoformat(p['from']),dt.date.fromisoformat(p['to'])
+            if first>last or first.isoformat()!=p['from'] or last.isoformat()!=p['to']:continue
+        except (ValueError,TypeError,KeyError):
+            continue
+        valid.append({'from':p['from'],'to':p['to'],'synced_at':p.get('synced_at')})
+    valid.sort(key=lambda p:(p['from'],p['to']))
+    day_times=[];complete=True
+    for offset in range((b-a).days+1):
+        day=(a+dt.timedelta(days=offset)).isoformat()
+        covering=[p for p in valid if p['from']<=day<=p['to']]
+        complete=complete and bool(covering)
+        dated=[]
+        for p in covering:
+            try:
+                stamp=dt.datetime.fromisoformat(p['synced_at'])
+                if stamp.tzinfo is not None:dated.append((stamp,p['synced_at']))
+            except (ValueError,TypeError):
+                pass
+        day_times.append(max(dated,key=lambda pair:pair[0]) if dated else None)
+    synced_at=min(day_times,key=lambda pair:pair[0])[1] if complete and all(day_times) else None
+    rows=[r for r in history.get('rows',[]) if start<=row_date(provider,r)<=end]
+    date_field='Date' if provider=='rosneft' else 'dateRec'
+    rows.sort(key=lambda row:str(row.get(date_field,'')),reverse=True)
+    return dict(provider=provider,**{'from':start,'to':end},rows=rows,
+                cards=history.get('cards',[]),periods=valid,complete=complete,synced_at=synced_at,
+                cards_synced_at=history.get('synced_at') if history.get('cards') else None)
 
 def persist(data_dir,result):
     from app.neftm import write_json

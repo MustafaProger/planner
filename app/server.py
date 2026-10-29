@@ -150,7 +150,8 @@ def index():return send_from_directory(app.static_folder,'index.html')
 @app.get('/<section>/<page>')
 def page(section,page):
     if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
-    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'}}
+    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses'},'settings':{'connections','excel','users'},'help':{'guide'}}
+    pages['data'].update({'telemetry','monitoringdata','neftmdata','rosneftdata'})
     if page not in pages.get(section,set()):abort(404)
     return send_from_directory(app.static_folder,'index.html')
 @app.get('/bootstrap/<token>')
@@ -281,6 +282,12 @@ def neftm_snapshot():
     from app.neftm import snapshot
     return jsonify(configured=(DATA/'neftm-api.key').exists(),snapshot=snapshot(DATA))
 
+@app.get('/api/fuel-history/<provider>')
+@auth(['admin'])
+def fuel_period_snapshot(provider):
+    from app.fuel_history import snapshot_for_period
+    return jsonify(snapshot_for_period(DATA,provider,request.args.get('from'),request.args.get('to')))
+
 @app.post('/api/neftm/sync')
 @auth(['admin'])
 def neftm_sync():
@@ -342,6 +349,14 @@ def monitoring_history_sync():
     with db() as c:audit(c,'sync monitoring history',f"{result['from']} — {result['to']}")
     return jsonify(result),202
 
+from app.refresh import register as register_refresh
+refresh_service = register_refresh(app, auth, DATA, DB, dataset)
+
 if __name__=='__main__':
     from waitress import serve
-    init();serve(app,host='127.0.0.1',port=int(os.environ.get('PORT',8765)),threads=6)
+    init()
+    refresh_service.start_scheduler()
+    try:
+        serve(app,host='127.0.0.1',port=int(os.environ.get('PORT',8765)),threads=6)
+    finally:
+        refresh_service.stop()

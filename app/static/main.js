@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s),esc=x=>String(x??'').replace(/[&<>"']/g,c=>
 let planView='list';let D,U,csrf,tab='statistics',group='vehicle',from='2026-08-01',to='2026-08-31',car='',driver='',client='',type='',calMode='vehicle',calMonth='2026-08',reportRows=[];
 const tabs={dashboard:'Обзор сверки',statistics:'Статистика',calendar:'Календарь',planner:'Планировщик',comparison:'План–факт',reconcile:'Сверка со спутником',orders:'Заявки ТрансТрейд',neftm:'Нефтьмагистраль',monitoring:'Мониторинг · ГЛОНАССсофт',rosneft:'Роснефть',transtrade:'ТрансТрейд',directories:'Справочники',connections:'Источники данных',users:'Доступы и журнал'};
 const navTabs={...tabs,monitoring:'ГЛОНАССсофт'};
-function pagePath(key){const section=Object.keys(sections).find(s=>sections[s].includes(key));return '/'+section+'/'+key}
+function pagePath(key){const section=Object.keys(sections).find(s=>sections[s].includes(key))||'integrations';return '/'+section+'/'+key}
 function pageFromURL(){const key=location.pathname.split('/').filter(Boolean).pop();return Object.hasOwn(tabs,key)?key:'statistics'}
 let dashboardReturnFilters=null;
 function filterState(){return {from,to,car,driver,client,type,group}}
@@ -51,7 +51,7 @@ async function render({preserveScroll=true}={}){
  else app.style.minHeight='';
  renderedTab=tab;document.title=tabs[tab]+' · Логистика';shell();const target=$('#content');
  target.innerHTML='<div class="empty" role="status">Загрузка данных…</div>';
- try{await ({dashboard,statistics,orders,calendar,planner,comparison,reconcile:reconciliation,planreport:()=>workspaceReport('plans'),downtime:()=>workspaceReport('downtime'),economics:()=>workspaceReport('economics'),telemetry,quality:()=>workspaceReport('quality'),coverage:()=>extraTable('coverage'),fuelcards:()=>extraTable('card_bindings'),expenses:()=>extraTable('expenses'),directories,connections,users,neftm:()=>integration('neftm'),monitoring:()=>integration('monitoring'),rosneft:()=>integration('rosneft'),transtrade:()=>integration('transtrade')}[tab])()}
+ try{await ({dashboard,statistics,orders,calendar,planner,comparison,reconcile:reconciliation,planreport:()=>workspaceReport('plans'),downtime:()=>workspaceReport('downtime'),economics:()=>workspaceReport('economics'),telemetry,quality:qualityPage,coverage:()=>extraTable('coverage'),fuelcards:()=>extraTable('card_bindings'),expenses:()=>extraTable('expenses'),directories,connections,users,neftm:()=>integration('neftm'),monitoring:()=>integration('monitoring'),rosneft:()=>integration('rosneft'),transtrade:()=>integration('transtrade'),neftmdata:()=>sourceData('neftm'),rosneftdata:()=>sourceData('rosneft'),monitoringdata:()=>sourceData('monitoring'),excel:excelImport,guide:userGuide}[tab])()}
  catch(e){if(target!==$('#content'))return;target.innerHTML=`<div class="note">${esc(e.message)}</div>`}
  finally{if(version===renderVersion){app.style.minHeight='';if(keepPosition)window.scrollTo({...position,behavior:'instant'})}}
 }
@@ -91,6 +91,7 @@ function enhanceTables(root=document){
  root.querySelectorAll('.table-wrap').forEach(w=>{
   if(w.dataset.enhanced)return;w.dataset.enhanced='true';
   w.tabIndex=0;w.setAttribute('role','region');w.setAttribute('aria-label','Таблица с прокруткой');
+  const hint=document.createElement('p');hint.className='table-hint';hint.textContent='↔ Таблицу можно прокручивать вправо';hint.hidden=true;w.after(hint);const updateHint=()=>{hint.hidden=w.scrollWidth<=w.clientWidth+1};requestAnimationFrame(updateHint);if(typeof ResizeObserver!=='undefined'){const resize=new ResizeObserver(()=>{if(!w.isConnected){resize.disconnect();return}updateHint()});resize.observe(w)}
   const t=w.querySelector('table');if(!t||t.classList.contains('calendar'))return;
   const rows=[...t.tBodies[0].rows];if(!rows.length)return;
   if(!w.hasAttribute('data-no-search')){
@@ -102,7 +103,7 @@ function enhanceTables(root=document){
   }
   [...t.tHead.rows[0].cells].forEach((th,i)=>{const b=th.querySelector('.sort');if(!b)return;b.onclick=()=>{
    const asc=th.getAttribute('aria-sort')!=='ascending';t.querySelectorAll('th').forEach(h=>h.setAttribute('aria-sort','none'));th.setAttribute('aria-sort',asc?'ascending':'descending');
-   const val=r=>r.cells[i].textContent.trim();const number=v=>{const x=v.replace(/[\s₽]/g,'').replace(',','.');return /^-?\d+(\.\d+)?$/.test(x)?Number(x):null};
+   const val=r=>r.cells[i].textContent.trim();const number=v=>{const date=v.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:,? (\d{2}):(\d{2})(?::(\d{2}))?)?(?: МСК)?$/);if(date)return Date.UTC(+date[3],+date[2]-1,+date[1],+(date[4]||0),+(date[5]||0),+(date[6]||0));const x=v.replace(/[\s₽]/g,'').replace(',','.');return /^-?\d+(\.\d+)?$/.test(x)?Number(x):null};
    [...rows].sort((a,b)=>{const x=val(a),y=val(b);if(x==='—'||y==='—')return x===y?0:x==='—'?1:-1;const nx=number(x),ny=number(y);return (nx!==null&&ny!==null?nx-ny:x.localeCompare(y,'ru',{numeric:true}))*(asc?1:-1)}).forEach(r=>t.tBodies[0].append(r));
   }});
   rows.filter(r=>r.classList.contains('clickable')).forEach(r=>r.onkeydown=e=>{if(e.target===r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();r.click()}});

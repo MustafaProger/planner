@@ -1,0 +1,550 @@
+{
+  "checked_at": "2026-10-29T10:07:40.070413+03:00",
+  "transcript": {
+    "file": "Новая запись 30 (mp3cut.net).txt",
+    "sha256": "db91ada3419af321fe296e3cbebf4985bd9b9a3009c79f0ab0d957eaadc38d6f",
+    "lines": 484,
+    "matches_document_copy": true
+  },
+  "books": [
+    {
+      "file": "Статистика 17.09.2026.xlsx",
+      "sha256": "a866ffeb9fcdba0220095ba2e9ea1a76d782598997eed5888c259e4536e5eb77",
+      "sheets": [
+        {
+          "name": "Рент",
+          "range": "A1:G16",
+          "visibility": "visible",
+          "nonempty_cells": 5,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "Анализ",
+          "range": "A1:S26",
+          "visibility": "visible",
+          "nonempty_cells": 114,
+          "formulas": 56,
+          "cached_errors": {
+            "#REF!": 56
+          },
+          "tables": []
+        },
+        {
+          "name": "Сравнительная",
+          "range": "A1:O131",
+          "visibility": "visible",
+          "nonempty_cells": 1440,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "Сруктура",
+          "range": "A1:P15",
+          "visibility": "hidden",
+          "nonempty_cells": 38,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "Календарь",
+          "range": "A1:K731",
+          "visibility": "visible",
+          "nonempty_cells": 8041,
+          "formulas": 5840,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "СП_УТ­_Календарь",
+              "range": "A1:K731",
+              "columns": [
+                "Дата",
+                "Месяц",
+                "Номер месяца",
+                "Год",
+                "День недели",
+                "Порядковый номер дня недели",
+                "Номер недели",
+                "Квартал",
+                "День месяца",
+                "Итог",
+                "Период"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Спутник",
+          "range": "A1:N336",
+          "visibility": "visible",
+          "nonempty_cells": 4704,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_Спутник",
+              "range": "A1:N336",
+              "columns": [
+                "№",
+                "Объект",
+                "Начало",
+                "Конец",
+                "Продолжительность",
+                "Пробег, км",
+                "Нач. пробег",
+                "Кон. пробег",
+                "Моточасы",
+                "Движение, время",
+                "Остановка, время",
+                "Холостой ход, время",
+                "Адрес начала",
+                "Адрес конца"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Справочник",
+          "range": "A1:K40",
+          "visibility": "visible",
+          "nonempty_cells": 146,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_МаркаЧартер",
+              "range": "A1:B26",
+              "columns": [
+                "ГосНомер",
+                "Марка"
+              ]
+            },
+            {
+              "name": "СП_УТ_ВодительЧартер",
+              "range": "D1:D35",
+              "columns": [
+                "Водитель"
+              ]
+            },
+            {
+              "name": "УТ_СпутникАвто",
+              "range": "J1:K21",
+              "columns": [
+                "Объект",
+                "ГосНомер"
+              ]
+            },
+            {
+              "name": "УТ_СтатусАвтомобиля10",
+              "range": "F1:F9",
+              "columns": [
+                "Статус Автомобиля"
+              ]
+            },
+            {
+              "name": "УТ_СтатусВодителя",
+              "range": "H1:H7",
+              "columns": [
+                "Статус Водителя"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "СтатусВодитель",
+          "range": "D7:AI75",
+          "visibility": "visible",
+          "nonempty_cells": 1001,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "СтатусАвтомобиль",
+          "range": "D7:ABG29",
+          "visibility": "visible",
+          "nonempty_cells": 445,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "ТрансТрейд",
+          "range": "A1:M1132",
+          "visibility": "visible",
+          "nonempty_cells": 13722,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_ТрансТрейд",
+              "range": "A2:M1132",
+              "columns": [
+                "№ заказа",
+                "Начало заказа",
+                "Окончание заказа",
+                "Клиент",
+                "Исполнитель",
+                "Водитель",
+                "Тип транспорта",
+                "Номер а/м",
+                "Сумма",
+                "Расчет Клт",
+                "Исполнителю",
+                "Расчет Исп",
+                "КМ"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Блокнот",
+          "range": "A4:G141",
+          "visibility": "visible",
+          "nonempty_cells": 509,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_БлокнотСтатус",
+              "range": "A7:E141",
+              "columns": [
+                "Дата",
+                "Автомобиль",
+                "Статус Автомобиля",
+                "Водитель",
+                "Статус Водителя"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Статистика",
+          "range": "A7:U130",
+          "visibility": "visible",
+          "nonempty_cells": 1349,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        }
+      ],
+      "pivots": [
+        {
+          "name": "Сводная таблица2",
+          "cache_id": "87"
+        },
+        {
+          "name": "СТ_Статус",
+          "cache_id": "96"
+        },
+        {
+          "name": "Сводная таблица6",
+          "cache_id": "93"
+        },
+        {
+          "name": "Сводная таблица5",
+          "cache_id": "90"
+        },
+        {
+          "name": "Сводная таблица1",
+          "cache_id": "84"
+        },
+        {
+          "name": "Сводная таблица1",
+          "cache_id": "74"
+        },
+        {
+          "name": "Сравнительная",
+          "cache_id": "77"
+        },
+        {
+          "name": "СвТ_СтатусВодитель",
+          "cache_id": "61"
+        },
+        {
+          "name": "СвТ_СтатусАвтомобиль",
+          "cache_id": "57"
+        },
+        {
+          "name": "Сводная таблица1",
+          "cache_id": "53"
+        }
+      ],
+      "binary_power_pivot_model": true
+    },
+    {
+      "file": "Планировщик ЛОГИСТИКА АА (Р4).xlsx",
+      "sha256": "1229cce8f59336c9d26031081cbaa5b99b9e559298a05fda7fe7a0977a295d7a",
+      "sheets": [
+        {
+          "name": "Календарь",
+          "range": "A1:F366",
+          "visibility": "visible",
+          "nonempty_cells": 2196,
+          "formulas": 1825,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "Календарь",
+              "range": "A1:F366",
+              "columns": [
+                "Дата",
+                "Номер месяца",
+                "Номер день недели",
+                "Месяц",
+                "День недели",
+                "Неделя"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Водители",
+          "range": "A1:B60",
+          "visibility": "visible",
+          "nonempty_cells": 119,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_Водители",
+              "range": "A1:B60",
+              "columns": [
+                "Водители",
+                "Компания"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Маршруты Почта",
+          "range": "A1:L115",
+          "visibility": "visible",
+          "nonempty_cells": 955,
+          "formulas": 226,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_Маршрут",
+              "range": "A1:J115",
+              "columns": [
+                "Компания",
+                "Маршрут",
+                "Ставка",
+                "Зарплата",
+                "Партнеры",
+                "Пробег",
+                "Время",
+                "ТарифСтавка",
+                "ТарифПартнеры",
+                "Дата ввода"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "ПланМашин",
+          "range": "A3:AF6",
+          "visibility": "visible",
+          "nonempty_cells": 68,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "ПланМаршрут",
+          "range": "A6:OF170",
+          "visibility": "visible",
+          "nonempty_cells": 916,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        },
+        {
+          "name": "Автомобили",
+          "range": "A1:B80",
+          "visibility": "visible",
+          "nonempty_cells": 160,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_Автомобили",
+              "range": "A1:B80",
+              "columns": [
+                "Автомобили",
+                "Марка"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Логист",
+          "range": "A6:F1453",
+          "visibility": "visible",
+          "nonempty_cells": 8644,
+          "formulas": 2894,
+          "cached_errors": {},
+          "tables": [
+            {
+              "name": "УТ_Логист",
+              "range": "A6:F1453",
+              "columns": [
+                "Дата",
+                "День",
+                "Водитель",
+                "Автомобиль",
+                "Маршрут",
+                "Месяц"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Статистика",
+          "range": "A1:K127",
+          "visibility": "visible",
+          "nonempty_cells": 587,
+          "formulas": 0,
+          "cached_errors": {},
+          "tables": []
+        }
+      ],
+      "pivots": [
+        {
+          "name": "Сводная таблица6",
+          "cache_id": "72"
+        },
+        {
+          "name": "Сводная таблица2",
+          "cache_id": "69"
+        },
+        {
+          "name": "Сводная таблица1",
+          "cache_id": "65"
+        },
+        {
+          "name": "Сводная таблица1",
+          "cache_id": "79"
+        },
+        {
+          "name": "Сводная таблица4",
+          "cache_id": "75"
+        }
+      ],
+      "binary_power_pivot_model": true
+    }
+  ],
+  "source_counts": {
+    "trips": 996,
+    "satellite": 335,
+    "statuses": 181,
+    "plans": 1436,
+    "routes": 114
+  },
+  "source_categories": {
+    "Рейс": 815,
+    "Доплата": 8,
+    "Удержание": 90,
+    "Сервис": 19,
+    "Погрузка": 64
+  },
+  "source_finance": {
+    "revenue": 13724319.06,
+    "payout": 6930671.46
+  },
+  "source_satellite": {
+    "km": 54294.4,
+    "hours": 3704.435278,
+    "engine_hours": 1878.226944,
+    "movement_hours": 1434.063889,
+    "stop_hours": 2227.132222,
+    "idle_hours": 436.289722
+  },
+  "working_database": {
+    "integrity_check": "ok",
+    "counts": {
+      "trips": 2958,
+      "plans": 1437,
+      "statuses": 181,
+      "satellite": 335,
+      "routes": 114
+    },
+    "periods": {
+      "trips": {
+        "2026-08": 1034,
+        "2026-09": 1088,
+        "2026-10": 836
+      },
+      "plans": {
+        "2026-07": 715,
+        "2026-08": 1,
+        "2026-09": 721
+      },
+      "statuses": {
+        "2026-08": 181
+      },
+      "satellite": {
+        "2026-08": 335
+      }
+    },
+    "catalogs": {
+      "vehicles": 142,
+      "drivers": 115,
+      "routes": 114,
+      "companies": 4,
+      "clients": 10,
+      "carriers": 48,
+      "transport_types": 11,
+      "payment_methods": 6,
+      "reasons": 9
+    },
+    "empty_business_tables": {
+      "coverage": 0,
+      "card_bindings": 0,
+      "expenses": 0
+    },
+    "trip_origins": {
+      "transtrade": 2958
+    },
+    "missing_trip_metrics": {
+      "km": 2958,
+      "hours": 0,
+      "revenue": 0,
+      "payout": 0
+    },
+    "plan_states": {
+      "scheduled": 1190,
+      "no_route": 158,
+      "unassigned": 88,
+      "review": 1
+    },
+    "plans_flagged_duplicate": 2,
+    "source_references_preserved": {
+      "plans": {
+        "source_rows": 1436,
+        "missing_source_references": 0
+      },
+      "statuses": {
+        "source_rows": 181,
+        "missing_source_references": 0
+      },
+      "satellite": {
+        "source_rows": 335,
+        "missing_source_references": 0
+      }
+    },
+    "snapshot_arrays_match_source": {
+      "trips": true,
+      "plans": true,
+      "statuses": true,
+      "routes": true
+    },
+    "original_satellite_fields_match_source": true,
+    "source_hashes_match_original_snapshot": true
+  },
+  "source_files_unchanged": true
+}

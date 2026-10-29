@@ -1,0 +1,1111 @@
+{
+  "date": "2026-10-29",
+  "browser": "Chrome through cua_repl",
+  "viewports": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "routes": 27,
+  "checks": 108,
+  "failures": [],
+  "results": [
+    {
+      "key": "calendar",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Календарь",
+      "width": 320
+    },
+    {
+      "key": "calendar",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Календарь",
+      "width": 390
+    },
+    {
+      "key": "calendar",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Календарь",
+      "width": 768
+    },
+    {
+      "key": "calendar",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Календарь",
+      "width": 1440
+    },
+    {
+      "key": "comparison",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "План–факт",
+      "width": 320
+    },
+    {
+      "key": "comparison",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "План–факт",
+      "width": 390
+    },
+    {
+      "key": "comparison",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "План–факт",
+      "width": 768
+    },
+    {
+      "key": "comparison",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "План–факт",
+      "width": 1440
+    },
+    {
+      "key": "connections",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 0,
+      "title": "Подключения",
+      "width": 320
+    },
+    {
+      "key": "connections",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 0,
+      "title": "Подключения",
+      "width": 390
+    },
+    {
+      "key": "connections",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 0,
+      "title": "Подключения",
+      "width": 768
+    },
+    {
+      "key": "connections",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 0,
+      "title": "Подключения",
+      "width": 1440
+    },
+    {
+      "key": "coverage",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Полнота периодов",
+      "width": 320
+    },
+    {
+      "key": "coverage",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Полнота периодов",
+      "width": 390
+    },
+    {
+      "key": "coverage",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Полнота периодов",
+      "width": 768
+    },
+    {
+      "key": "coverage",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Полнота периодов",
+      "width": 1440
+    },
+    {
+      "key": "dashboard",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Обзор сверки",
+      "width": 320
+    },
+    {
+      "key": "dashboard",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Обзор сверки",
+      "width": 390
+    },
+    {
+      "key": "dashboard",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Обзор сверки",
+      "width": 768
+    },
+    {
+      "key": "dashboard",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Обзор сверки",
+      "width": 1440
+    },
+    {
+      "key": "directories",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Справочники",
+      "width": 320
+    },
+    {
+      "key": "directories",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Справочники",
+      "width": 390
+    },
+    {
+      "key": "directories",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Справочники",
+      "width": 768
+    },
+    {
+      "key": "directories",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Справочники",
+      "width": 1440
+    },
+    {
+      "key": "downtime",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Работа и простои",
+      "width": 320
+    },
+    {
+      "key": "downtime",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Работа и простои",
+      "width": 390
+    },
+    {
+      "key": "downtime",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Работа и простои",
+      "width": 768
+    },
+    {
+      "key": "downtime",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Работа и простои",
+      "width": 1440
+    },
+    {
+      "key": "economics",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Экономика",
+      "width": 320
+    },
+    {
+      "key": "economics",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Экономика",
+      "width": 390
+    },
+    {
+      "key": "economics",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Экономика",
+      "width": 768
+    },
+    {
+      "key": "economics",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Экономика",
+      "width": 1440
+    },
+    {
+      "key": "excel",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Импорт Excel",
+      "width": 320
+    },
+    {
+      "key": "excel",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Импорт Excel",
+      "width": 390
+    },
+    {
+      "key": "excel",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Импорт Excel",
+      "width": 768
+    },
+    {
+      "key": "excel",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Импорт Excel",
+      "width": 1440
+    },
+    {
+      "key": "expenses",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Расходы",
+      "width": 320
+    },
+    {
+      "key": "expenses",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Расходы",
+      "width": 390
+    },
+    {
+      "key": "expenses",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Расходы",
+      "width": 768
+    },
+    {
+      "key": "expenses",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Расходы",
+      "width": 1440
+    },
+    {
+      "key": "fuelcards",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Карты и автомобили",
+      "width": 320
+    },
+    {
+      "key": "fuelcards",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Карты и автомобили",
+      "width": 390
+    },
+    {
+      "key": "fuelcards",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Карты и автомобили",
+      "width": 768
+    },
+    {
+      "key": "fuelcards",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Карты и автомобили",
+      "width": 1440
+    },
+    {
+      "key": "guide",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Как пользоваться",
+      "width": 320
+    },
+    {
+      "key": "guide",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Как пользоваться",
+      "width": 390
+    },
+    {
+      "key": "guide",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Как пользоваться",
+      "width": 768
+    },
+    {
+      "key": "guide",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 5,
+      "tables": 1,
+      "title": "Как пользоваться",
+      "width": 1440
+    },
+    {
+      "key": "monitoring",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Мониторинг · ГЛОНАССсофт",
+      "width": 320
+    },
+    {
+      "key": "monitoring",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Мониторинг · ГЛОНАССсофт",
+      "width": 390
+    },
+    {
+      "key": "monitoring",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Мониторинг · ГЛОНАССсофт",
+      "width": 768
+    },
+    {
+      "key": "monitoring",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Мониторинг · ГЛОНАССсофт",
+      "width": 1440
+    },
+    {
+      "key": "monitoringdata",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Показания спутника",
+      "width": 320
+    },
+    {
+      "key": "monitoringdata",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Показания спутника",
+      "width": 390
+    },
+    {
+      "key": "monitoringdata",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Показания спутника",
+      "width": 768
+    },
+    {
+      "key": "monitoringdata",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Показания спутника",
+      "width": 1440
+    },
+    {
+      "key": "neftm",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Нефтьмагистраль",
+      "width": 320
+    },
+    {
+      "key": "neftm",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Нефтьмагистраль",
+      "width": 390
+    },
+    {
+      "key": "neftm",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Нефтьмагистраль",
+      "width": 768
+    },
+    {
+      "key": "neftm",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Нефтьмагистраль",
+      "width": 1440
+    },
+    {
+      "key": "neftmdata",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Нефтьмагистрали",
+      "width": 320
+    },
+    {
+      "key": "neftmdata",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Нефтьмагистрали",
+      "width": 390
+    },
+    {
+      "key": "neftmdata",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Нефтьмагистрали",
+      "width": 768
+    },
+    {
+      "key": "neftmdata",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Нефтьмагистрали",
+      "width": 1440
+    },
+    {
+      "key": "orders",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Заявки ТрансТрейд",
+      "width": 320
+    },
+    {
+      "key": "orders",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Заявки ТрансТрейд",
+      "width": 390
+    },
+    {
+      "key": "orders",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Заявки ТрансТрейд",
+      "width": 768
+    },
+    {
+      "key": "orders",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Заявки ТрансТрейд",
+      "width": 1440
+    },
+    {
+      "key": "planner",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Планировщик",
+      "width": 320
+    },
+    {
+      "key": "planner",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Планировщик",
+      "width": 390
+    },
+    {
+      "key": "planner",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Планировщик",
+      "width": 768
+    },
+    {
+      "key": "planner",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Планировщик",
+      "width": 1440
+    },
+    {
+      "key": "planreport",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сводка плана",
+      "width": 320
+    },
+    {
+      "key": "planreport",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сводка плана",
+      "width": 390
+    },
+    {
+      "key": "planreport",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сводка плана",
+      "width": 768
+    },
+    {
+      "key": "planreport",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сводка плана",
+      "width": 1440
+    },
+    {
+      "key": "quality",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 1,
+      "title": "Качество данных",
+      "width": 320
+    },
+    {
+      "key": "quality",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 1,
+      "title": "Качество данных",
+      "width": 390
+    },
+    {
+      "key": "quality",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 1,
+      "title": "Качество данных",
+      "width": 768
+    },
+    {
+      "key": "quality",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 1,
+      "title": "Качество данных",
+      "width": 1440
+    },
+    {
+      "key": "reconcile",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сверка со спутником",
+      "width": 320
+    },
+    {
+      "key": "reconcile",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сверка со спутником",
+      "width": 390
+    },
+    {
+      "key": "reconcile",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сверка со спутником",
+      "width": 768
+    },
+    {
+      "key": "reconcile",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Сверка со спутником",
+      "width": 1440
+    },
+    {
+      "key": "rosneft",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Роснефть",
+      "width": 320
+    },
+    {
+      "key": "rosneft",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Роснефть",
+      "width": 390
+    },
+    {
+      "key": "rosneft",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Роснефть",
+      "width": 768
+    },
+    {
+      "key": "rosneft",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "Роснефть",
+      "width": 1440
+    },
+    {
+      "key": "rosneftdata",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Роснефти",
+      "width": 320
+    },
+    {
+      "key": "rosneftdata",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Роснефти",
+      "width": 390
+    },
+    {
+      "key": "rosneftdata",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Роснефти",
+      "width": 768
+    },
+    {
+      "key": "rosneftdata",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Операции Роснефти",
+      "width": 1440
+    },
+    {
+      "key": "statistics",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Статистика",
+      "width": 320
+    },
+    {
+      "key": "statistics",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Статистика",
+      "width": 390
+    },
+    {
+      "key": "statistics",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Статистика",
+      "width": 768
+    },
+    {
+      "key": "statistics",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 3,
+      "tables": 1,
+      "title": "Статистика",
+      "width": 1440
+    },
+    {
+      "key": "telemetry",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Спутник из Excel",
+      "width": 320
+    },
+    {
+      "key": "telemetry",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Спутник из Excel",
+      "width": 390
+    },
+    {
+      "key": "telemetry",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Спутник из Excel",
+      "width": 768
+    },
+    {
+      "key": "telemetry",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 1,
+      "title": "Спутник из Excel",
+      "width": 1440
+    },
+    {
+      "key": "transtrade",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "ТрансТрейд",
+      "width": 320
+    },
+    {
+      "key": "transtrade",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "ТрансТрейд",
+      "width": 390
+    },
+    {
+      "key": "transtrade",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "ТрансТрейд",
+      "width": 768
+    },
+    {
+      "key": "transtrade",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 1,
+      "tables": 0,
+      "title": "ТрансТрейд",
+      "width": 1440
+    },
+    {
+      "key": "users",
+      "documentWidth": 320,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Доступы и журнал",
+      "width": 320
+    },
+    {
+      "key": "users",
+      "documentWidth": 390,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Доступы и журнал",
+      "width": 390
+    },
+    {
+      "key": "users",
+      "documentWidth": 768,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Доступы и журнал",
+      "width": 768
+    },
+    {
+      "key": "users",
+      "documentWidth": 1440,
+      "loading": false,
+      "outside": [],
+      "panels": 2,
+      "tables": 2,
+      "title": "Доступы и журнал",
+      "width": 1440
+    }
+  ],
+  "dialogs": [
+    {
+      "dialogScroll": 302,
+      "dialogWidth": 302,
+      "overflow": [],
+      "title": "Назначить маршрут на период",
+      "width": 320
+    },
+    {
+      "dialogScroll": 302,
+      "dialogWidth": 302,
+      "overflow": [],
+      "title": "Добавить · Автомобили и ресурсы",
+      "width": 320
+    }
+  ]
+}
