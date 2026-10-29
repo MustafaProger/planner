@@ -4,6 +4,7 @@ from flask import Flask,request,jsonify,session,send_from_directory,redirect,abo
 from werkzeug.security import generate_password_hash,check_password_hash
 from app.importer import load_excel,vehicle,SOURCE
 from app.analytics import report,reconcile
+from app import workspace as ws
 ROOT=Path(__file__).resolve().parent.parent
 DATA=Path(os.environ.get('FLEET_DATA',ROOT/'data'));DATA.mkdir(exist_ok=True,parents=True);os.chmod(DATA,0o700)
 DB=DATA/'fleet.sqlite'
@@ -22,13 +23,30 @@ def init():
             pwd=secrets.token_urlsafe(18);c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',('Руководитель',generate_password_hash(pwd),'admin','[]'))
             (DATA/'local-login.txt').write_text('Пользователь: Руководитель\nПароль: '+pwd+'\n');os.chmod(DATA/'local-login.txt',0o600)
         if not c.execute('select 1 from snapshot').fetchone():c.execute('insert into snapshot values(1,?)',(json.dumps(load_excel(),ensure_ascii=False),))
+    with db() as c:
+        # Snapshot backup before the first non-destructive workspace migration.
+        if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
+            backup=DATA/'before-workspace-v2.sqlite'
+            if not backup.exists():
+                with sqlite3.connect(backup) as target:c.backup(target)
+                os.chmod(backup,0o600)
+        original=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0])
+        if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
+            # Enrich only from the exact original files; never replace current financial rows.
+            if all((SOURCE/f['name']).exists() and hashlib.sha256((SOURCE/f['name']).read_bytes()).hexdigest()==f['sha256'] for f in original['meta']['files']):
+                enriched=load_excel();original['vehicle_details']=enriched.get('vehicle_details',{})
+                extra={r['source']:r for r in enriched['satellite']}
+                original['satellite']=[dict(r,**{k:v for k,v in extra.get(r['source'],{}).items() if k not in r}) for r in original['satellite']]
+        ws.initialize(c,original,c.execute('select * from manual').fetchall())
     os.chmod(DB,0o600)
     if not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
 def audit(c,action,detail):c.execute('insert into audit(at,user_id,action,detail) values(?,?,?,?)',(dt.datetime.now(dt.timezone.utc).isoformat(),session.get('uid'),action,detail))
 def user():
     with db() as c:r=c.execute('select id,name,role,vehicles from users where id=?',(session.get('uid'),)).fetchone()
     if not r:return None
-    u=dict(r);u['vehicles']=json.loads(u['vehicles']);return u
+    u=dict(r)
+    with db() as c:cats=ws.catalogs(c)
+    u['vehicles']=[(ws.lookup(cats,'vehicles',v) or {'name':v})['name'] for v in json.loads(u['vehicles'])];return u
 def auth(roles=None):
     def decorator(fn):
         @functools.wraps(fn)
@@ -41,11 +59,85 @@ def auth(roles=None):
         return wrapped
     return decorator
 def dataset():
-    with db() as c:
-        d=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0]);ms=c.execute('select id,kind,body from manual where deleted=0').fetchall()
-    for m in ms:
-        b=json.loads(m['body']);b['id']=m['id'];b['source']='Введено в приложении';d[m['kind']].append(b)
+    with db() as c:d=ws.dataset(c)
+    from app.monitoring_history import daily_rows,merge_satellite
+    names={name for r in d['directories']['vehicles'] for name in [r['name'],*r.get('aliases',[])]}
+    history=daily_rows(DATA,names)
+    for row in history:ws.resolve_row(row,d['directories'])
+    d['satellite_raw']=d['satellite']
+    if history:
+        d['satellite']=merge_satellite(d['satellite'],history)
+        d['meta']['monitoring_history_days']=len(history)
     return d
+
+@app.errorhandler(PermissionError)
+def forbidden(e):return jsonify(error='Недостаточно прав для этой записи'),403
+
+@app.get('/api/workspace/report')
+@auth()
+def workspace_report():
+    from app.reports import build
+    result=build(dataset(),request.args,DATA)
+    if user()['role']!='admin':result.pop('operations',None)
+    return jsonify(result)
+
+@app.post('/api/catalog/<kind>')
+@app.put('/api/catalog/<kind>/<ident>')
+@auth(['admin'])
+def catalog_save(kind,ident=None):
+    with LOCK,db() as c:
+        result=ws.save_catalog(c,kind,request.get_json(),ident)
+        audit(c,'catalog '+kind,result)
+    return jsonify(id=result)
+
+@app.post('/api/catalog/<kind>/merge')
+@auth(['admin'])
+def catalog_merge(kind):
+    b=request.get_json();ws.body(b)
+    with LOCK,db() as c:
+        ws.merge_catalog(c,kind,b.get('source'),b.get('target'));audit(c,'merge '+kind,str(b.get('source'))+' → '+str(b.get('target')))
+    return jsonify(ok=True)
+
+@app.post('/api/tariffs')
+@auth(['admin'])
+def tariff_save():
+    with LOCK,db() as c:
+        result=ws.save_tariff(c,request.get_json());audit(c,'tariff',result)
+    return jsonify(id=result)
+
+@app.get('/api/tariffs/quote')
+@auth()
+def tariff_quote():
+    with db() as c:
+        route=ws.lookup(ws.catalogs(c),'routes',request.args.get('route'),True)
+        if not route:raise ValueError('Маршрут не найден.')
+        return jsonify(ws.current_rate(c,route['id'],ws.iso(request.args.get('date'))))
+
+@app.put('/api/records/<ident>')
+@auth(['admin','logist'])
+def record_save(ident):
+    with LOCK,db() as c:
+        ws.edit_record(c,ident,request.get_json(),user());audit(c,'edit record',ident)
+    return jsonify(ok=True)
+
+@app.post('/api/workspace/<kind>')
+@app.put('/api/workspace/<kind>/<ident>')
+@auth(['admin'])
+def extra_save(kind,ident=None):
+    with LOCK,db() as c:
+        result=ws.save_extra(c,kind,request.get_json(),user(),ident);audit(c,kind,result)
+    return jsonify(id=result)
+
+@app.delete('/api/workspace/<kind>/<ident>')
+@auth(['admin'])
+def extra_delete(kind,ident):
+    if kind not in ('coverage','card_bindings','expenses'):abort(404)
+    with LOCK,db() as c:
+        if kind=='coverage':c.execute('delete from coverage where id=?',(ident,))
+        else:c.execute('update '+kind+' set deleted=1,revision=revision+1 where id=?',(ident,))
+        audit(c,'remove '+kind,ident)
+    return jsonify(ok=True)
+
 @app.after_request
 def headers(r):
     r.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"});return r
@@ -57,7 +149,8 @@ def large(e):return jsonify(error='Файл больше 25 МБ'),413
 def index():return send_from_directory(app.static_folder,'index.html')
 @app.get('/<section>/<page>')
 def page(section,page):
-    pages={'analytics':{'dashboard','statistics','comparison','reconcile'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users'}}
+    if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
+    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'}}
     if page not in pages.get(section,set()):abort(404)
     return send_from_directory(app.static_folder,'index.html')
 @app.get('/bootstrap/<token>')
@@ -82,7 +175,10 @@ def logout():session.clear();return jsonify(ok=True)
 def who():return jsonify(user=user(),csrf=session.get('csrf'))
 @app.get('/api/data')
 @auth()
-def data():return jsonify(dataset())
+def data():
+    d=dataset()
+    if user()['role']!='admin':d['card_bindings']=[]
+    return jsonify(d)
 @app.get('/api/report')
 @auth()
 def get_report():return jsonify(report(dataset(),request.args))
@@ -94,46 +190,18 @@ def allowed_car(u,car):return u['role']=='admin' or car in u['vehicles']
 @app.post('/api/manual/<kind>')
 @auth(['admin','logist'])
 def create_manual(kind):
-    if kind not in ('statuses','plans'):abort(404)
-    b=request.get_json();d=dataset();u=user();start=dt.date.fromisoformat(b.get('date',''));end=dt.date.fromisoformat(b.get('end_date',b.get('date','')))
-    if not 0<=(end-start).days<=366:raise ValueError('Период должен быть от 1 до 367 дней')
-    records=[]
-    if kind=='statuses':
-        k=b.get('kind');entity=b.get('entity','');reason=b.get('reason','').strip()
-        if k not in ('vehicle','driver') or entity not in d['vehicles' if k=='vehicle' else 'drivers']:raise ValueError('Выберите машину или водителя из справочника')
-        if reason not in ['Отпуск','Больничный','Выходной','Сервис','Ремонт','Нет заявки','Пересменка','БезВодителя','Другое']:raise ValueError('Выберите причину простоя')
-        authorized=allowed_car(u,entity) if k=='vehicle' else u['role']=='admin' or any(r['driver']==entity and r['vehicle'] in u['vehicles'] for r in d['trips']+d['plans'])
-        if not authorized:abort(403)
-        base=dict(kind=k,entity=entity,reason=reason,note=str(b.get('note',''))[:1000])
-    else:
-        car=b.get('vehicle');driver=b.get('driver');route=next((r for r in d['routes'] if r['id']==b.get('route')),None)
-        if car not in d['vehicles'] or driver not in d['drivers'] or not route:raise ValueError('Выберите машину, водителя и маршрут из справочников')
-        if not allowed_car(u,car):abort(403)
-        partner=d['drivers'][driver]=='Партнёр';base=dict(vehicle=car,driver=driver,route=route['id'],revenue=route['revenue'],payout=route['partner_payout'] if partner else route['payout'],km=route['km'],hours=route['hours'],partner=partner)
-    weekdays=b.get('weekdays',list(range(7)))
-    if not isinstance(weekdays,list) or not all(type(x)==int and 0<=x<=6 for x in weekdays):raise ValueError('Некорректные дни недели')
-    for n in range((end-start).days+1):
-        day=start+dt.timedelta(days=n)
-        if day.weekday() not in weekdays:continue
-        r=dict(base,date=day.isoformat())
-        keys=['date','kind','entity','reason'] if kind=='statuses' else ['date','vehicle','driver','route']
-        if any(all(old.get(k)==r[k] for k in keys) for old in d[kind]):continue
-        records.append(r)
+    if kind not in ('statuses','plans','trips'):abort(404)
     with LOCK,db() as c:
-        for r in records:
-            fingerprint=hashlib.sha256((kind+json.dumps({k:r[k] for k in keys},sort_keys=True)).encode()).hexdigest()
-            c.execute('insert into manual(id,kind,body,created_by) values(?,?,?,?) ON CONFLICT(id) DO UPDATE SET deleted=0,body=excluded.body,created_by=excluded.created_by',(fingerprint,kind,json.dumps(r,ensure_ascii=False),u['id']))
-        audit(c,'create '+kind,str(len(records)))
-    return jsonify(created=len(records))
+        created=ws.create_records(c,kind,request.get_json(),user());audit(c,'create '+kind,str(created))
+    return jsonify(created=created)
+
 @app.delete('/api/manual/<ident>')
 @auth(['admin','logist'])
 def delete_manual(ident):
-    with db() as c:
-        r=c.execute('select * from manual where id=? and deleted=0',(ident,)).fetchone()
-        if not r:abort(404)
-        if user()['role']!='admin' and r['created_by']!=user()['id']:abort(403)
-        c.execute('update manual set deleted=1 where id=?',(ident,));audit(c,'delete manual',ident)
+    with LOCK,db() as c:
+        ws.edit_record(c,ident,{},user(),delete=True);audit(c,'delete record',ident)
     return jsonify(ok=True)
+
 @app.post('/api/import')
 @auth(['admin'])
 def import_excel():
@@ -153,6 +221,7 @@ def import_excel():
         with db() as c:
             previous=c.execute('select body from snapshot where id=1').fetchone()[0]
             backup=DATA/('snapshot-'+dt.datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json');backup.write_text(previous);os.chmod(backup,0o600)
+            ws.ingest(c,d)
             c.execute('update snapshot set body=? where id=1',(json.dumps(d,ensure_ascii=False),));audit(c,'import',json.dumps(d['meta']['counts']))
     return jsonify(meta=d['meta'])
 @app.get('/api/users')
@@ -189,6 +258,90 @@ def check_connections():
     p=DATA/'connections.json';p.write_text(json.dumps(results,ensure_ascii=False,indent=2));os.chmod(p,0o600)
     with db() as c:audit(c,'check connections','Read-only network checks')
     return jsonify(results)
+@app.get('/api/transtrade')
+@auth(['admin'])
+def transtrade_status():
+    from app.transtrade import configured,status,LIMITATIONS
+    with db() as c:
+        state=status(c);r=c.execute("select body from workspace_meta where key='transtrade_runs'").fetchone()
+    return jsonify(configured=configured(DATA),snapshot=state,limitations=LIMITATIONS,periods=json.loads(r[0]) if r else [])
+
+@app.post('/api/transtrade/sync')
+@auth(['admin'])
+def transtrade_sync():
+    from app.transtrade import sync
+    body=request.get_json();ws.body(body)
+    result=sync(DATA,DB,body.get('from'),body.get('to'))
+    with db() as c:audit(c,'sync transtrade',f"{result['start']} — {result['end']}: {result['received']} заявок")
+    return jsonify(result)
+
+@app.get('/api/neftm')
+@auth(['admin'])
+def neftm_snapshot():
+    from app.neftm import snapshot
+    return jsonify(configured=(DATA/'neftm-api.key').exists(),snapshot=snapshot(DATA))
+
+@app.post('/api/neftm/sync')
+@auth(['admin'])
+def neftm_sync():
+    from app.neftm import sync
+    body=request.get_json()
+    if not isinstance(body,dict):raise ValueError('Укажите период загрузки.')
+    result=sync(DATA,body.get('from'),body.get('to'))
+    with db() as c:audit(c,'sync neftm',f"{result['from']} — {result['to']}: {len(result['rows'])} транзакций")
+    return jsonify(result)
+
+@app.get('/api/rosneft')
+@auth(['admin'])
+def rosneft_snapshot():
+    from app.rosneft import snapshot, configured
+    return jsonify(configured=configured(DATA), snapshot=snapshot(DATA))
+
+@app.post('/api/rosneft/sync')
+@auth(['admin'])
+def rosneft_sync():
+    from app.rosneft import sync
+    body = request.get_json()
+    if not isinstance(body, dict):
+        raise ValueError('Укажите период загрузки.')
+    result = sync(DATA, body.get('from'), body.get('to'))
+    with db() as c:
+        audit(c, 'sync rosneft', f"{result['from']} — {result['to']}: {len(result['rows'])} операций")
+    return jsonify(result)
+
+@app.get('/api/monitoring')
+@auth(['admin'])
+def monitoring_snapshot():
+    from app.monitoring import snapshot,configured
+    return jsonify(configured=configured(DATA),snapshot=snapshot(DATA))
+
+@app.post('/api/monitoring/sync')
+@auth(['admin'])
+def monitoring_sync():
+    from app.monitoring import sync
+    result=sync(DATA)
+    with db() as c:audit(c,'sync monitoring',f"{len(result['rows'])} объектов")
+    return jsonify(result)
+
+@app.get('/api/monitoring/history')
+@auth(['admin'])
+def monitoring_history():
+    from app.monitoring_history import daily_rows,mappings,job_status
+    names=dataset()['vehicles']
+    rows=daily_rows(DATA,names)
+    return jsonify(rows=rows,mappings=mappings(DATA,names),job=job_status(DATA))
+
+@app.post('/api/monitoring/history/sync')
+@auth(['admin'])
+def monitoring_history_sync():
+    from app.monitoring_history import start
+    body=request.get_json()
+    if not isinstance(body,dict) or type(body.get('refresh',False)) is not bool:
+        raise ValueError('Укажите период загрузки истории.')
+    result=start(DATA,dataset()['vehicles'],body.get('from'),body.get('to'),body.get('refresh',False))
+    with db() as c:audit(c,'sync monitoring history',f"{result['from']} — {result['to']}")
+    return jsonify(result),202
+
 if __name__=='__main__':
     from waitress import serve
     init();serve(app,host='127.0.0.1',port=int(os.environ.get('PORT',8765)),threads=6)

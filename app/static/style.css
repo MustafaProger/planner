@@ -364,7 +364,7 @@ main { width:auto; margin:10px 0 0; }
 .chart-point { fill:#fff; stroke-width:2; vector-effect:non-scaling-stroke; opacity:0; transition:opacity 140ms ease,r 140ms ease; }
 .chart-point.tt { stroke:#0071e3; }
 .chart-point.sat { stroke:#8d84d1; }
-.chart-hit:hover .chart-point,.chart-hit:focus .chart-point { opacity:1; }
+.chart-single .chart-point,.chart-hit:hover .chart-point,.chart-hit:focus .chart-point { opacity:1; }
 .chart-hit:focus-visible rect { fill:#0071e308; stroke:#0071e3; }
 .column-bg { fill:#f0f0f4; }
 .column-matched { fill:#0071e3; }

@@ -31,14 +31,16 @@ def load_excel(stat_path=None,plan_path=None):
     sw=openpyxl.load_workbook(stat_path,data_only=True);pw=openpyxl.load_workbook(plan_path,data_only=True)
     required={'ТрансТрейд','Спутник','Блокнот','Справочник'}
     if not required.issubset(sw.sheetnames) or not {'Логист','Маршруты Почта','Водители','Автомобили'}.issubset(pw.sheetnames):raise ValueError('Не найдены обязательные листы исходных книг')
-    trips=[];statuses={};sat=[];routes=[];plans=[];issues=[];vehicles={};drivers={}
+    trips=[];statuses={};sat=[];routes=[];plans=[];issues=[];vehicles={};drivers={};vehicle_details={}
     def status(day,kind,entity,reason,source):
         if entity and reason:
             key=(day,kind,entity,reason)
             if key in statuses: statuses[key]['source']+='; '+source
             else: statuses[key]=dict(date=day,kind=kind,entity=entity,reason=reason,source=source)
     for r in list(sw['Справочник'].values)[1:]:
-        if r[0]:vehicles[vehicle(r[0])]=text(r[1])
+        if r[0]:
+            vehicles[vehicle(r[0])]=text(r[1])
+            vehicle_details[vehicle(r[0])]=dict(brand=text(r[1]),company='')
         if text(r[3]):drivers[text(r[3])]=''
     mapping={text(r[9]):vehicle(r[10]) for r in list(sw['Справочник'].values)[1:] if r[9] and r[10]}
     reasons={text(r[5]) for r in list(sw['Справочник'].values)[1:] if r[5]}
@@ -70,11 +72,14 @@ def load_excel(stat_path=None,plan_path=None):
             match=re.search(r'[А-Яа-яA-Za-z]\d{3}[А-Яа-яA-Za-z]{2}\d{2,3}',obj)
             car=vehicle(match.group()) if match else ''
             issues.append(f'Спутник!{row}: объект сопоставлен по номеру' if car else f'Спутник!{row}: неизвестный объект {obj}')
-        sat.append(dict(date=date(r[2]).date().isoformat(),vehicle=car,object=obj,start=date(r[2]).isoformat(),end=date(r[3]).isoformat(),hours=hours(r[4]),km=number(r[5]),engine_hours=hours(r[8]),movement_hours=hours(r[9]),stop_hours=hours(r[10]),source=f'Спутник!{row}'))
+        sat.append(dict(date=date(r[2]).date().isoformat(),vehicle=car,object=obj,start=date(r[2]).isoformat(),end=date(r[3]).isoformat(),hours=hours(r[4]),km=number(r[5]),engine_hours=hours(r[8]),movement_hours=hours(r[9]),stop_hours=hours(r[10]),idle_hours=hours(r[11]),odometer_start=r[6],odometer_end=r[7],address_start=text(r[12]),address_end=text(r[13]),source=f'Спутник!{row}'))
     for r in list(pw['Водители'].values)[1:]:
         if text(r[0]):drivers[text(r[0])]=text(r[1])
     for r in list(pw['Автомобили'].values)[1:]:
-        if r[0]:vehicles[vehicle(r[0])]=text(r[1])
+        if r[0]:
+            vehicles[vehicle(r[0])]=text(r[1])
+            detail=vehicle_details.setdefault(vehicle(r[0]),dict(brand='',company=''))
+            detail['company']=text(r[1])
     for row,r in enumerate(list(pw['Маршруты Почта'].values)[1:],2):
         if not r[1]:continue
         routes.append(dict(id=text(r[1]),group=text(r[0]),revenue=number(r[2]),payout=number(r[3]),partner_payout=number(r[4]),km=number(r[5]),hours=hours(r[6]),rate=number(r[7]),partner_rate=number(r[8]),source=f'Маршруты Почта!{row}'))
@@ -87,6 +92,6 @@ def load_excel(stat_path=None,plan_path=None):
     ids=[x['id'] for x in trips]
     if len(set(ids))!=len(ids):raise ValueError('Повторяющиеся номера заявок: импорт остановлен')
     meta=dict(imported_at=dt.datetime.now(dt.timezone.utc).isoformat(),files=[dict(name=p.name,sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in (stat_path,plan_path)],issues=issues,source='Excel-снимок',counts=dict(trips=len(trips),satellite=len(sat),statuses=len(statuses),plans=len(plans),routes=len(routes)))
-    return dict(trips=trips,satellite=sat,statuses=list(statuses.values()),routes=routes,plans=plans,vehicles=vehicles,drivers=drivers,meta=meta)
+    return dict(trips=trips,satellite=sat,statuses=list(statuses.values()),routes=routes,plans=plans,vehicles=vehicles,vehicle_details=vehicle_details,drivers=drivers,meta=meta)
 if __name__=='__main__':
     d=load_excel();print(json.dumps(d['meta'],ensure_ascii=False,indent=2))

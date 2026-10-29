@@ -13,6 +13,22 @@ def client():
     with c.session_transaction() as s:s['uid']=1;s['csrf']='test'
     return c
 H={'X-CSRF-Token':'test'}
+def test_rosneft_role_csrf_and_sync(client,monkeypatch):
+    from app import rosneft
+    assert server.app.test_client().get('/api/rosneft').status_code==401
+    assert client.get('/api/rosneft').status_code==200
+    assert client.post('/api/rosneft/sync',json={}).status_code==403
+    assert client.post('/api/rosneft/sync',json=[],headers=H).status_code==400
+    calls=[]
+    def fake_sync(data_dir,start,end):
+        calls.append((start,end));return {'from':start,'to':end,'rows':[],'cards':[]}
+    monkeypatch.setattr(rosneft,'sync',fake_sync)
+    assert client.post('/api/rosneft/sync',json={'from':'2026-08-01','to':'2026-08-31'},headers=H).status_code==200
+    assert calls==[('2026-08-01','2026-08-31')]
+    monkeypatch.setattr(server,'user',lambda:{'id':99,'role':'logist','vehicles':[]})
+    assert client.get('/api/rosneft').status_code==403
+    assert client.post('/api/rosneft/sync',json={},headers=H).status_code==403
+
 def test_raw_excel_totals(data):
     assert len(data['trips'])==996
     assert sum(r['revenue'] for r in data['trips'])==pytest.approx(13724319.06)
@@ -97,7 +113,8 @@ def test_carrier_matches_cached_excel_pivot(data):
     assert assigned==pytest.approx(1613936.81,abs=0.001) # matches Статистика!K8
 
 def test_page_navigation_and_unknown_paths(client):
-    for path in ['/analytics/statistics','/analytics/dashboard','/analytics/comparison','/analytics/reconcile','/planning/calendar','/planning/planner','/data/orders','/data/directories','/data/connections','/data/users']:
+    assert client.get('/integrations/axenta').location=='/integrations/monitoring'
+    for path in ['/analytics/statistics','/analytics/dashboard','/analytics/comparison','/analytics/reconcile','/planning/calendar','/planning/planner','/data/orders','/data/directories','/data/connections','/data/users','/integrations/neftm','/integrations/monitoring','/integrations/rosneft','/integrations/transtrade']:
         response=client.get(path)
         assert response.status_code==200
         assert b'/static/main.js' in response.data
@@ -107,3 +124,79 @@ def test_page_navigation_and_unknown_paths(client):
     anonymous=server.app.test_client()
     assert anonymous.get('/data/users').status_code==200
     assert anonymous.get('/api/users').status_code==401
+
+
+def test_neftm_endpoints_permissions_and_csrf(client, monkeypatch, tmp_path):
+    from app import neftm
+    monkeypatch.setattr(server,'DATA',tmp_path)
+    assert client.get('/api/neftm').json=={'configured':False,'snapshot':None}
+    assert client.post('/api/neftm/sync',json={}).status_code==403
+    assert client.post('/api/neftm/sync',json={},headers=H).status_code==400
+    captured=[]
+    def sync(data_dir,start,end):
+        captured.append((start,end))
+        return {'from':start,'to':end,'rows':[],'synced_at':'2026-10-27T10:00:00+00:00'}
+    monkeypatch.setattr(neftm,'sync',sync)
+    assert client.post('/api/neftm/sync',json={'from':'2026-08-01','to':'2026-08-31'},headers=H).status_code==200
+    assert captured==[('2026-08-01','2026-08-31')]
+    with server.db() as c:
+        uid=c.execute("insert into users(name,password,role,vehicles) values(?,?,?,?)",('neftm-test-viewer','unused','viewer','[]')).lastrowid
+    with client.session_transaction() as s:s['uid']=uid
+    assert client.get('/api/neftm').status_code==403
+    assert client.post('/api/neftm/sync',json={},headers=H).status_code==403
+    with client.session_transaction() as s:s.clear()
+    assert client.get('/api/neftm').status_code==401
+
+
+def test_monitoring_permissions_and_csrf(client,monkeypatch):
+    from app import monitoring
+    called=[]
+    monkeypatch.setattr(monitoring,'sync',lambda _:called.append(True) or {'rows':[]})
+    assert server.app.test_client().get('/api/monitoring').status_code==401
+    assert client.post('/api/monitoring/sync',json={}).status_code==403
+    assert client.post('/api/monitoring/sync',json={},headers=H).status_code==200
+    assert len(called)==1
+    with server.db() as c:
+        c.execute("insert into users(name,password,role,vehicles) values(?,?,?,?)",('MonitoringViewer','unused','viewer','[]'))
+        uid=c.execute("select id from users where name='MonitoringViewer'").fetchone()['id']
+    viewer=server.app.test_client()
+    with viewer.session_transaction() as s:s['uid']=uid;s['csrf']='test'
+    assert viewer.get('/api/monitoring').status_code==403
+    assert viewer.post('/api/monitoring/sync',json={},headers=H).status_code==403
+    assert len(called)==1
+
+
+def test_monitoring_history_auth_csrf_start(client,monkeypatch):
+    from app import monitoring_history as mh
+    calls=[]
+    monkeypatch.setattr(mh,'start',lambda *args:calls.append(args) or {'from':'2026-08-01','to':'2026-08-02'})
+    anon=server.app.test_client()
+    assert anon.get('/api/monitoring/history').status_code==401
+    assert client.post('/api/monitoring/history/sync',json={}).status_code==403
+    assert client.post('/api/monitoring/history/sync',json={'from':'2026-08-01','to':'2026-08-02','refresh':'true'},headers=H).status_code==400
+    assert client.post('/api/monitoring/history/sync',json={'from':'2026-08-01','to':'2026-08-02'},headers=H).status_code==202
+    assert len(calls)==1
+    with server.db() as c:
+        c.execute("insert into users(name,password,role,vehicles) values(?,?,?,?)",('HistoryViewer','unused','viewer','[]'))
+        uid=c.execute("select id from users where name='HistoryViewer'").fetchone()['id']
+    viewer=server.app.test_client()
+    with viewer.session_transaction() as s:s['uid']=uid;s['csrf']='test'
+    assert viewer.get('/api/monitoring/history').status_code==403
+    assert viewer.post('/api/monitoring/history/sync',json={},headers=H).status_code==403
+    assert len(calls)==1
+
+def test_transtrade_authorization_csrf_and_readonly_sync(client,monkeypatch):
+    from app import transtrade
+    assert server.app.test_client().get('/api/transtrade').status_code==401
+    assert client.get('/api/transtrade').status_code==200
+    assert client.post('/api/transtrade/sync',json={}).status_code==403
+    assert client.post('/api/transtrade/sync',json=[],headers=H).status_code==400
+    calls=[]
+    def fake_sync(data_dir,db_path,start,end):
+        calls.append((start,end));return dict(start=start,end=end,received=0)
+    monkeypatch.setattr(transtrade,'sync',fake_sync)
+    assert client.post('/api/transtrade/sync',json={'from':'2026-08-01','to':'2026-08-31'},headers=H).status_code==200
+    assert calls==[('2026-08-01','2026-08-31')]
+    monkeypatch.setattr(server,'user',lambda:dict(id=99,role='logist',vehicles=[]))
+    assert client.get('/api/transtrade').status_code==403
+    assert client.post('/api/transtrade/sync',json={},headers=H).status_code==403

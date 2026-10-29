@@ -1,0 +1,47 @@
+{
+  "stored_records": {
+    "plans": 1436,
+    "satellite": 335,
+    "statuses": 181,
+    "trips": 996
+  },
+  "visible_counts": {
+    "trips": 996,
+    "plans": 1436,
+    "statuses": 181,
+    "satellite": 589,
+    "satellite_raw": 335,
+    "routes": 114
+  },
+  "plans_states": {
+    "scheduled": 1190,
+    "no_route": 158,
+    "unassigned": 88
+  },
+  "duplicate_review": 2,
+  "trip_totals": {
+    "revenue": "13724319.06",
+    "payout": "6930671.46"
+  },
+  "plan_totals": [
+    {
+      "name": "Всего",
+      "revenue": 20618578.1666666,
+      "payout": 10306498.333333332,
+      "km": 159163.0,
+      "hours": 10290.91666666665,
+      "records": 1276,
+      "trips": 1276,
+      "days": 51,
+      "drivers": 40,
+      "balance": 10312079.833333269,
+      "average_hours": 8.064981713688598,
+      "rub_hour": 2003.5706083844136,
+      "rub_km": 129.54378949043812,
+      "payout_percent": 49.98646487659135
+    }
+  ],
+  "quality_count": 101,
+  "snapshot_preserved": true,
+  "backup_verified": true
+}
