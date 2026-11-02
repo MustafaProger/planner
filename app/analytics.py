@@ -47,12 +47,16 @@ def prepare_rows(data,rows):
 def filtered(rows,q):
     return [r for r in rows if not r.get('cancelled') and (not q.get('from') or r.get('date','')>=q['from']) and (not q.get('to') or r.get('date','')<=q['to']) and all(not q.get(k) or r.get(k)==q[k] for k in ['vehicle','driver','client','type','carrier',*ATTRIBUTE_KEYS])]
 
+def group_label(row,key):
+    """The same opaque label selects an aggregate and its source records."""
+    if key=='pair':return f"{row.get('vehicle','')} · {row.get('driver','')}"
+    return row.get(key) or 'Не указано'
+
 def aggregate(rows,key):
     out={}
     for r in rows:
         if r.get('cancelled'):continue
-        label=r.get(key) or 'Не указано'
-        if key=='pair':label=f"{r.get('vehicle','')} · {r.get('driver','')}"
+        label=group_label(r,key)
         a=out.setdefault(label,dict(name=label,revenue=0,payout=0,km=0,hours=0,records=0,trips=0,days=set(),drivers=set(),missing={f:0 for f in FIELDS},trip_revenue=0,trip_payout=0,trip_missing={'revenue':0,'payout':0}))
         trip=r.get('category','Рейс')=='Рейс'
         a['records']+=1;a['trips']+=trip

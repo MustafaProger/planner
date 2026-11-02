@@ -1,7 +1,7 @@
 """Reports with explicit coverage, plan states, and no fabricated allocations."""
 import collections
 import datetime as dt
-from app.analytics import aggregate, filtered, measured_sum
+from app.analytics import aggregate, filtered, measured_sum, group_label, metric_source, reconcile
 from app.workspace import lookup, natural
 
 def in_period(r,q):return (not q.get('from') or r['date']>=q['from']) and (not q.get('to') or r['date']<=q['to'])
@@ -21,25 +21,35 @@ def coverage(d,q,source):
     from app.coverage import evaluate
     return covered([r for r in d.get('coverage',[]) if r['source']==source and evaluate(d,r)['complete']],q.get('from'),q.get('to'))
 
-def plan_rows(d,q):
-    rows=filtered(d['plans'],{k:v for k,v in q.items() if k in ('from','to','vehicle','driver')})
-    good=[r for r in rows if eligible(r)]
+def report_group(q,mode):
     key=q.get('group','vehicle')
-    if key not in ('vehicle','driver','route','company','date','month','quarter','year'):key='vehicle'
+    allowed=('vehicle','driver','pair') if mode=='comparison' else ('vehicle','driver','route','company','date','month','quarter','year')
+    return key if key in allowed else 'vehicle'
+
+def selected_plans(d,q):
+    return filtered(d['plans'],{k:v for k,v in q.items() if k in ('from','to','vehicle','driver')})
+
+def prepare_plans(d,rows):
     drivers={r['id']:r for r in d['directories']['drivers']}
     prepared=[]
-    for r in good:
+    for r in rows:
         x=dict(r,category='Рейс');x['company']=drivers.get(r.get('driver_id'),{}).get('company','')
         x['month']=r['date'][:7];x['year']=r['date'][:4];x['quarter']=r['date'][:4]+' Q'+str((int(r['date'][5:7])-1)//3+1)
         if x.get('driver','').casefold() in ('нет марш','заменить'):x['driver']='Не назначен'
         if x.get('vehicle','').casefold() in ('нет марш','заменить'):x['vehicle']='Не назначен'
         prepared.append(x)
+    return prepared
+
+def plan_rows(d,q):
+    rows=selected_plans(d,q)
+    good=[r for r in rows if eligible(r)]
+    key=report_group(q,'plans')
+    prepared=prepare_plans(d,good)
     return {'rows':aggregate(prepared,key),'records':rows,'totals':aggregate([dict(r,total='Всего') for r in prepared],'total'),
             'excluded':len(rows)-len(good),'unassigned':sum(r.get('state')=='unassigned' for r in good)}
 
 def comparison(d,q):
-    key=q.get('group','vehicle')
-    if key not in ('vehicle','driver','pair'):key='vehicle'
+    key=report_group(q,'comparison')
     plans=[r for r in filtered(d['plans'],q) if eligible(r)]
     facts=[r for r in filtered(d['trips'],q) if r['category']=='Рейс']
     pp={r['name']:r for r in aggregate([dict(x,category='Рейс') for x in plans],key)}
@@ -58,6 +68,78 @@ def comparison(d,q):
         if not p and f:r['state']='Вне плана' if pc else 'Нет плана — факт показан отдельно'
         rows.append(r)
     return dict(rows=rows,plan_complete=pc,fact_complete=fc)
+
+def detail_period(q):
+    """Validate new read-only routes before selecting a report snapshot."""
+    for key in ('from','to'):
+        if q.get(key) and dt.date.fromisoformat(q[key]).isoformat()!=q[key]:
+            raise ValueError('Укажите дату в формате ГГГГ-ММ-ДД.')
+    if q.get('from') and q.get('to') and q['from']>q['to']:
+        raise ValueError('Начало периода должно быть не позже окончания.')
+
+def plan_exclusion(row):
+    if row.get('duplicate_review'):return 'Возможный повтор — не включен в итог'
+    return {'cancelled':'Назначение отменено','no_route':'Маршрут не выполняется',
+            'review':'Назначение ожидает проверки'}.get(row.get('state'),'Состояние назначения не включено в итог')
+
+def report_details(d,q):
+    """Explain one row without narrowing its original coverage/filter scope."""
+    mode=q.get('mode','plans')
+    if mode not in ('plans','comparison'):raise ValueError('Детализация доступна для сводки плана и план–факта.')
+    detail_period(q)
+    if 'row' not in q:raise ValueError('Выберите строку отчета.')
+    key=report_group(q,mode)
+    result=plan_rows(d,q) if mode=='plans' else comparison(d,q)
+    summary=next((r for r in result['rows'] if r['name']==q['row']),None)
+    if summary is None:return None
+    plans=selected_plans(d,q) if mode=='plans' else filtered(d['plans'],q)
+    prepared=prepare_plans(d,plans) if mode=='plans' else plans
+    selected=[r for r,x in zip(plans,prepared) if group_label(x,key)==q['row']]
+    facts=[] if mode=='plans' else [r for r in filtered(d['trips'],q) if group_label(r,key)==q['row']]
+    return dict(mode=mode,group=key,name=q['row'],summary=summary,
+                scope={k:q.get(k,'') for k in ('from','to','vehicle','driver')},
+                plans=[r for r in selected if eligible(r)],
+                trips=[r for r in facts if r.get('category')=='Рейс'],
+                excluded_plans=[dict(record=r,reason=plan_exclusion(r)) for r in selected if not eligible(r)],
+                excluded_trips=[dict(record=r,reason='Начисление учитывается в статистике денег, но не в сравнении рейсов') for r in facts if r.get('category')!='Рейс'],
+                plan_complete=result.get('plan_complete'),fact_complete=result.get('fact_complete'))
+
+SATELLITE_METRICS=('km','hours','engine_hours','movement_hours','stop_hours','fuel_liters')
+SATELLITE_DETAIL_FIELDS=('vehicle','date','start','end','km','hours','engine_hours','movement_hours','stop_hours',
+                         'idle_hours','fuel_liters','odometer_start','odometer_end','source','sources',
+                         'synced_at','mileage_status','fuel_status')
+
+def reconcile_details(d,q):
+    """Show the measurements actually used, alongside non-additive Excel evidence."""
+    car,day=q.get('vehicle'),q.get('date')
+    if not car or not day:raise ValueError('Укажите автомобиль и дату сверки.')
+    if dt.date.fromisoformat(day).isoformat()!=day:raise ValueError('Укажите дату в формате ГГГГ-ММ-ДД.')
+    scope=dict(vehicle=car,**{'from':day,'to':day})
+    summary=next((r for r in reconcile(d,scope) if r['vehicle']==car and r['date']==day),None)
+    if summary is None:return None
+    facts=filtered(d['trips'],scope)
+    effective=filtered(d['satellite'],scope)
+    raw=filtered(d.get('satellite_raw',d['satellite']),scope)
+    usage={}
+    for field in SATELLITE_METRICS:
+        sources={r.get('sources',{}).get(field,'Excel') for r in effective if r.get(field) is not None}
+        has_excel=any(r.get(field) is not None for r in raw)
+        role=('used' if 'Excel' in sources else 'replaced_by_api' if 'ГЛОНАССсофт API' in sources else 'unavailable') if has_excel else 'unavailable'
+        usage[field]=dict(value=measured_sum(effective,field),source=metric_source(effective,field),excel_role=role)
+    rows=[]
+    for r in effective:
+        x={k:r[k] for k in SATELLITE_DETAIL_FIELDS if k in r}
+        for label,field in (('km','km'),('engine','engine_hours'),('fuel','fuel_liters'),('hours','hours')):
+            x[label+'_source']=metric_source([r],field)
+        rows.append(x)
+    originals=[]
+    for r in raw:
+        x={k:r[k] for k in SATELLITE_DETAIL_FIELDS if k in r}
+        x['metric_usage']={f:usage[f]['excel_role'] if r.get(f) is not None else 'unavailable' for f in SATELLITE_METRICS}
+        originals.append(x)
+    return dict(vehicle=car,date=day,summary=summary,trips=[r for r in facts if r.get('category')=='Рейс'],
+                other_trips=[dict(record=r,reason='Начисление не участвует в сверке рейсов со спутником') for r in facts if r.get('category')!='Рейс'],
+                satellite=rows,satellite_raw=originals,metric_usage=usage)
 
 def downtime(d,q):
     kind=q.get('entity','vehicle');kind=kind if kind in ('vehicle','driver') else 'vehicle'

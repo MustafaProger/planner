@@ -1,0 +1,40 @@
+{
+  "at": "2026-11-02T15:00:12.031523+03:00",
+  "base_sha": "eec1e136d0b99c9d724b798fc990eaa5bc41e2e4",
+  "command": ".venv/bin/python -m pytest -q",
+  "isolation": "Temporary FLEET_DATA; FLEET_SCHEDULER=disabled; synthetic DB and fake providers; real source books read only",
+  "exit_code": 0,
+  "seconds": 9.152,
+  "summary": [
+    "418 passed, 3 warnings in 9.00s"
+  ],
+  "source_sha256": {
+    "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/alerts.py": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20",
+    "app/alertwatch.py": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498",
+    "app/analytics.py": "2f844dd053b03baf9ac3e685a42bda1928a3933c6f9f8e9e5134550b40c36a95",
+    "app/autosync.py": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720",
+    "app/catchup.py": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803",
+    "app/connections.py": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e",
+    "app/coverage.py": "39246da5cf32af109faa1cf59909118827274e64183eef0fa762849c2dcce89e",
+    "app/evidence_routes.py": "8482b692662debc329bbe08502a6ee37d9fb0075a154b4a07e94582a43f45b8f",
+    "app/fuel_history.py": "25508d9caa735d1798a45dc22153973a14693922e147d521e9175f66d8155189",
+    "app/health.py": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4",
+    "app/importer.py": "919370b80bf304b4beb1ef22aeb13199015533730122d8113de3dae73e5cd89b",
+    "app/locks.py": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8",
+    "app/mileage.py": "f27a44248be92b888a67872bd5d89eaa0a8403709361f7badf086b60cadd448b",
+    "app/monitoring.py": "20a53a8720ed57e4ab9ebd9dac0da03313a105b4422355c538b4a8b17cb58e02",
+    "app/monitoring_history.py": "d60407c20dda0393057de96aaa62ef7bfb362071bf23673242e09d36831d3508",
+    "app/neftm.py": "3f7be035c10e986ffc9779a20f8220b6ec2c140d700195874adc7491be96a48a",
+    "app/refresh.py": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c",
+    "app/reports.py": "8ca882803d9eb9a07f71bd344a44cd45c35aa3844f64df08398a8e8caad73bcf",
+    "app/rosneft.py": "93fbd3fca03609780cabacd1da4e98f5e5fb9d85e3687054c63f003272bb61dd",
+    "app/server.py": "5615f33b275bbd069ebaa3f6cbfed1748ed0f7aa8fca9c360b74b810f60669b6",
+    "app/shifts.py": "20548dadbe3ea98f2c83734dede5c616ade41f220a86a665c87c86ee6d403b45",
+    "app/source_errors.py": "bfd29f2b5135be73374f0ebcee7811730e1ca97633489ec6ea6be853543c9d6b",
+    "app/transtrade.py": "efc8a77bd5229e7b28efc87f88069af70a43a38cffb7223285b57c2708286e6f",
+    "app/worker.py": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b",
+    "app/workspace.py": "913e92516dd06c032081d44e703dc7cde7801c7caa2c49d44a44f31d5ab4e6c4",
+    "tests/test_report_details.py": "b24a8db8417449a94287aaddf9da85b5f3e2b6e9d7000383ce1ecd081c76c173"
+  }
+}

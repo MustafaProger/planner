@@ -107,6 +107,14 @@ def workspace_report():
     if user()['role']!='admin':result.pop('operations',None)
     return jsonify(result)
 
+@app.get('/api/workspace/report/details')
+@auth()
+def workspace_report_details():
+    from app.reports import report_details
+    result=report_details(dataset(),request.args)
+    if result is None:return jsonify(error='Строка отчета больше не найдена. Перечитайте отчет.'),404
+    return jsonify(result)
+
 @app.post('/api/catalog/<kind>')
 @app.put('/api/catalog/<kind>/<ident>')
 @auth(['admin'])
@@ -222,6 +230,13 @@ def get_report():return jsonify(report(dataset(),request.args))
 @app.get('/api/reconcile')
 @auth()
 def get_reconcile():return jsonify(reconcile(dataset(),request.args))
+@app.get('/api/reconcile/details')
+@auth()
+def get_reconcile_details():
+    from app.reports import reconcile_details
+    result=reconcile_details(dataset(),request.args)
+    if result is None:return jsonify(error='За выбранный день нет данных сверки.'),404
+    return jsonify(result)
 def validate_day(v):return dt.date.fromisoformat(v).isoformat()
 def allowed_car(u,car):return u['role']=='admin' or car in u['vehicles']
 @app.post('/api/manual/<kind>')

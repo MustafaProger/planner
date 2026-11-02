@@ -1,0 +1,72 @@
+{
+  "at": "2026-11-02T15:09:50.222192+03:00",
+  "base_sha": "eec1e136d0b99c9d724b798fc990eaa5bc41e2e4",
+  "selected_files": [
+    "README.md",
+    "app/analytics.py",
+    "app/reports.py",
+    "app/server.py",
+    "app/static/main.js",
+    "app/static/workspace.js",
+    "docs/current-status.md",
+    "docs/Руководство-заказчика.md",
+    "package.json",
+    "tests/test_navigation.cjs",
+    "tests/test_report_details.py",
+    "tests/test_report_drilldown_ui.cjs",
+    "docs/functional-followup-20261102/RESULTS.md",
+    "docs/functional-followup-20261102/browser.json",
+    "docs/functional-followup-20261102/browser.cjs",
+    "docs/functional-followup-20261102/server.py",
+    "docs/functional-followup-20261102/checks-python.json",
+    "docs/functional-followup-20261102/checks-js.json",
+    "docs/functional-followup-20261102/change-review.json"
+  ],
+  "preservation": {
+    "baseline_files": 311,
+    "missing": [],
+    "changed": [
+      "README.md",
+      "app/analytics.py",
+      "app/reports.py",
+      "app/server.py",
+      "app/static/main.js",
+      "app/static/workspace.js",
+      "docs/current-status.md",
+      "docs/Руководство-заказчика.md",
+      "package.json",
+      "tests/test_navigation.cjs"
+    ],
+    "unchanged": 301,
+    "archived_data_files_verified_unchanged": 84
+  },
+  "evidence_hash_verification": [
+    {
+      "file": "docs/functional-followup-20261102/checks-python.json",
+      "verified_hashes": 27
+    },
+    {
+      "file": "docs/functional-followup-20261102/checks-js.json",
+      "verified_hashes": 22
+    },
+    {
+      "file": "docs/functional-followup-20261102/browser.json",
+      "verified_hashes": 37
+    }
+  ],
+  "review": {
+    "backend": "Independent contract review: no unresolved findings",
+    "frontend": "Independent review P2 fixed with scoped binding; regression reproduced [3,9] before and [3,3] after; fix reviewed",
+    "diff_check": "passed",
+    "secret_pattern_findings": [],
+    "test_password_allowlist": [
+      "isolated-test-only-password"
+    ]
+  },
+  "production": {
+    "deployed": false,
+    "restarted": false,
+    "forced_source_refresh": false
+  },
+  "migration": false
+}
