@@ -1,0 +1,75 @@
+{
+  "at": "2026-11-02T12:25:16.411820+00:00",
+  "release": "/opt/fleet-analytics/releases/20261102-3b04add",
+  "code_hashes_verified": 49,
+  "worker": {
+    "healthy": true,
+    "reason": "Обновление сервера работает.",
+    "heartbeat_at": "2026-11-02T15:25:16.400286+03:00",
+    "age_seconds": 0.0,
+    "running": false
+  },
+  "sources": {
+    "transtrade": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:23:02.486454+03:00",
+      "error_code": null,
+      "error_since": null,
+      "next_run_at": "2026-11-02T15:28:01.987825+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T15:23:18.281509+03:00",
+        "message": "Пропущенных завершённых дней нет."
+      }
+    },
+    "neftm": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:23:02.194970+03:00",
+      "error_code": null,
+      "error_since": null,
+      "next_run_at": "2026-11-02T15:28:02.020356+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T15:23:16.537761+03:00",
+        "message": "Пропущенных завершённых дней нет."
+      }
+    },
+    "rosneft": {
+      "status": "error",
+      "last_success_at": "2026-11-02T14:57:58.501256+03:00",
+      "error_code": null,
+      "error_since": "2026-11-02T15:02:58.967773+03:00",
+      "next_run_at": "2026-11-02T15:28:02.025916+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T15:23:26.326642+03:00",
+        "message": "Пропущенных завершённых дней нет."
+      }
+    },
+    "monitoring": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:23:04.003188+03:00",
+      "error_code": null,
+      "error_since": null,
+      "next_run_at": "2026-11-02T15:28:02.036079+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T15:23:16.925161+03:00",
+        "message": "Пропущенных завершённых дней нет."
+      }
+    }
+  },
+  "rosneft_error_class": "unclassified"
+}

@@ -1,0 +1,150 @@
+{
+  "started_at": "2026-11-02T12:20:35.203322+00:00",
+  "preflight": "Preflight passed: existing private data is available. Provider connectivity is checked by the worker after startup.",
+  "dependencies": "No broken requirements found.",
+  "commit": "3b04add785d0343e23eb15e602d0dcdb3380d9c8",
+  "old_release": "/opt/fleet-analytics/releases/20261102-1205",
+  "new_release": "/opt/fleet-analytics/releases/20261102-3b04add",
+  "code_files_verified": 49,
+  "sources_before": {
+    "transtrade": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:02.020354+03:00"
+    },
+    "neftm": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:01.701195+03:00"
+    },
+    "rosneft": {
+      "status": "error",
+      "last_success_at": "2026-11-02T14:57:58.501256+03:00"
+    },
+    "monitoring": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:03.285869+03:00"
+    }
+  },
+  "stopped_at": "2026-11-02T12:20:36.247631+00:00",
+  "verified_backup": {
+    "path": "/var/backups/fleet-analytics/fleet-20261102T122037Z-fbe53701.tar.gz",
+    "files": 21,
+    "tables": 16,
+    "sha256": "526ab89f1db826e281c7544258d22861bb0d68bdf23f11db0b76ee626e490659"
+  },
+  "preservation_before_start": {
+    "all_tables_equal": true,
+    "table_count": 16,
+    "all_persistent_files_equal": true,
+    "file_count": 20,
+    "environment_equal": true
+  },
+  "health": {
+    "status": "ok",
+    "updates": "ok",
+    "web": "ok"
+  },
+  "ready_at": "2026-11-02T12:20:44.672413+00:00",
+  "startup_table_changes": [],
+  "startup_changed_files": [
+    "alerts-state.json",
+    "refresh-auto.json"
+  ],
+  "sources_after": {
+    "transtrade": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:02.020354+03:00"
+    },
+    "neftm": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:01.701195+03:00"
+    },
+    "rosneft": {
+      "status": "error",
+      "last_success_at": "2026-11-02T14:57:58.501256+03:00"
+    },
+    "monitoring": {
+      "status": "success",
+      "last_success_at": "2026-11-02T15:18:03.285869+03:00"
+    }
+  },
+  "final_units": {
+    "fleet-web.service": {
+      "MainPID": "80720",
+      "Result": "success",
+      "ExecMainStartTimestamp": "Mon 2026-11-02 15:20:38 MSK",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "cwd": "/opt/fleet-analytics/releases/20261102-3b04add"
+    },
+    "fleet-worker.service": {
+      "MainPID": "80721",
+      "Result": "success",
+      "ExecMainStartTimestamp": "Mon 2026-11-02 15:20:38 MSK",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "cwd": "/opt/fleet-analytics/releases/20261102-3b04add"
+    },
+    "fleet-alerts.timer": {
+      "Result": "success",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled"
+    }
+  },
+  "cleanup_errors": [],
+  "success": true,
+  "ended_at": "2026-11-02T12:20:45.089596+00:00",
+  "code_sha256": {
+    "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "app/alerts.py": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20",
+    "app/alertwatch.py": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498",
+    "app/analytics.py": "2f844dd053b03baf9ac3e685a42bda1928a3933c6f9f8e9e5134550b40c36a95",
+    "app/autosync.py": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720",
+    "app/catchup.py": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803",
+    "app/connections.py": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e",
+    "app/coverage.py": "39246da5cf32af109faa1cf59909118827274e64183eef0fa762849c2dcce89e",
+    "app/evidence_routes.py": "8482b692662debc329bbe08502a6ee37d9fb0075a154b4a07e94582a43f45b8f",
+    "app/fuel_history.py": "25508d9caa735d1798a45dc22153973a14693922e147d521e9175f66d8155189",
+    "app/health.py": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4",
+    "app/importer.py": "919370b80bf304b4beb1ef22aeb13199015533730122d8113de3dae73e5cd89b",
+    "app/locks.py": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8",
+    "app/mileage.py": "f27a44248be92b888a67872bd5d89eaa0a8403709361f7badf086b60cadd448b",
+    "app/monitoring.py": "20a53a8720ed57e4ab9ebd9dac0da03313a105b4422355c538b4a8b17cb58e02",
+    "app/monitoring_history.py": "d60407c20dda0393057de96aaa62ef7bfb362071bf23673242e09d36831d3508",
+    "app/neftm.py": "3f7be035c10e986ffc9779a20f8220b6ec2c140d700195874adc7491be96a48a",
+    "app/refresh.py": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c",
+    "app/reports.py": "8ca882803d9eb9a07f71bd344a44cd45c35aa3844f64df08398a8e8caad73bcf",
+    "app/rosneft.py": "93fbd3fca03609780cabacd1da4e98f5e5fb9d85e3687054c63f003272bb61dd",
+    "app/server.py": "5615f33b275bbd069ebaa3f6cbfed1748ed0f7aa8fca9c360b74b810f60669b6",
+    "app/shifts.py": "20548dadbe3ea98f2c83734dede5c616ade41f220a86a665c87c86ee6d403b45",
+    "app/source_errors.py": "bfd29f2b5135be73374f0ebcee7811730e1ca97633489ec6ea6be853543c9d6b",
+    "app/static/evidence.js": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+    "app/static/index.html": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63",
+    "app/static/main.js": "1e4066b7ee631c9b695edd5fa0ff27b3f9325e39807de082ce803e02713c43cc",
+    "app/static/motion.js": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986",
+    "app/static/planviews.js": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973",
+    "app/static/refresh.js": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf",
+    "app/static/style.css": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+    "app/static/ui.js": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c",
+    "app/static/workspace.js": "9bc34a266ccdfc9a8cead631f02743ab11d1bd8fc0a92e3312c8d0822f64489b",
+    "app/transtrade.py": "efc8a77bd5229e7b28efc87f88069af70a43a38cffb7223285b57c2708286e6f",
+    "app/worker.py": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b",
+    "app/workspace.py": "913e92516dd06c032081d44e703dc7cde7801c7caa2c49d44a44f31d5ab4e6c4",
+    "deploy/backup.py": "885ae52c9726a737bcc37600b1847e427aed95ed4d2ef62ae0da0297d6aa8664",
+    "deploy/environment.example": "78b61594eafd1230f237f012865bd6eeeb77eeb3e97ccedfced67cd664fe51e6",
+    "deploy/fleet-alerts.service": "b6bd300f089f1e981220f0c1f937e3640c83b5cc12f1da0d95bfca72542a1ee2",
+    "deploy/fleet-alerts.timer": "0ccd35ccbe6babbe271404df139458e71b5a73e01f90999a2875ceaef7f3646e",
+    "deploy/fleet-backup.service": "e9f6c946e55de2796418a7b296e76d132936e0b2acac1e5316da323f0ef8d16a",
+    "deploy/fleet-backup.timer": "d895fc38c2ddb852bbc05c2b31525f3ea56042bb7b73a18119645f0f6e9f365f",
+    "deploy/fleet-web.service": "7709da98ed03eb76c96f7b1b8dd0d024a7abf463ba956495e33e53857b9e2da8",
+    "deploy/fleet-worker.service": "a81d36b9f824c322709f91859fce9a376e36f1a0040c19d2f4b52af42c810cc6",
+    "deploy/full_backup.py": "15bc8ee2869943441e17d9af4c200d5c087c5f09d32474acbb831792b5c3b5b1",
+    "deploy/nginx.example.conf": "56710bbe812f1cdb55d9fe878039cbb87918ecaa30b51103a5d5a797cea2b0cb",
+    "deploy/preflight.py": "1387f37a827077c2075a715e459cfbbfbc7c44cd51551931167dd0e24145cef6",
+    "requirements-lock.txt": "52d500dac7b40170a1495c3bf173702fe0f0b304075c76d7153f91e3c7453205",
+    "requirements.txt": "43c6ba440acecdb396963f9b9a10813cdd3267cd4f1161658212ee8785155940",
+    "start.sh": "b48fd562af9d45977c38ed8ea66b3615481206a1af26d900e9c98377607c8834"
+  }
+}
