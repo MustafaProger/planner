@@ -1,0 +1,558 @@
+{
+  "at": "2026-11-02T11:29:56.337838+00:00",
+  "ended_at": "2026-11-02T11:29:56.830023+00:00",
+  "source": "live VPS read-only SQLite transaction + saved JSON state; no refresh",
+  "release_path": "/opt/fleet-analytics/releases/20261102-1205",
+  "services": {
+    "fleet-web.service": {
+      "MainPID": "78818",
+      "Result": "success",
+      "ExecMainStartTimestamp": "Mon 2026-11-02 13:37:56 MSK",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Mon 2026-11-02 13:37:56 MSK",
+      "cwd": "/opt/fleet-analytics/releases/20261102-1205",
+      "exe": "/usr/bin/python3.12"
+    },
+    "fleet-worker.service": {
+      "MainPID": "78819",
+      "Result": "success",
+      "ExecMainStartTimestamp": "Mon 2026-11-02 13:37:56 MSK",
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Mon 2026-11-02 13:38:01 MSK",
+      "cwd": "/opt/fleet-analytics/releases/20261102-1205",
+      "exe": "/usr/bin/python3.12"
+    },
+    "fleet-alerts.timer": {
+      "Result": "success",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Mon 2026-11-02 13:20:23 MSK"
+    },
+    "fleet-backup.timer": {
+      "Result": "success",
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Mon 2026-11-02 13:20:23 MSK"
+    }
+  },
+  "health": {
+    "healthy": true,
+    "reason": "Обновление сервера работает.",
+    "heartbeat_at": "2026-11-02T14:29:56.368669+03:00",
+    "age_seconds": 0.5,
+    "running": false
+  },
+  "sources": {
+    "transtrade": {
+      "name": "ТрансТрейд",
+      "status": "success",
+      "last_success_at": "2026-11-02T14:27:53.989125+03:00",
+      "error_since": null,
+      "error_code": null,
+      "attempted_at": null,
+      "started_at": "2026-11-02T14:27:52.939993+03:00",
+      "finished_at": "2026-11-02T14:27:53.989148+03:00",
+      "next_run_at": "2026-11-02T14:32:52.939993+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T14:28:09.246419+03:00"
+      }
+    },
+    "neftm": {
+      "name": "Нефтьмагистраль",
+      "status": "success",
+      "last_success_at": "2026-11-02T14:27:54.321915+03:00",
+      "error_since": null,
+      "error_code": null,
+      "attempted_at": null,
+      "started_at": "2026-11-02T14:27:52.948105+03:00",
+      "finished_at": "2026-11-02T14:27:54.321937+03:00",
+      "next_run_at": "2026-11-02T14:32:52.948105+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T14:28:07.434384+03:00"
+      }
+    },
+    "rosneft": {
+      "name": "Роснефть",
+      "status": "success",
+      "last_success_at": "2026-11-02T14:27:53.504902+03:00",
+      "error_since": null,
+      "error_code": null,
+      "attempted_at": null,
+      "started_at": "2026-11-02T14:27:52.958274+03:00",
+      "finished_at": "2026-11-02T14:27:53.504919+03:00",
+      "next_run_at": "2026-11-02T14:32:52.958274+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T14:28:17.312526+03:00"
+      }
+    },
+    "monitoring": {
+      "name": "ГЛОНАССсофт",
+      "status": "success",
+      "last_success_at": "2026-11-02T14:27:56.685491+03:00",
+      "error_since": null,
+      "error_code": null,
+      "attempted_at": null,
+      "started_at": "2026-11-02T14:27:52.962691+03:00",
+      "finished_at": "2026-11-02T14:27:56.685511+03:00",
+      "next_run_at": "2026-11-02T14:32:52.962691+03:00",
+      "catchup": {
+        "status": "success",
+        "pending_days": 0,
+        "from": null,
+        "to": null,
+        "last_success_at": "2026-11-02T14:28:08.040406+03:00"
+      }
+    }
+  },
+  "alerts": {
+    "configured": false,
+    "status": "disabled",
+    "pending": 0,
+    "active_incidents": 0
+  },
+  "counts": {
+    "records": 4956,
+    "catalog": 459,
+    "tariffs": 114,
+    "transtrade_orders": 3003,
+    "transtrade_history": 4307,
+    "actual_shifts": 0,
+    "actual_shift_history": 0,
+    "mileage_observations": 0,
+    "coverage": 0,
+    "card_bindings": 0,
+    "expenses": 0
+  },
+  "data_counts": {
+    "trips": 3003,
+    "plans": 1437,
+    "statuses": 181,
+    "satellite": 335,
+    "coverage": 0,
+    "card_bindings": 0,
+    "expenses": 0
+  },
+  "fact_queue_counts": {
+    "assignments": 91,
+    "assignment_states": {
+      "scheduled": 2,
+      "unassigned": 88,
+      "review": 1
+    },
+    "duplicate_assignment_rows": 2,
+    "cards_requiring_history": 25,
+    "cards_by_provider": {
+      "neftm": 6,
+      "rosneft": 19
+    },
+    "unallocated_operations": 1034,
+    "order_pair_days_requiring_shift_evidence": 1987,
+    "trip_review_rows": 18,
+    "trip_review_reasons": {
+      "confirm_category_or_missing_vehicle": 15,
+      "provider_list_omission_confirm_status": 3
+    },
+    "periods_requiring_responsible_review": [
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11"
+    ]
+  },
+  "database_transaction": "BEGIN + query_only + mode=ro; consistent database view; files observed independently",
+  "automatic_mileage": false,
+  "version_verification": {
+    "git_head": "677636891dcfc13109d0467f9b3448af3a709daa",
+    "files_checked": 35,
+    "different": [],
+    "files": {
+      "app/__init__.py": {
+        "vps_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "git_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "match": true,
+        "mtime": "2026-10-26T14:49:37.916422+00:00"
+      },
+      "app/alerts.py": {
+        "vps_sha256": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20",
+        "git_sha256": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20",
+        "match": true,
+        "mtime": "2026-10-30T07:47:38.056086+00:00"
+      },
+      "app/alertwatch.py": {
+        "vps_sha256": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498",
+        "git_sha256": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498",
+        "match": true,
+        "mtime": "2026-10-30T07:52:12.241851+00:00"
+      },
+      "app/analytics.py": {
+        "vps_sha256": "828ab0c712ed112b7a657c20d17097c39ee41c8fa3f3aca03bddfd234986dddd",
+        "git_sha256": "828ab0c712ed112b7a657c20d17097c39ee41c8fa3f3aca03bddfd234986dddd",
+        "match": true,
+        "mtime": "2026-11-02T08:02:24.849885+00:00"
+      },
+      "app/autosync.py": {
+        "vps_sha256": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720",
+        "git_sha256": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720",
+        "match": true,
+        "mtime": "2026-10-30T08:04:57.720848+00:00"
+      },
+      "app/catchup.py": {
+        "vps_sha256": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803",
+        "git_sha256": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803",
+        "match": true,
+        "mtime": "2026-10-30T07:55:39.040114+00:00"
+      },
+      "app/connections.py": {
+        "vps_sha256": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e",
+        "git_sha256": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e",
+        "match": true,
+        "mtime": "2026-10-30T07:04:30.484151+00:00"
+      },
+      "app/coverage.py": {
+        "vps_sha256": "39246da5cf32af109faa1cf59909118827274e64183eef0fa762849c2dcce89e",
+        "git_sha256": "39246da5cf32af109faa1cf59909118827274e64183eef0fa762849c2dcce89e",
+        "match": true,
+        "mtime": "2026-11-02T08:03:28.539719+00:00"
+      },
+      "app/evidence_routes.py": {
+        "vps_sha256": "8482b692662debc329bbe08502a6ee37d9fb0075a154b4a07e94582a43f45b8f",
+        "git_sha256": "8482b692662debc329bbe08502a6ee37d9fb0075a154b4a07e94582a43f45b8f",
+        "match": true,
+        "mtime": "2026-11-02T08:01:59.143795+00:00"
+      },
+      "app/fuel_history.py": {
+        "vps_sha256": "25508d9caa735d1798a45dc22153973a14693922e147d521e9175f66d8155189",
+        "git_sha256": "25508d9caa735d1798a45dc22153973a14693922e147d521e9175f66d8155189",
+        "match": true,
+        "mtime": "2026-10-29T07:24:11.598827+00:00"
+      },
+      "app/health.py": {
+        "vps_sha256": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4",
+        "git_sha256": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4",
+        "match": true,
+        "mtime": "2026-10-30T07:38:43.887049+00:00"
+      },
+      "app/importer.py": {
+        "vps_sha256": "919370b80bf304b4beb1ef22aeb13199015533730122d8113de3dae73e5cd89b",
+        "git_sha256": "919370b80bf304b4beb1ef22aeb13199015533730122d8113de3dae73e5cd89b",
+        "match": true,
+        "mtime": "2026-11-02T08:17:01.152224+00:00"
+      },
+      "app/locks.py": {
+        "vps_sha256": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8",
+        "git_sha256": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8",
+        "match": true,
+        "mtime": "2026-10-30T07:46:53.128837+00:00"
+      },
+      "app/mileage.py": {
+        "vps_sha256": "f27a44248be92b888a67872bd5d89eaa0a8403709361f7badf086b60cadd448b",
+        "git_sha256": "f27a44248be92b888a67872bd5d89eaa0a8403709361f7badf086b60cadd448b",
+        "match": true,
+        "mtime": "2026-11-02T08:09:55.344876+00:00"
+      },
+      "app/monitoring.py": {
+        "vps_sha256": "20a53a8720ed57e4ab9ebd9dac0da03313a105b4422355c538b4a8b17cb58e02",
+        "git_sha256": "20a53a8720ed57e4ab9ebd9dac0da03313a105b4422355c538b4a8b17cb58e02",
+        "match": true,
+        "mtime": "2026-11-02T08:01:24.538100+00:00"
+      },
+      "app/monitoring_history.py": {
+        "vps_sha256": "d60407c20dda0393057de96aaa62ef7bfb362071bf23673242e09d36831d3508",
+        "git_sha256": "d60407c20dda0393057de96aaa62ef7bfb362071bf23673242e09d36831d3508",
+        "match": true,
+        "mtime": "2026-10-27T10:40:31.056641+00:00"
+      },
+      "app/neftm.py": {
+        "vps_sha256": "3f7be035c10e986ffc9779a20f8220b6ec2c140d700195874adc7491be96a48a",
+        "git_sha256": "3f7be035c10e986ffc9779a20f8220b6ec2c140d700195874adc7491be96a48a",
+        "match": true,
+        "mtime": "2026-11-02T08:01:24.537368+00:00"
+      },
+      "app/refresh.py": {
+        "vps_sha256": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c",
+        "git_sha256": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c",
+        "match": true,
+        "mtime": "2026-10-30T07:46:53.138767+00:00"
+      },
+      "app/reports.py": {
+        "vps_sha256": "fc299be80ac188dcee3dd15891819ff261528acb41f3933b3f1314221100e233",
+        "git_sha256": "fc299be80ac188dcee3dd15891819ff261528acb41f3933b3f1314221100e233",
+        "match": true,
+        "mtime": "2026-11-02T08:03:33.461552+00:00"
+      },
+      "app/rosneft.py": {
+        "vps_sha256": "93fbd3fca03609780cabacd1da4e98f5e5fb9d85e3687054c63f003272bb61dd",
+        "git_sha256": "93fbd3fca03609780cabacd1da4e98f5e5fb9d85e3687054c63f003272bb61dd",
+        "match": true,
+        "mtime": "2026-11-02T08:01:24.537875+00:00"
+      },
+      "app/server.py": {
+        "vps_sha256": "a2d38634e45924e7206086a6397dfc8b11b96e794569872e38a381bb1b633463",
+        "git_sha256": "a2d38634e45924e7206086a6397dfc8b11b96e794569872e38a381bb1b633463",
+        "match": true,
+        "mtime": "2026-11-02T09:06:42.793040+00:00"
+      },
+      "app/shifts.py": {
+        "vps_sha256": "20548dadbe3ea98f2c83734dede5c616ade41f220a86a665c87c86ee6d403b45",
+        "git_sha256": "20548dadbe3ea98f2c83734dede5c616ade41f220a86a665c87c86ee6d403b45",
+        "match": true,
+        "mtime": "2026-11-02T08:09:55.344736+00:00"
+      },
+      "app/source_errors.py": {
+        "vps_sha256": "bfd29f2b5135be73374f0ebcee7811730e1ca97633489ec6ea6be853543c9d6b",
+        "git_sha256": "bfd29f2b5135be73374f0ebcee7811730e1ca97633489ec6ea6be853543c9d6b",
+        "match": true,
+        "mtime": "2026-11-02T08:01:24.503141+00:00"
+      },
+      "app/static/evidence.js": {
+        "vps_sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+        "git_sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+        "match": true,
+        "mtime": "2026-11-02T08:40:28.029400+00:00"
+      },
+      "app/static/index.html": {
+        "vps_sha256": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63",
+        "git_sha256": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63",
+        "match": true,
+        "mtime": "2026-11-02T10:38:03.328902+00:00"
+      },
+      "app/static/main.js": {
+        "vps_sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+        "git_sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+        "match": true,
+        "mtime": "2026-11-02T10:38:03.327902+00:00"
+      },
+      "app/static/motion.js": {
+        "vps_sha256": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986",
+        "git_sha256": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986",
+        "match": true,
+        "mtime": "2026-10-29T07:53:50.517036+00:00"
+      },
+      "app/static/planviews.js": {
+        "vps_sha256": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973",
+        "git_sha256": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973",
+        "match": true,
+        "mtime": "2026-10-29T07:18:38.311036+00:00"
+      },
+      "app/static/refresh.js": {
+        "vps_sha256": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf",
+        "git_sha256": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf",
+        "match": true,
+        "mtime": "2026-11-02T07:04:59.712044+00:00"
+      },
+      "app/static/style.css": {
+        "vps_sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+        "git_sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+        "match": true,
+        "mtime": "2026-11-02T10:38:03.328902+00:00"
+      },
+      "app/static/ui.js": {
+        "vps_sha256": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c",
+        "git_sha256": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c",
+        "match": true,
+        "mtime": "2026-11-02T08:05:09.423692+00:00"
+      },
+      "app/static/workspace.js": {
+        "vps_sha256": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc",
+        "git_sha256": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc",
+        "match": true,
+        "mtime": "2026-11-02T08:05:49.286254+00:00"
+      },
+      "app/transtrade.py": {
+        "vps_sha256": "efc8a77bd5229e7b28efc87f88069af70a43a38cffb7223285b57c2708286e6f",
+        "git_sha256": "efc8a77bd5229e7b28efc87f88069af70a43a38cffb7223285b57c2708286e6f",
+        "match": true,
+        "mtime": "2026-11-02T07:59:30.278851+00:00"
+      },
+      "app/worker.py": {
+        "vps_sha256": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b",
+        "git_sha256": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b",
+        "match": true,
+        "mtime": "2026-10-30T07:38:43.886827+00:00"
+      },
+      "app/workspace.py": {
+        "vps_sha256": "913e92516dd06c032081d44e703dc7cde7801c7caa2c49d44a44f31d5ab4e6c4",
+        "git_sha256": "913e92516dd06c032081d44e703dc7cde7801c7caa2c49d44a44f31d5ab4e6c4",
+        "match": true,
+        "mtime": "2026-11-02T08:08:38.607309+00:00"
+      }
+    },
+    "note": "Files on disk compared to Git HEAD; memory-loaded Python bytecode not inspected"
+  },
+  "at_msk": "2026-11-02T14:29:56.337838+03:00",
+  "state_files_changed_during_capture": [
+    "refresh-heartbeat.json"
+  ],
+  "https_smoke": {
+    "at": "2026-11-02T11:28:59.082166+00:00",
+    "base": "https://charterstats.ru",
+    "mutations": "ordinary authorized login only; subsequent requests GET; no business writes/provider refresh",
+    "responses": {
+      "healthz": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "updates": "ok",
+          "web": "ok"
+        }
+      },
+      "anonymous_data": {
+        "status": 401
+      },
+      "login": {
+        "status": 200
+      },
+      "session": {
+        "status": 200,
+        "role": "admin"
+      },
+      "/api/data": {
+        "status": 200,
+        "counts": {
+          "trips": 3003,
+          "plans": 1437,
+          "statuses": 181,
+          "satellite": 1767,
+          "coverage": 0,
+          "expenses": 0,
+          "card_bindings": 0
+        }
+      },
+      "/api/report?from=2026-08-01&to=2026-08-31&group=vehicle": {
+        "status": 200
+      },
+      "/api/reconcile?from=2026-08-01&to=2026-08-31": {
+        "status": 200
+      },
+      "/api/workspace/report?mode=comparison&from=2026-08-01&to=2026-08-31": {
+        "status": 200
+      },
+      "/api/evidence?from=2026-08-01&to=2026-08-31": {
+        "status": 200,
+        "automatic_mileage": false,
+        "shifts": 0,
+        "mileage": 0
+      },
+      "/api/refresh": {
+        "status": "success",
+        "server_scheduler": true,
+        "heartbeat_at": "2026-11-02T14:29:06.219094+03:00",
+        "sources": {
+          "monitoring": {
+            "status": "success",
+            "last_success_at": "2026-11-02T14:27:56.685491+03:00",
+            "error_code": null,
+            "error_since": null,
+            "catchup": {
+              "status": "success",
+              "pending_days": 0,
+              "last_success_at": "2026-11-02T14:28:08.040406+03:00"
+            }
+          },
+          "neftm": {
+            "status": "success",
+            "last_success_at": "2026-11-02T14:27:54.321915+03:00",
+            "error_code": null,
+            "error_since": null,
+            "catchup": {
+              "status": "success",
+              "pending_days": 0,
+              "last_success_at": "2026-11-02T14:28:07.434384+03:00"
+            }
+          },
+          "rosneft": {
+            "status": "success",
+            "last_success_at": "2026-11-02T14:27:53.504902+03:00",
+            "error_code": null,
+            "error_since": null,
+            "catchup": {
+              "status": "success",
+              "pending_days": 0,
+              "last_success_at": "2026-11-02T14:28:17.312526+03:00"
+            }
+          },
+          "transtrade": {
+            "status": "success",
+            "last_success_at": "2026-11-02T14:27:53.989125+03:00",
+            "error_code": null,
+            "error_since": null,
+            "catchup": {
+              "status": "success",
+              "pending_days": 0,
+              "last_success_at": "2026-11-02T14:28:09.246419+03:00"
+            }
+          }
+        }
+      },
+      "/api/connections": {
+        "status": 200,
+        "sources": [
+          {
+            "id": "transtrade",
+            "status": "API подключён",
+            "authorization_checked_at": "2026-11-02T14:27:53.651435+03:00"
+          },
+          {
+            "id": "monitoring",
+            "status": "API подключён",
+            "authorization_checked_at": "02.11.2026 14:27 МСК"
+          },
+          {
+            "id": "rosneft",
+            "status": "API подключён",
+            "authorization_checked_at": "02.11.2026 14:27 МСК"
+          },
+          {
+            "id": "neftm",
+            "status": "API подключён",
+            "authorization_checked_at": "02.11.2026 14:27 МСК"
+          }
+        ]
+      },
+      "/static/main.js": {
+        "status": 200,
+        "sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b"
+      },
+      "/static/style.css": {
+        "status": 200,
+        "sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee"
+      },
+      "/static/ui.js": {
+        "status": 200,
+        "sha256": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c"
+      },
+      "/static/evidence.js": {
+        "status": 200,
+        "sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763"
+      }
+    },
+    "ended_at": "2026-11-02T11:29:07.731274+00:00"
+  },
+  "scope_notes": [
+    "Database consistent read-only transaction; JSON files independently observed, worker remained running. This is not a restorable full backup.",
+    "database satellite count is Excel-seeded rows; HTTPS dataset merges API telemetry and has more rows.",
+    "No credentials, cookies, provider secrets, names, plate numbers, card numbers, or raw business rows included.",
+    "No source refresh, service restart, deployment, DNS/access change, business write, or external notification.",
+    "35 files on disk match baseline Git HEAD; no in-memory Python bytecode attestation.",
+    "Queue grouped by known records; order pair-days are evidence-request anchors, not confirmed shifts."
+  ]
+}

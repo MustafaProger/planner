@@ -1,0 +1,80 @@
+{
+  "at": "2026-11-02T14:36:09.297081+03:00",
+  "baseline_head": "677636891dcfc13109d0467f9b3448af3a709daa",
+  "branch": "codex/logistics-analytics",
+  "upstream": "origin/codex/logistics-analytics",
+  "scope": "documentation, portable sidebar harness and dated isolated customer acceptance; no application business code changes",
+  "selected_paths": [
+    "README.md",
+    "docs/current-status.md",
+    "docs/deploy-20261102/DEPLOYMENT.md",
+    "docs/Подключения.md",
+    "docs/Руководство-заказчика.md",
+    "docs/implementation-20261102/RESULTS.md",
+    "docs/implementation-20261102/acceptance-matrix.md",
+    "docs/implementation-20261102/data-and-deployment.md",
+    "package.json",
+    "package-lock.json",
+    "playwright.config.cjs",
+    "tests/test_sidebar_scroll.cjs",
+    "tests/sidebar_failure_probe.cjs",
+    "docs/acceptance-20261102/checks.json",
+    "docs/acceptance-20261102/browser.json",
+    "docs/acceptance-20261102/customer-matrix.md",
+    "docs/acceptance-20261102/production.md",
+    "docs/acceptance-20261102/production.json",
+    "docs/acceptance-20261102/sidebar.md",
+    "docs/acceptance-20261102/sidebar.json",
+    "docs/acceptance-20261102/fixtures/browser.cjs",
+    "docs/acceptance-20261102/fixtures/server.py",
+    "docs/acceptance-20261102/change-review.json"
+  ],
+  "preservation": {
+    "private_backup_created": true,
+    "baseline_files": 296,
+    "missing": [],
+    "expected_changed": [
+      "README.md",
+      "docs/deploy-20261102/DEPLOYMENT.md",
+      "docs/implementation-20261102/RESULTS.md",
+      "docs/implementation-20261102/acceptance-matrix.md",
+      "docs/implementation-20261102/data-and-deployment.md",
+      "docs/Подключения.md",
+      "docs/Руководство-заказчика.md",
+      "tests/test_sidebar_scroll.cjs"
+    ],
+    "unexpected_changes": [],
+    "unchanged": 288,
+    "archived_local_data_files_unchanged": 84,
+    "data_migration": false,
+    "preexisting_guide_edits_preserved": true
+  },
+  "evidence_hash_checks": [
+    {
+      "evidence": "sidebar.json",
+      "hashes_verified": 21,
+      "mismatches": 0
+    },
+    {
+      "evidence": "checks.json",
+      "hashes_verified": 26,
+      "mismatches": 0
+    },
+    {
+      "evidence": "browser.json",
+      "hashes_verified": 11,
+      "mismatches": 0
+    }
+  ],
+  "review": {
+    "git_diff_check": "passed",
+    "active_document_links_verified": 36,
+    "secret_scan": "targeted private-key/service-token/url/bearer/assigned-secret scan plus human diff review",
+    "findings": [],
+    "synthetic_fixture_secret_allowlist_matches": 1,
+    "excluded": "data, source workbooks, credentials, raw review exports, private snapshots, screenshots and unrelated old untracked artifacts",
+    "historical_documents": "Only three explicitly requested snapshot reports selected; local archival evidence links remain historical and are labelled as such."
+  },
+  "deployment": "not performed; current VPS application files match baseline SHA, not a new deployment",
+  "git_note": "Pre-commit review. Final commit and freshly queried remote SHA are reported after push; this report does not predict its own commit hash."
+}

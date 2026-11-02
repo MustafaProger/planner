@@ -1,0 +1,12 @@
+{
+  "name": "fleet-analytics-checks",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test tests/test_evidence_ui.cjs tests/test_reporting_ui.cjs tests/test_refresh_ui.cjs tests/test_planviews.cjs tests/test_ui_information.cjs tests/test_navigation.cjs tests/test_motion.cjs",
+    "test:browser": "playwright test --config=playwright.config.cjs",
+    "test:browser:failure-probe": "node tests/sidebar_failure_probe.cjs",
+    "browser:install": "playwright install chromium"
+  },
+  "devDependencies": { "@playwright/test": "1.64.1" }
+}

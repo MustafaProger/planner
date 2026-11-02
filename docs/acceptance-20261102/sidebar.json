@@ -1,0 +1,186 @@
+{
+  "at": "2026-11-02T14:29:53.804205+03:00",
+  "baseline_sha": "677636891dcfc13109d0467f9b3448af3a709daa",
+  "source_sha256": {
+    "package.json": "434841082821a428cfe1ffe27a2074348d067dd3ebd8c63e36a7498b9fc6fb24",
+    "package-lock.json": "a9d153e5f03f8d83985ca4e639e616d90ee020141ab523dde1545561038e3382",
+    "playwright.config.cjs": "f0d76551d95a58c3aa709751f9309085d3933c8a52ebb42f8c8b8ab451f851c7",
+    "app/static/ui.js": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c",
+    "app/static/index.html": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63",
+    "app/static/main.js": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+    "app/static/workspace.js": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc",
+    "app/static/planviews.js": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973",
+    "app/static/style.css": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+    "app/static/evidence.js": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+    "app/static/motion.js": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986",
+    "app/static/refresh.js": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf",
+    "tests/test_motion.cjs": "29a910cb813a1f19d27bd0bfa909d4a1561217f0f52f5face985b4494759a03d",
+    "tests/sidebar_failure_probe.cjs": "4b5a0b4c71b4259a4470aff68ade8e789deafe076c6f98977ad68c3e878171e0",
+    "tests/test_navigation.cjs": "3600702e67d008c207b5c49fe1337eb77c5e4eb50b1d272285deb4bc04e22529",
+    "tests/test_ui_information.cjs": "d3b33dc8298556dc0160c7f27d91d8a638267b3e70dc78f907b1332fcef590dc",
+    "tests/test_planviews.cjs": "778219ea7f1a61a6da25d89ab2d2b60afa4e1dfc7166f8bfff311c680beaaf21",
+    "tests/test_refresh_ui.cjs": "93ebf2cfd1002b7257b080cd33ee993fcf6ee9b87f81861416f264657b268939",
+    "tests/test_sidebar_scroll.cjs": "9c96a27579c5e1746e84749ad1e265457b51bb9068922a51a96e764a3f5b1cbe",
+    "tests/test_evidence_ui.cjs": "7b4dd90e520d8acdae06b5694f244195fd02a0842154cef37b58fc0e4f9f04e1",
+    "tests/test_reporting_ui.cjs": "38cb42bdb65879fc7f132c7758c3a02c4228f14b080e2e036000b12854bb014b"
+  },
+  "environment": {
+    "node": "v24.15.0",
+    "npm": "11.12.1",
+    "playwright": "1.64.1",
+    "os": "Darwin",
+    "architecture": "arm64"
+  },
+  "isolation": {
+    "temporary_checkout": true,
+    "database": false,
+    "providers": false,
+    "user_browser_profile": false,
+    "NODE_PATH": false,
+    "browser_channel_override": false
+  },
+  "checks": [
+    {
+      "label": "npm-ci",
+      "command": [
+        "npm",
+        "ci"
+      ],
+      "exit_code": 0,
+      "seconds": 0.88
+    },
+    {
+      "label": "browser-install",
+      "command": [
+        "npm",
+        "run",
+        "browser:install"
+      ],
+      "exit_code": 0,
+      "seconds": 0.668
+    },
+    {
+      "label": "unit-js",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "seconds": 0.159,
+      "tests": 45,
+      "pass": 45,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "label": "browser-outside-cwd",
+      "command": [
+        "node",
+        "<checkout>/node_modules/@playwright/test/cli.js",
+        "test",
+        "--config=<checkout>/playwright.config.cjs"
+      ],
+      "exit_code": 0,
+      "seconds": 1.669,
+      "browser_count": 2,
+      "all_browsers_exited": true,
+      "scenarios": [
+        {
+          "scenario": "sidebar",
+          "viewport": "desktop",
+          "browser": "156.0.8078.4",
+          "positions": {
+            "initial": 765,
+            "navigation": 765,
+            "rerender": 765,
+            "back": 765,
+            "forward": 765
+          },
+          "unexpectedRequests": 0,
+          "pageErrors": 0,
+          "requests": [
+            "GET /settings/connections",
+            "GET /static/style.css",
+            "GET /static/main.js",
+            "GET /static/workspace.js",
+            "GET /static/ui.js",
+            "GET /static/planviews.js",
+            "GET /static/motion.js",
+            "GET /static/evidence.js",
+            "GET /static/refresh.js",
+            "GET /api/session",
+            "GET /api/data",
+            "GET /api/connections",
+            "GET /api/refresh",
+            "GET /api/connections"
+          ]
+        },
+        {
+          "scenario": "sidebar",
+          "viewport": "mobile",
+          "browser": "156.0.8078.4",
+          "positions": {
+            "initial": 911,
+            "navigation": 911,
+            "rerender": 911,
+            "back": 911,
+            "forward": 911,
+            "reopen": 911
+          },
+          "unexpectedRequests": 0,
+          "pageErrors": 0,
+          "requests": [
+            "GET /settings/connections",
+            "GET /static/style.css",
+            "GET /static/main.js",
+            "GET /static/workspace.js",
+            "GET /static/ui.js",
+            "GET /static/planviews.js",
+            "GET /static/motion.js",
+            "GET /static/evidence.js",
+            "GET /static/refresh.js",
+            "GET /api/session",
+            "GET /api/data",
+            "GET /api/connections",
+            "GET /api/refresh",
+            "GET /api/connections"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "failure-probes",
+      "command": [
+        "npm",
+        "run",
+        "test:browser:failure-probe"
+      ],
+      "exit_code": 0,
+      "seconds": 4.323
+    }
+  ],
+  "failure_probes": [
+    {
+      "mode": "selector",
+      "expectedFailure": true,
+      "exitCode": 1,
+      "elapsedMs": 3587,
+      "browserCount": 1,
+      "allBrowsersExited": true,
+      "emergencyKillUsed": false
+    },
+    {
+      "mode": "scroll-reset",
+      "expectedFailure": true,
+      "exitCode": 1,
+      "elapsedMs": 644,
+      "browserCount": 1,
+      "allBrowsersExited": true,
+      "emergencyKillUsed": false
+    },
+    {
+      "probes": 2,
+      "passed": true
+    }
+  ]
+}

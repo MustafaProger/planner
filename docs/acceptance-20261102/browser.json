@@ -1,0 +1,76 @@
+{
+  "at": "2026-11-02T11:34:35.013Z",
+  "playwright": "1.64.1",
+  "isolation": "temporary FLEET_DATA; scheduler disabled; generated workbooks; test users; no provider requests",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "checks": [
+        "UI login; money/hours without km; charges separate from 2 trips / 1 day",
+        "average groups, CSV and four source records in detail",
+        "two distinct reconciliations; all six delta columns; missing coverage/km explained",
+        "dirty dialog survives completed background refresh; independent statuses appear in calendar and downtime statistics without orders or changed money/hours",
+        "2027 monthly plan and second shift; both route/vehicle matrices preserve all assignments and sums",
+        "existing card / expense / coverage preview / evidence forms render; no document horizontal overflow"
+      ],
+      "roles": {
+        "viewer": {
+          "status_create_visible": false,
+          "user_admin_forbidden": true
+        },
+        "logist": {
+          "status_create_visible": true,
+          "user_admin_forbidden": true
+        }
+      },
+      "page_errors": 0,
+      "external_requests": 0
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "checks": [
+        "UI login; money/hours without km; charges separate from 2 trips / 1 day",
+        "average groups, CSV and four source records in detail",
+        "two distinct reconciliations; all six delta columns; missing coverage/km explained",
+        "dirty dialog survives completed background refresh; independent statuses appear in calendar and downtime statistics without orders or changed money/hours",
+        "2027 monthly plan and second shift; both route/vehicle matrices preserve all assignments and sums",
+        "existing card / expense / coverage preview / evidence forms render; no document horizontal overflow"
+      ],
+      "roles": {
+        "viewer": {
+          "status_create_visible": false,
+          "user_admin_forbidden": true
+        },
+        "logist": {
+          "status_create_visible": true,
+          "user_admin_forbidden": true
+        }
+      },
+      "page_errors": 0,
+      "external_requests": 0
+    }
+  ],
+  "errors": [],
+  "chromium": "156.0.8078.4",
+  "status": "passed",
+  "elapsed_seconds": 4.394,
+  "head": "677636891dcfc13109d0467f9b3448af3a709daa",
+  "command": "node docs/acceptance-20261102/fixtures/browser.cjs",
+  "application_fingerprints": {
+    "app/static/evidence.js": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+    "app/static/index.html": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63",
+    "app/static/main.js": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+    "app/static/motion.js": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986",
+    "app/static/planviews.js": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973",
+    "app/static/refresh.js": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf",
+    "app/static/style.css": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+    "app/static/ui.js": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c",
+    "app/static/workspace.js": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc"
+  },
+  "fixture_fingerprints": {
+    "docs/acceptance-20261102/fixtures/browser.cjs": "e0f2bb8cbd7433db1fe4d8ba0b8c3cd6ed1f56124e6cc6601a9ea8e4fc2f6ff0",
+    "docs/acceptance-20261102/fixtures/server.py": "e2c56d76fbe46447a8fa65167bf45d523e18b86d3e192038d916e18acdc73121"
+  }
+}
