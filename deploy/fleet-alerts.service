@@ -1,0 +1,24 @@
+[Unit]
+Description=Fleet analytics independent incident observer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=fleet
+Group=fleet
+WorkingDirectory=/opt/fleet-analytics/current
+EnvironmentFile=/etc/fleet-analytics/environment
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/fleet-analytics/current/.venv/bin/python -m app.alertwatch
+TimeoutStartSec=45
+UMask=0077
+StateDirectory=fleet-analytics
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/fleet-analytics
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

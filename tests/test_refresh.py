@@ -28,6 +28,7 @@ def service(tmp_path, monkeypatch):
         c.execute("insert into protected values('manual changes remain')")
     for module in (rosneft, transtrade, monitoring):
         monkeypatch.setattr(module, 'configured', lambda _: False)
+    monkeypatch.setattr(transtrade, 'reconcile', lambda *args, **kwargs: {'status': 'skipped'}, raising=False)
     return refresh.RefreshService(tmp_path, db, lambda: {'vehicles': ['А123АА777']})
 
 
@@ -43,6 +44,7 @@ def test_period_moscow_and_provider_limit(monkeypatch):
 def test_unconfigured_sources_do_not_run_or_change_data(service, monkeypatch):
     for module in (rosneft, transtrade, monitoring, neftm):
         monkeypatch.setattr(module, 'sync', lambda *_: pytest.fail('Unconfigured API called'))
+    monkeypatch.setattr(transtrade, 'reconcile', lambda *args, **kwargs: pytest.fail('Unconfigured history called'))
     service.start('2026-08-01', '2026-08-31', user_id=1)
     state = wait(service)
     assert state['status'] == 'idle'
@@ -136,13 +138,17 @@ def test_scheduler_starts_real_provider_job_without_browser(service, monkeypatch
     monkeypatch.setattr(refresh, 'INTERVAL', 1)
     monkeypatch.setattr(transtrade, 'configured', lambda _: True)
     called = threading.Event()
-    monkeypatch.setattr(transtrade, 'sync', lambda *_: called.set() or {'received': 0})
+    monkeypatch.setattr(transtrade, 'sync', lambda *args, **kwargs: called.set() or {'received': 0})
     service.start_scheduler()
     try:
         assert called.wait(3)
-        state = wait(service)
+        until=time.monotonic()+3
+        while time.monotonic()<until:
+            state=service.status()
+            if state['sources'].get('transtrade',{}).get('status')=='success':break
+            time.sleep(.01)
         assert state['trigger'] == 'automatic'
-        assert state['status'] == 'success'
+        assert state['sources']['transtrade']['status'] == 'success'
         assert state['from'] == refresh.now().date().replace(day=1).isoformat()
     finally:
         service.stop()
@@ -181,3 +187,126 @@ def test_endpoint_authorization_csrf_and_invalid_period(service, monkeypatch):
     assert client.post('/api/refresh', json=[], headers={'X-CSRF-Token': 'x'}).status_code == 400
     assert client.post('/api/refresh', json={'from': '2026-08-01', 'to': '2026-08-31'}, headers={'X-CSRF-Token': 'x'}).status_code == 202
     assert calls == [(('2026-08-01', '2026-08-31'), {'user_id': 9})]
+
+
+def test_automatic_uses_bounded_period_request_and_due_history(service, monkeypatch):
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    calls = []
+    monkeypatch.setattr(transtrade, 'sync', lambda *args, **kwargs: calls.append(('period', args[2:], kwargs)) or {'received': 7})
+    def history(*args, **kwargs):
+        calls.append(('history', args, kwargs))
+        return {'status': 'success', 'processed': 2971, 'recovered_by_id': 3,
+                'discovered_by_id': 2, 'gap_pending': 10, 'synced_at': '2026-10-30T12:00:00+03:00'}
+    monkeypatch.setattr(transtrade, 'reconcile', history)
+    service.start(trigger='automatic')
+    state = wait(service)
+    assert state['status'] == 'success'
+    assert calls[0][2] == {'verify_days': False}
+    assert calls[1] == ('history', (service.data_dir, service.db_path), {'force': False})
+    source = state['sources']['transtrade']
+    assert source['period_status'] == source['reconciliation_status'] == 'success'
+    assert source['last_reconciliation_success_at'] == '2026-10-30T12:00:00+03:00'
+    assert 'ранее неизвестных — 2' in source['message']
+    assert 'Не проверены в последней порции: 10 ID' in source['message']
+    assert 'раз в сутки' in state['automatic_scope']
+    service.start('2026-08-01', '2026-08-31')
+    wait(service)
+    assert calls[2][2] == {}  # Manual period retains day-versus-range validation.
+    assert calls[3][2] == {'force': False}
+
+
+@pytest.mark.parametrize('failure', ['returned', 'raised'])
+def test_history_failure_keeps_period_success_and_other_sources_run(service, monkeypatch, failure):
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    monkeypatch.setattr(rosneft, 'configured', lambda _: True)
+    monkeypatch.setattr(transtrade, 'sync', lambda *args: {'received': 7})
+    monkeypatch.setattr(rosneft, 'sync', lambda *args: {'rows': [1]})
+    service.start('2026-08-01', '2026-08-31')
+    first = wait(service)
+    def history(*args, **kwargs):
+        if failure == 'raised':
+            raise ValueError('Размер ответа истории превышает предел.')
+        return {'status': 'error', 'error': 'Размер ответа истории превышает предел.'}
+    monkeypatch.setattr(transtrade, 'reconcile', history)
+    service.start('2026-08-01', '2026-08-31')
+    state = wait(service)
+    assert state['status'] == 'partial'
+    source = state['sources']['transtrade']
+    assert source['period_status'] == 'success' and source['reconciliation_status'] == 'error'
+    assert source['last_period_success_at']
+    assert source['last_success_at'] == first['sources']['transtrade']['last_success_at']
+    assert 'Получено 7 заявок за период' in source['message']
+    assert 'Размер ответа истории превышает предел' in source['message']
+    assert state['sources']['rosneft']['status'] == 'success'
+
+
+def test_period_failure_still_checks_history_and_reports_both(service, monkeypatch):
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    def period_failure(*args):
+        raise ValueError('Ответы по дням и периоду различаются.')
+    monkeypatch.setattr(transtrade, 'sync', period_failure)
+    calls = []
+    monkeypatch.setattr(transtrade, 'reconcile', lambda *args, **kwargs: calls.append(kwargs) or {'status': 'success', 'processed': 3})
+    service.start('2026-08-01', '2026-08-31')
+    state = wait(service)
+    assert calls == [{'force': False}]
+    assert state['status'] == 'partial'
+    source = state['sources']['transtrade']
+    assert source['period_status'] == 'error' and source['reconciliation_status'] == 'success'
+    assert source['last_success_at'] is None
+    assert 'Ответы по дням и периоду различаются' in source['message'] and 'История ТТ сверена: 3' in source['message']
+
+
+@pytest.mark.parametrize('history,expected', [
+    ({'status': 'busy'}, 'busy'),
+    ({'status': 'skipped', 'error': 'Предыдущая проверка истории не завершилась.'}, 'error'),
+    ({'status': 'skipped', 'last_success_at': '2026-10-30T12:00:00+03:00'}, 'success'),
+])
+def test_history_busy_backoff_and_not_due_remain_distinct(service, monkeypatch, history, expected):
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    monkeypatch.setattr(transtrade, 'sync', lambda *args: {'received': 7})
+    monkeypatch.setattr(transtrade, 'reconcile', lambda *args, **kwargs: history)
+    service.start('2026-08-01', '2026-08-31')
+    state = wait(service)
+    assert state['sources']['transtrade']['status'] == expected
+    assert state['status'] == ('success' if expected == 'success' else 'partial')
+    if history.get('last_success_at'):
+        assert state['sources']['transtrade']['last_reconciliation_success_at'] == history['last_success_at']
+
+
+def test_connections_exposes_history_failure_without_erasing_success_date(tmp_path, monkeypatch):
+    from app.connections import with_authorization
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    monkeypatch.setattr(transtrade, 'status', lambda _: {'status': 'success', 'start': '2026-10-01',
+        'end': '2026-10-30', 'received': 847, 'synced_at': '2026-10-30T12:00:00+03:00'})
+    monkeypatch.setattr(transtrade, 'reconciliation_status', lambda _: {'status': 'error',
+        'last_success_at': '2026-10-29T12:00:00+03:00', 'attempted_at': '2026-10-30T12:01:00+03:00',
+        'processed': 2971, 'discovered_by_id': 2, 'gap_pending': 3, 'known_pending': 4,
+        'error': 'История недоступна.'}, raising=False)
+    source = with_authorization([{'id': 'transtrade'}], tmp_path)[0]
+    assert source['status'] == 'Ошибка проверки истории'
+    assert source['authorization_checked_at'] == '2026-10-30T12:01:00+03:00'
+    assert '2026-10-29T12:00:00+03:00' in source['detail']
+    assert 'ранее неизвестных получено по ID: 2' in source['detail']
+    assert 'Не проверены в последней порции: 7 ID' in source['detail']
+    assert 'История недоступна' in source['detail']
+
+
+@pytest.mark.parametrize('history_status,gaps,known', [
+    ('success', 0, 12),
+    ('skipped', 0, 12),
+    ('skipped', 7, 12),
+    ('skipped', 0, 0),
+])
+def test_pending_known_and_unknown_ids_stay_visible_between_history_runs(service, monkeypatch, history_status, gaps, known):
+    monkeypatch.setattr(transtrade, 'configured', lambda _: True)
+    monkeypatch.setattr(transtrade, 'sync', lambda *args: {'received': 7})
+    historical = {'status': history_status, 'processed': 10, 'gap_pending': gaps, 'known_pending': known}
+    monkeypatch.setattr(transtrade, 'reconcile', lambda *args, **kwargs: historical)
+    service.start('2026-08-01', '2026-08-31')
+    source = wait(service)['sources']['transtrade']
+    assert source['status'] == 'success'
+    if gaps+known:
+        assert f'Не проверены в последней порции: {gaps+known} ID' in source['message']
+    else:
+        assert 'Не проверены в последней порции' not in source['message']

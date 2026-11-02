@@ -1,0 +1,32 @@
+[Unit]
+Description=Fleet analytics local web application
+After=network-online.target
+Wants=network-online.target fleet-worker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=fleet
+Group=fleet
+WorkingDirectory=/opt/fleet-analytics/current
+EnvironmentFile=/etc/fleet-analytics/environment
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=FLEET_SCHEDULER=external
+ExecStartPre=/opt/fleet-analytics/current/.venv/bin/python deploy/preflight.py
+ExecStart=/opt/fleet-analytics/current/.venv/bin/python -m app.server
+Restart=always
+RestartSec=15
+TimeoutStopSec=40
+UMask=0077
+StateDirectory=fleet-analytics
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/fleet-analytics
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target

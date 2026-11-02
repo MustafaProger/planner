@@ -10,20 +10,60 @@ def complete_sum(rows,field):
 
 def metric_source(rows,field):
     return ' + '.join(sorted({r.get('sources',{}).get(field,'Excel') for r in rows if r.get(field) is not None})) or 'Нет данных'
+ATTRIBUTE_KEYS=('vehicle_brand','vehicle_company','driver_company','resource_type')
+GROUPS=('vehicle','driver','pair','client','type','carrier','date','category','payment','payout_method','month','quarter','year','week','logist',*ATTRIBUTE_KEYS)
+AVERAGES={
+    'average_record_revenue':'Выручка всех неотменённых записей / число записей',
+    'average_record_payout':'Выплаты всех неотменённых записей / число записей',
+    'average_trip_revenue':'Выручка только рейсов / число рейсов',
+    'average_trip_payout':'Выплаты только рейсов / число рейсов',
+    'average_km':'Пробег рейсов ТТ / число рейсов',
+    'average_hours':'Длительность заявок-рейсов / число рейсов',
+    'revenue_per_trip':'Выручка всех категорий / число рейсов',
+}
+
+def prepare_rows(data,rows):
+    """Attach present-day directory attributes once, without joining fact rows."""
+    cats=data.get('directories',{})
+    def find(kind,row):
+        items=cats.get(kind+'s',[]);ident=row.get(kind+'_id')
+        item=next((v for v in items if v['id']==ident),None) if ident else None
+        if not item and not ident:
+            matches=[v for v in items if row.get(kind) in [v.get('name'),*v.get('aliases',[])] and not v.get('merged_into')]
+            item=matches[0] if len(matches)==1 else None
+        seen=set()
+        while item and item.get('merged_into') and item['id'] not in seen:
+            seen.add(item['id']);item=next((v for v in items if v['id']==item['merged_into']),None)
+        return item or {}
+    out=[]
+    for row in rows:
+        car,driver=find('vehicle',row),find('driver',row)
+        x=dict(row,vehicle_brand=car.get('brand') or 'Не указано',vehicle_company=car.get('company') or 'Не указано',
+               driver_company=driver.get('company') or 'Не указано',resource_type=car.get('resource_type') or 'Не указано',
+               attribute_basis='Текущий справочник; историческая принадлежность не установлена')
+        out.append(x)
+    return out
+
 def filtered(rows,q):
-    return [r for r in rows if not r.get('cancelled') and (not q.get('from') or r.get('date','')>=q['from']) and (not q.get('to') or r.get('date','')<=q['to']) and all(not q.get(k) or r.get(k)==q[k] for k in ['vehicle','driver','client','type','carrier'])]
+    return [r for r in rows if not r.get('cancelled') and (not q.get('from') or r.get('date','')>=q['from']) and (not q.get('to') or r.get('date','')<=q['to']) and all(not q.get(k) or r.get(k)==q[k] for k in ['vehicle','driver','client','type','carrier',*ATTRIBUTE_KEYS])]
+
 def aggregate(rows,key):
     out={}
     for r in rows:
         if r.get('cancelled'):continue
         label=r.get(key) or 'Не указано'
         if key=='pair':label=f"{r.get('vehicle','')} · {r.get('driver','')}"
-        a=out.setdefault(label,dict(name=label,revenue=0,payout=0,km=0,hours=0,records=0,trips=0,days=set(),drivers=set(),missing={f:0 for f in FIELDS}))
-        a['records']+=1;a['trips']+=r.get('category','Рейс')=='Рейс'
-        if r.get('category','Рейс')=='Рейс':a['days'].add(r['date'])
+        a=out.setdefault(label,dict(name=label,revenue=0,payout=0,km=0,hours=0,records=0,trips=0,days=set(),drivers=set(),missing={f:0 for f in FIELDS},trip_revenue=0,trip_payout=0,trip_missing={'revenue':0,'payout':0}))
+        trip=r.get('category','Рейс')=='Рейс'
+        a['records']+=1;a['trips']+=trip
+        if trip:
+            a['days'].add(r['date'])
+            for f in ('revenue','payout'):
+                a['trip_'+f]+=r.get(f) or 0
+                a['trip_missing'][f]+=r.get(f) is None
         a['drivers'].add(r.get('driver',''))
         for f in FIELDS:
-            if f in ('km','hours') and r.get('category','Рейс')!='Рейс':continue
+            if f in ('km','hours') and not trip:continue
             if r.get(f) is None:a['missing'][f]+=1
             a[f]+=r.get(f) or 0
     for a in out.values():
@@ -32,21 +72,30 @@ def aggregate(rows,key):
             if a['missing'][f]:a[f]=None
         a['days']=len(a['days']);a['drivers']=len(a['drivers']-{''})
         a['balance']=a['revenue']-a['payout'] if a['revenue'] is not None and a['payout'] is not None else None
+        for f in ('revenue','payout'):
+            if a['trip_missing'][f]:a['trip_'+f]=None
+            a['average_record_'+f]=a[f]/a['records'] if a['records'] and a[f] is not None else None
+            a['average_trip_'+f]=a['trip_'+f]/a['trips'] if a['trips'] and a['trip_'+f] is not None else None
         a['average_hours']=a['hours']/a['trips'] if a['trips'] and a['hours'] is not None else None
+        a['average_km']=a['km']/a['trips'] if a['trips'] and a['km'] is not None else None
+        a['revenue_per_trip']=a['revenue']/a['trips'] if a['trips'] and a['revenue'] is not None else None
         a['rub_hour']=a['revenue']/a['hours'] if a['hours'] and a['revenue'] is not None else None
         a['rub_km']=a['revenue']/a['km'] if a['km'] and a['revenue'] is not None else None
         a['payout_percent']=100*a['payout']/a['revenue'] if a['revenue'] and a['payout'] is not None else None
+        a['average_counts']={'records':a['records'],'trips':a['trips'],'known_revenue':a['records']-a['missing']['revenue'],'known_payout':a['records']-a['missing']['payout'],'known_km':a['trips']-a['missing']['km']}
     return sorted(out.values(),key=lambda a:-(a['revenue'] or 0))
 
 def report(data,q):
-    trips=filtered(data['trips'],q);plans=filtered(data['plans'],{k:v for k,v in q.items() if k not in ('client','type','carrier')});key=q.get('group','vehicle')
-    if key not in ('vehicle','driver','pair','client','type','carrier','date','category','payment','payout_method','month','quarter','year','week','logist'):key='vehicle'
+    key=q.get('group','vehicle')
+    if key not in GROUPS:raise ValueError('Неизвестная группировка: '+str(key)+'. Допустимы: '+', '.join(GROUPS))
+    prepared=prepare_rows(data,data['trips'])
+    trips=filtered(prepared,q);plans=filtered(prepare_rows(data,data['plans']),{k:v for k,v in q.items() if k not in ('client','type','carrier')})
     for r in trips:
         iso_week=dt.date.fromisoformat(r['date']).isocalendar();r['week']=f'{iso_week.year}-W{iso_week.week:02d}'
         r['month']=r['date'][:7];r['year']=r['date'][:4];r['quarter']=r['date'][:4]+' Q'+str((int(r['date'][5:7])-1)//3+1)
     summary=aggregate([dict(r,total='Всего') for r in trips],'total')
     rows=aggregate(trips,key)
-    if key=='vehicle' and not any(q.get(k) for k in ('driver','client','type','carrier')):
+    if key=='vehicle' and not any(q.get(k) for k in ('driver','client','type','carrier','driver_company')):
         satellite=filtered(data['satellite'],{k:v for k,v in q.items() if k in ('from','to','vehicle')})
         for row in rows:
             readings=[r for r in satellite if r['vehicle']==row['name']]
@@ -71,7 +120,7 @@ def report(data,q):
             row['km_source']=metric_source(readings,'km')
             row['engine_source']=metric_source(readings,'engine_hours')
             row['fuel_source']=metric_source(readings,'fuel_liters')
-    return dict(rows=rows,totals=summary[0] if summary else {},trips=trips,plans=plans)
+    return dict(rows=rows,totals=summary[0] if summary else {},trips=trips,plans=plans,attribute_basis='Текущий справочник; историческая принадлежность не установлена',filter_options={k:sorted({r[k] for r in prepared}) for k in ATTRIBUTE_KEYS},average_formulas=AVERAGES)
 def reconcile(data,q):
     tq={k:v for k,v in q.items() if k in ('from','to','vehicle')}
     tt=collections.defaultdict(list);sp=collections.defaultdict(list)

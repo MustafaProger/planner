@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from decimal import Decimal, InvalidOperation
 
 import requests
+from app.source_errors import SourceNetworkError
+from app.locks import provider_lock
 
 URL = 'https://pws.neftm.ru/public-api/transactions.do'
 FIELDS = ('amount','cardHolder','cardNumber','clientId','clientName','costClient',
@@ -55,7 +57,12 @@ def write_json(path, body):
     try:
         with os.fdopen(fd, 'w') as f:
             json.dump(body, f, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, path)
+        directory=os.open(path.parent,os.O_RDONLY)
+        try:os.fsync(directory)
+        finally:os.close(directory)
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
@@ -66,6 +73,7 @@ def snapshot(data_dir):
     return json.loads(path.read_text()) if path.exists() else None
 
 
+@provider_lock('neftm-sync')
 def sync(data_dir, start, end):
     start, end = period(start, end)
     key_path = data_dir / 'neftm-api.key'
@@ -90,8 +98,8 @@ def sync(data_dir, start, end):
                             raise ValueError('Ответ слишком большой. Уменьшите период загрузки.')
                         chunks.append(chunk)
                     rows = parse_transactions(b''.join(chunks))
-        except requests.RequestException:
-            raise ValueError('Нефтьмагистраль не ответила или соединение прервано. Повторите обновление позже; предыдущая загрузка сохранена.') from None
+        except requests.RequestException as error:
+            raise SourceNetworkError('Нефтьмагистраль',error) from None
         result = {'provider':'neftm','from':start,'to':end,
                   'synced_at':dt.datetime.now(dt.timezone.utc).isoformat(),'rows':rows}
         # The API has no transaction ID: replace the requested snapshot, never append or deduplicate legitimate equal rows.

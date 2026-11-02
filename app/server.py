@@ -1,14 +1,34 @@
-import datetime as dt, functools, hashlib, io, json, os, secrets, sqlite3, threading, zipfile
+import datetime as dt, functools, hashlib, io, json, os, re, secrets, sqlite3, threading, zipfile
 from pathlib import Path
 from flask import Flask,request,jsonify,session,send_from_directory,redirect,abort
 from werkzeug.security import generate_password_hash,check_password_hash
-from app.importer import load_excel,vehicle,SOURCE
+from app.importer import load_excel,vehicle,resolve_sources
 from app.analytics import report,reconcile
 from app import workspace as ws
 ROOT=Path(__file__).resolve().parent.parent
 DATA=Path(os.environ.get('FLEET_DATA',ROOT/'data'));DATA.mkdir(exist_ok=True,parents=True);os.chmod(DATA,0o700)
 DB=DATA/'fleet.sqlite'
-app=Flask(__name__,static_folder='static');app.config.update(MAX_CONTENT_LENGTH=25*1024*1024,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',PERMANENT_SESSION_LIFETIME=dt.timedelta(hours=12),TRUSTED_HOSTS=['127.0.0.1','localhost'])
+def trusted_hosts():
+    hosts=['127.0.0.1','localhost']
+    public=os.environ.get('FLEET_PUBLIC_HOST','').strip().lower()
+    if public:
+        # A single exact DNS host, never a URL, port, wildcard or subdomain rule.
+        if len(public)>253 or not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*',public):
+            raise ValueError('FLEET_PUBLIC_HOST must be a single DNS hostname')
+        hosts.append(public)
+    return hosts
+
+def waitress_options():
+    options=dict(host='127.0.0.1',port=int(os.environ.get('PORT',8765)),threads=6)
+    if os.environ.get('FLEET_TRUST_PROXY')=='1':
+        options.update(trusted_proxy='127.0.0.1',trusted_proxy_count=1,
+                       trusted_proxy_headers={'x-forwarded-for','x-forwarded-proto'},
+                       clear_untrusted_proxy_headers=True)
+    return options
+
+app=Flask(__name__,static_folder='static');app.config.update(MAX_CONTENT_LENGTH=25*1024*1024,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',PERMANENT_SESSION_LIFETIME=dt.timedelta(hours=12),TRUSTED_HOSTS=trusted_hosts())
+app.config['SESSION_COOKIE_SECURE']=os.environ.get('FLEET_SECURE_COOKIE')=='1'
+app.config['ALLOW_BOOTSTRAP']=os.environ.get('FLEET_ALLOW_BOOTSTRAP','1')=='1'
 key=DATA/'session.key'
 if not key.exists():key.write_text(secrets.token_hex(32));os.chmod(key,0o600)
 app.secret_key=key.read_text()
@@ -19,10 +39,14 @@ def db():
 def init():
     with db() as c:
         c.executescript('CREATE TABLE IF NOT EXISTS snapshot(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT); CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT UNIQUE,password TEXT,role TEXT,vehicles TEXT); CREATE TABLE IF NOT EXISTS manual(id TEXT PRIMARY KEY,kind TEXT,body TEXT,created_by INTEGER,deleted INTEGER DEFAULT 0); CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT,user_id INTEGER,action TEXT,detail TEXT);')
+        initial_source=None
+        if not c.execute('select 1 from snapshot').fetchone():
+            # Validate both source books before creating a partial bootstrap.
+            initial_source=load_excel()
         if not c.execute('select 1 from users').fetchone():
             pwd=secrets.token_urlsafe(18);c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',('Руководитель',generate_password_hash(pwd),'admin','[]'))
             (DATA/'local-login.txt').write_text('Пользователь: Руководитель\nПароль: '+pwd+'\n');os.chmod(DATA/'local-login.txt',0o600)
-        if not c.execute('select 1 from snapshot').fetchone():c.execute('insert into snapshot values(1,?)',(json.dumps(load_excel(),ensure_ascii=False),))
+        if not c.execute('select 1 from snapshot').fetchone():c.execute('insert into snapshot values(1,?)',(json.dumps(initial_source,ensure_ascii=False),))
     with db() as c:
         # Snapshot backup before the first non-destructive workspace migration.
         if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
@@ -33,13 +57,15 @@ def init():
         original=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0])
         if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
             # Enrich only from the exact original files; never replace current financial rows.
-            if all((SOURCE/f['name']).exists() and hashlib.sha256((SOURCE/f['name']).read_bytes()).hexdigest()==f['sha256'] for f in original['meta']['files']):
-                enriched=load_excel();original['vehicle_details']=enriched.get('vehicle_details',{})
+            paths=resolve_sources(required=False)
+            source_files={p.name:p for p in paths if p is not None}
+            if original['meta']['files'] and all(f['name'] in source_files and source_files[f['name']].is_file() and hashlib.sha256(source_files[f['name']].read_bytes()).hexdigest()==f['sha256'] for f in original['meta']['files']):
+                enriched=load_excel(*paths);original['vehicle_details']=enriched.get('vehicle_details',{})
                 extra={r['source']:r for r in enriched['satellite']}
                 original['satellite']=[dict(r,**{k:v for k,v in extra.get(r['source'],{}).items() if k not in r}) for r in original['satellite']]
         ws.initialize(c,original,c.execute('select * from manual').fetchall())
     os.chmod(DB,0o600)
-    if not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
+    if app.config['ALLOW_BOOTSTRAP'] and not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
 def audit(c,action,detail):c.execute('insert into audit(at,user_id,action,detail) values(?,?,?,?)',(dt.datetime.now(dt.timezone.utc).isoformat(),session.get('uid'),action,detail))
 def user():
     with db() as c:r=c.execute('select id,name,role,vehicles from users where id=?',(session.get('uid'),)).fetchone()
@@ -128,19 +154,28 @@ def extra_save(kind,ident=None):
         result=ws.save_extra(c,kind,request.get_json(),user(),ident);audit(c,kind,result)
     return jsonify(id=result)
 
+@app.get('/api/workspace/coverage/preview')
+@auth(['admin'])
+def coverage_preview():
+    from app.coverage import preview
+    start=ws.iso(request.args.get('start'));end=ws.iso(request.args.get('end'))
+    if start>end:raise ValueError('Конец периода раньше начала.')
+    with db() as c:return jsonify(preview(ws.dataset(c),request.args.get('source'),start,end))
+
 @app.delete('/api/workspace/<kind>/<ident>')
 @auth(['admin'])
 def extra_delete(kind,ident):
     if kind not in ('coverage','card_bindings','expenses'):abort(404)
     with LOCK,db() as c:
-        if kind=='coverage':c.execute('delete from coverage where id=?',(ident,))
-        else:c.execute('update '+kind+' set deleted=1,revision=revision+1 where id=?',(ident,))
+        ws.delete_extra(c,kind,ident,request.get_json(silent=True) or {},user())
         audit(c,'remove '+kind,ident)
     return jsonify(ok=True)
 
 @app.after_request
 def headers(r):
     r.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"});return r
+@app.errorhandler(ws.ConflictError)
+def conflict(e):return jsonify(error=str(e),conflict=True),409
 @app.errorhandler(ValueError)
 def bad(e):return jsonify(error=str(e)),400
 @app.errorhandler(413)
@@ -150,12 +185,13 @@ def index():return send_from_directory(app.static_folder,'index.html')
 @app.get('/<section>/<page>')
 def page(section,page):
     if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
-    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses'},'settings':{'connections','excel','users'},'help':{'guide'}}
+    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses','evidence'},'settings':{'connections','excel','users'},'help':{'guide'}}
     pages['data'].update({'telemetry','monitoringdata','neftmdata','rosneftdata'})
     if page not in pages.get(section,set()):abort(404)
     return send_from_directory(app.static_folder,'index.html')
 @app.get('/bootstrap/<token>')
 def bootstrap(token):
+    if not app.config['ALLOW_BOOTSTRAP']:abort(404)
     p=DATA/'bootstrap.token'
     if request.remote_addr!='127.0.0.1' or not p.exists() or not secrets.compare_digest(token,p.read_text()):abort(403)
     session.clear();session.update(uid=1,csrf=secrets.token_hex(24));session.permanent=True;p.unlink();(DATA/'bootstrap.used').touch(mode=0o600);return redirect('/')
@@ -200,7 +236,7 @@ def create_manual(kind):
 @auth(['admin','logist'])
 def delete_manual(ident):
     with LOCK,db() as c:
-        ws.edit_record(c,ident,{},user(),delete=True);audit(c,'delete record',ident)
+        ws.edit_record(c,ident,request.get_json(silent=True) or {},user(),delete=True);audit(c,'delete record',ident)
     return jsonify(ok=True)
 
 @app.post('/api/import')
@@ -262,10 +298,21 @@ def check_connections():
 @app.get('/api/transtrade')
 @auth(['admin'])
 def transtrade_status():
-    from app.transtrade import configured,status,LIMITATIONS
+    from app.transtrade import configured,status,reconciliation_status,LIMITATIONS
     with db() as c:
-        state=status(c);r=c.execute("select body from workspace_meta where key='transtrade_runs'").fetchone()
-    return jsonify(configured=configured(DATA),snapshot=state,limitations=LIMITATIONS,periods=json.loads(r[0]) if r else [])
+        state=status(c);history=reconciliation_status(c);r=c.execute("select body from workspace_meta where key='transtrade_runs'").fetchone()
+    return jsonify(configured=configured(DATA),snapshot=state,reconciliation=history,limitations=LIMITATIONS,periods=json.loads(r[0]) if r else [])
+
+@app.post('/api/transtrade/reconcile')
+@auth(['admin'])
+def transtrade_reconcile():
+    from app.transtrade import reconcile
+    ws.body(request.get_json())
+    result=reconcile(DATA,DB,force=True)
+    if result['status']=='error':return jsonify(error=result['error']),400
+    if result['status']=='busy':return jsonify(error=result['reason']),409
+    with db() as c:audit(c,'reconcile transtrade',f"История: {result['processed']} заявок, найдено по ID: {result['discovered_by_id']}")
+    return jsonify(result)
 
 @app.post('/api/transtrade/sync')
 @auth(['admin'])
@@ -352,11 +399,23 @@ def monitoring_history_sync():
 from app.refresh import register as register_refresh
 refresh_service = register_refresh(app, auth, DATA, DB, dataset)
 
+@app.get('/healthz')
+def health_check():
+    # No accounts, provider payloads or credentials in the operational endpoint.
+    from app.health import read_worker_health
+    worker=read_worker_health(DATA)
+    expected=os.environ.get('FLEET_SCHEDULER','embedded')!='disabled'
+    healthy=worker['healthy'] if expected else True
+    return jsonify(status='ok' if healthy else 'degraded',web='ok',updates='ok' if worker['healthy'] else 'unavailable'),200 if healthy else 503
+
+from app.evidence_routes import register as register_evidence
+register_evidence(app,db,dataset,auth,audit,LOCK)
+
 if __name__=='__main__':
     from waitress import serve
     init()
-    refresh_service.start_scheduler()
+    if os.environ.get('FLEET_SCHEDULER','embedded')=='embedded':refresh_service.start_scheduler()
     try:
-        serve(app,host='127.0.0.1',port=int(os.environ.get('PORT',8765)),threads=6)
+        serve(app,**waitress_options())
     finally:
         refresh_service.stop()

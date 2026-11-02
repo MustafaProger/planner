@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import re
+import sqlite3
 import uuid
 
 KINDS = ('vehicles', 'drivers', 'routes', 'companies', 'clients', 'carriers',
@@ -21,6 +22,24 @@ def body(value):
     if not isinstance(value,dict):raise ValueError('Ожидается объект записи.')
     for key in ('archived','partner','inactive_route','complete'):
         if key in value and type(value[key]) is not bool:raise ValueError('Некорректное логическое значение.')
+
+class ConflictError(ValueError):
+    """The version displayed to the user is no longer current."""
+
+
+def write_lock(c):
+    # SQLite's write lock also serializes another process, unlike the web LOCK.
+    try:c.execute("UPDATE workspace_meta SET body=body WHERE key='initialized'")
+    except sqlite3.OperationalError as error:
+        if getattr(error,'sqlite_errorcode',0) & 255 in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED):
+            raise ConflictError('Данные сейчас обновляются. Повторите чтение после завершения записи.') from None
+        raise
+
+
+def require_revision(value, revision):
+    if type(value) is not int or value != revision:
+        raise ConflictError('Запись изменена или версия не передана. Перечитайте данные.')
+
 
 def dump(value): return json.dumps(value, ensure_ascii=False, sort_keys=True)
 def uid(kind, *parts): return kind + ':' + hashlib.sha256(dump(parts).encode()).hexdigest()[:24]
@@ -43,10 +62,14 @@ def schema(c):
       CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY,kind TEXT NOT NULL,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0);
       CREATE INDEX IF NOT EXISTS records_kind ON records(kind);
       CREATE TABLE IF NOT EXISTS tariffs(id TEXT PRIMARY KEY,route_id TEXT NOT NULL,effective_from TEXT NOT NULL,body TEXT NOT NULL,UNIQUE(route_id,effective_from));
-      CREATE TABLE IF NOT EXISTS coverage(id TEXT PRIMARY KEY,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1);
+      CREATE TABLE IF NOT EXISTS coverage(id TEXT PRIMARY KEY,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS card_bindings(id TEXT PRIMARY KEY,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS expenses(id TEXT PRIMARY KEY,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,deleted INTEGER NOT NULL DEFAULT 0);
     ''')
+    from app import mileage, shifts
+    mileage.schema(c);shifts.schema(c)
+    if 'deleted' not in {r[1] for r in c.execute('pragma table_info(coverage)')}:
+        c.execute('ALTER TABLE coverage ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
 
 def catalogs(c):
     out={kind:[] for kind in KINDS}
@@ -204,6 +227,10 @@ def dataset(c):
             unique[key].setdefault('related_ids',[]).append(r['id']);unique[key]['source']+='; '+r.get('source','')
         else:unique[key]=r
     d['statuses']=list(unique.values())
+    revisions={r['id']:r['revision'] for r in c.execute("select id,revision from records where kind='statuses' and deleted=0")}
+    for r in d['statuses']:
+        members=sorted((ident,revisions[ident]) for ident in [r['id'],*r.get('related_ids',[])])
+        r['delete_token']=hashlib.sha256(dump(members).encode()).hexdigest()
     groups=collections.defaultdict(list)
     for r in d['plans']:
         if r['state']!='cancelled':groups[natural('plans',r)].append(r)
@@ -216,7 +243,7 @@ def dataset(c):
         d['routes'].append(dict(rate,id=r['name'],uid=r['id'],group=r.get('group',''),archived=r.get('archived',False),inactive_route=r.get('inactive_route',False)))
     d['tariffs']=[dict(json.loads(r['body']),id=r['id'],route_id=r['route_id'],effective_from=r['effective_from']) for r in c.execute('select * from tariffs order by effective_from')]
     for kind in ('coverage','card_bindings','expenses'):
-        query='select * from '+kind+(' where deleted=0' if kind!='coverage' else '')
+        query='select * from '+kind+' where deleted=0'
         d[kind]=[resolve_row(dict(json.loads(r['body']),id=r['id'],revision=r['revision']),cats) for r in c.execute(query)]
     if c.execute("select 1 from sqlite_master where name='transtrade_orders'").fetchone():
         raw={r['id']:json.loads(r['body']) for r in c.execute('select id,body from transtrade_orders')}
@@ -224,6 +251,10 @@ def dataset(c):
         for trip in d['trips']:
             if trip.get('origin')=='manual' and trip['id'] in raw:
                 trip['api_conflict']=normalize(raw[trip['id']])
+    from app import mileage
+    mileage.enrich(c,d['trips'])
+    from app.coverage import evaluate
+    d['coverage']=[evaluate(d,r) for r in d['coverage']]
     d['meta']['counts']={k:len(d[k]) for k in ('trips','plans','statuses','satellite','routes')}
     return d
 
@@ -365,13 +396,15 @@ def create_records(c,kind,b,u):
     return created
 
 def edit_record(c,ident,b,u,delete=False):
-    body(b)
+    body(b);write_lock(c)
     old=c.execute('select * from records where id=? and deleted=0',(ident,)).fetchone()
-    if not old or old['kind'] not in ('plans','statuses','trips'):raise ValueError('Запись не найдена.')
+    if not old or old['kind'] not in ('plans','statuses','trips'):
+        raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
     row=resolve_row(json.loads(old['body']),catalogs(c));kind=old['kind']
     if kind=='trips' and row.get('origin')!='manual':
         if u['role']!='admin':raise PermissionError()
         if delete:raise ValueError('Исходная заявка не удаляется из приложения.')
+        require_revision(b.get('revision'),old['revision'])
         category=b.get('category')
         if category not in ('Рейс','Удержание','Доплата','Погрузка','Сервис','Корректировка'):raise ValueError('Выберите категорию.')
         row.setdefault('original_category',row['category'])
@@ -381,26 +414,35 @@ def edit_record(c,ident,b,u,delete=False):
         if kind=='statuses' and row.get('kind')=='driver' and u['role']=='logist':
             d=dataset(c);allowed=any(r.get('driver_id')==row.get('entity_id') and r.get('vehicle') in u['vehicles'] for r in d['trips']+d['plans'])
         if not allowed:raise PermissionError()
+        require_revision(b.get('revision'),old['revision'])
         if delete:
+            members=[(ident,old['revision'])]
             if kind=='statuses':
-                for x in dataset(c)['statuses']:
-                    if x['id']==ident:
-                        for related in x.get('related_ids',[]):c.execute('update records set deleted=1,revision=revision+1 where id=?',(related,))
-            c.execute('update records set deleted=1,revision=revision+1 where id=?',(ident,));return
+                group=next((r for r in dataset(c)['statuses'] if ident==r['id']),None)
+                if not group or b.get('delete_token')!=group['delete_token']:
+                    raise ConflictError('Состав или версия статусов изменились. Перечитайте данные.')
+                members=[(x['id'],x['revision']) for x in c.execute("select id,revision from records where kind='statuses' and deleted=0") if x['id'] in [ident,*group.get('related_ids',[])]]
+            # All members are validated under the same SQLite write lock before mutation.
+            for member,revision in members:
+                if c.execute('update records set deleted=1,revision=revision+1 where id=? and revision=? and deleted=0',(member,revision)).rowcount!=1:
+                    raise ConflictError('Запись изменена. Перечитайте данные.')
+            return
         previous=row
         row=prepare_record(c,kind,b,u,row);row['user_edited']=True
         for key in ('origin','source','source_id','created_by'):row[key]=previous.get(key,row.get(key))
         for other in dataset(c)[kind]:
             if other['record_id']!=ident and natural(kind,other)==natural(kind,row) and row.get('state')!='cancelled':raise ValueError('Такое назначение/статус уже есть. Для отдельного рейса укажите номер смены.')
-    if b.get('revision')!=old['revision']:raise ValueError('Запись изменена другим пользователем. Обновите страницу.')
-    c.execute('update records set body=?,revision=revision+1 where id=?',(dump(row),ident))
+    if c.execute('update records set body=?,revision=revision+1 where id=? and revision=? and deleted=0',(dump(row),ident,old['revision'])).rowcount!=1:
+        raise ConflictError('Запись изменена. Перечитайте данные.')
 
 def save_extra(c,kind,b,u,ident=None):
     body(b)
     if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
     if u['role']!='admin':raise PermissionError()
-    old=c.execute('select * from '+kind+' where id=?',(ident,)).fetchone() if ident else None
-    if ident and (not old or b.get('revision')!=old['revision']):raise ValueError('Запись изменена или не найдена. Обновите страницу.')
+    write_lock(c)
+    old=c.execute('select * from '+kind+' where id=? and deleted=0',(ident,)).fetchone() if ident else None
+    if ident and not old:raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
+    if old:require_revision(b.get('revision'),old['revision'])
     cats=catalogs(c);r={'note':str(b.get('note',''))[:1000]}
     if kind in ('coverage','card_bindings'):
         r.update(start=iso(b.get('start')),end=iso(b.get('end')))
@@ -408,6 +450,13 @@ def save_extra(c,kind,b,u,ident=None):
     if kind=='coverage':
         if b.get('source') not in ('trips','plans'):raise ValueError('Выберите источник: заявки или план.')
         r.update(source=b['source'],complete=bool(b.get('complete')),scope='all')
+        if r['complete']:
+            from app.coverage import preview
+            current=preview(dataset(c),r['source'],r['start'],r['end'])
+            if b.get('fingerprint_algorithm')!=current['algorithm'] or b.get('checked_fingerprint')!=current['checked_fingerprint']:
+                raise ConflictError('Данные периода изменились или не были просмотрены. Перечитайте период перед подтверждением.')
+            r.update(checked_fingerprint=current['checked_fingerprint'],fingerprint_algorithm=current['algorithm'],
+                     checked_at=dt.datetime.now(dt.timezone.utc).isoformat(),checked_by=u['id'])
     else:
         car=lookup(cats,'vehicles',b.get('vehicle_id') or b.get('vehicle'),True)
         if not car or car.get('resource_type')!='vehicle':raise ValueError('Выберите автомобиль.')
@@ -424,6 +473,20 @@ def save_extra(c,kind,b,u,ident=None):
             r.update(date=iso(b.get('date')),category=str(b.get('category','')).strip(),amount=numeric(b.get('amount')))
             if not r['category']:raise ValueError('Укажите вид расхода.')
     ident=ident or str(uuid.uuid4())
-    if old:c.execute('update '+kind+' set body=?,revision=revision+1 where id=?',(dump(r),ident))
+    if old:
+        if c.execute('update '+kind+' set body=?,revision=revision+1 where id=? and revision=? and deleted=0',(dump(r),ident,old['revision'])).rowcount!=1:
+            raise ConflictError('Запись изменена. Перечитайте данные.')
     else:c.execute('insert into '+kind+'(id,body) values(?,?)',(ident,dump(r)))
     return ident
+
+
+def delete_extra(c,kind,ident,b,u):
+    body(b)
+    if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
+    if u['role']!='admin':raise PermissionError()
+    write_lock(c)
+    old=c.execute('select revision from '+kind+' where id=? and deleted=0',(ident,)).fetchone()
+    if not old:raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
+    require_revision(b.get('revision'),old['revision'])
+    if c.execute('update '+kind+' set deleted=1,revision=revision+1 where id=? and revision=? and deleted=0',(ident,old['revision'])).rowcount!=1:
+        raise ConflictError('Запись изменена. Перечитайте данные.')

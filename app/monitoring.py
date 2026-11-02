@@ -5,8 +5,10 @@ import threading
 import time
 
 import requests
+from app.source_errors import SourceNetworkError
 
 from app.neftm import write_json
+from app.locks import provider_lock, file_lock
 
 BASE = 'https://monitoringtransporta.online/api/v3/'
 DOCS = 'https://glonasssoft.ru/wiki/metody-api-dlya-raboty-s-glonasssoft'
@@ -67,8 +69,8 @@ class Client:
                     return 200, json.loads(b''.join(chunks))
                 except (ValueError, UnicodeError):
                     raise ValueError('Некорректный ответ мониторинга. Предыдущая загрузка сохранена.') from None
-        except requests.RequestException:
-            raise ValueError('Мониторинг не ответил или соединение прервано. Предыдущая загрузка сохранена.') from None
+        except requests.RequestException as error:
+            raise SourceNetworkError('Мониторинг',error) from None
 
     def login(self):
         path = self.data_dir / 'monitoring-credentials.json'
@@ -86,6 +88,14 @@ class Client:
         write_json(self.data_dir / 'monitoring-session.json', self.token)
 
     def read(self, method, body):
+        # A web request and the autonomous worker can share one expiring session.
+        # Serialize reauthorization and reread the last token under the lock.
+        with file_lock(self.data_dir,'monitoring-session',timeout=15):
+            token=self.data_dir/'monitoring-session.json'
+            if token.exists():self.token=json.loads(token.read_text())
+            return self._read(method,body)
+
+    def _read(self, method, body):
         if method not in READ_METHODS:
             raise ValueError('Метод не разрешён для чтения.')
         if not self.token:
@@ -114,6 +124,7 @@ def normalize(vehicles, latest):
             for v in vehicles]
 
 
+@provider_lock('monitoring-sync')
 def sync(data_dir):
     if not LOCK.acquire(blocking=False):
         raise ValueError('Обновление мониторинга уже выполняется.')

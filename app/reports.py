@@ -18,7 +18,8 @@ def covered(periods,a,b,start='start',end='end'):
     return False
 
 def coverage(d,q,source):
-    return covered([r for r in d.get('coverage',[]) if r['source']==source and r['complete']],q.get('from'),q.get('to'))
+    from app.coverage import evaluate
+    return covered([r for r in d.get('coverage',[]) if r['source']==source and evaluate(d,r)['complete']],q.get('from'),q.get('to'))
 
 def plan_rows(d,q):
     rows=filtered(d['plans'],{k:v for k,v in q.items() if k in ('from','to','vehicle','driver')})
@@ -52,6 +53,7 @@ def comparison(d,q):
             r['plan_'+field]=p[field] if p else 0 if pc else None
             r['fact_'+field]=f[field] if f else 0 if fc else None
             r['delta_'+field]=r['fact_'+field]-r['plan_'+field] if pc and fc and r['fact_'+field] is not None and r['plan_'+field] is not None else None
+        r['delta_reasons']={field:('Полнота плана не подтверждена или есть спорные назначения' if not pc else 'Полнота факта не подтверждена' if not fc else 'Нет полного показателя плана' if r['plan_'+field] is None else 'Нет полного показателя факта' if r['fact_'+field] is None else '') for field in ('trips','days','revenue','payout','km','hours')}
         r['state']='Сопоставимо' if pc and fc else 'Полнота периода не подтверждена'
         if not p and f:r['state']='Вне плана' if pc else 'Нет плана — факт показан отдельно'
         rows.append(r)
@@ -102,6 +104,7 @@ def quality(d,q):
         if not in_period(r,q):continue
         if r.get('duplicate_review'):rows.append(dict(kind='plans',id=r['id'],date=r['date'],object=r['vehicle'],issue='Повтор назначения: задайте номер отдельной смены или отмените лишнюю запись',record=r))
         elif r.get('state')=='unassigned':rows.append(dict(kind='plans',id=r['id'],date=r['date'],object=r['route'],issue='Не назначен водитель или ресурс',record=r))
+        elif r.get('state')=='review':rows.append(dict(kind='plans',id=r['id'],date=r['date'],object=r.get('route') or r.get('vehicle',''),issue='Назначение требует проверки: уточните ресурс, водителя, маршрут и состояние по источнику',record=r))
     for r in filtered(d['trips'],q):
         if not in_period(r,q):continue
         if r['category']=='Рейс' and (not r.get('vehicle') or (r.get('payout') or 0)<0 or (r.get('revenue') or 0)<0):

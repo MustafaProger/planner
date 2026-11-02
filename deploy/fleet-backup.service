@@ -1,0 +1,22 @@
+[Unit]
+Description=Verified private full backup of Fleet analytics
+After=network-online.target
+ConditionPathExists=/var/lib/fleet-analytics/fleet.sqlite
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/fleet-analytics/current
+ExecStart=/opt/fleet-analytics/current/.venv/bin/python deploy/full_backup.py --data /var/lib/fleet-analytics --destination /var/backups/fleet-analytics --quiesce-systemd
+# Capture runs stopped; services restart before compression and restore verification.
+TimeoutStartSec=15min
+TimeoutStopSec=120
+KillMode=mixed
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/backups/fleet-analytics
+RestrictAddressFamilies=AF_UNIX

@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew charterstats.ru HTTPS certificate
+After=network-online.target nginx.service
+Wants=network-online.target
+ConditionPathExists=/etc/letsencrypt/renewal/charterstats.ru.conf
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/certbot renew --quiet --cert-name charterstats.ru --no-random-sleep-on-renew
+TimeoutStartSec=900
+UMask=0077

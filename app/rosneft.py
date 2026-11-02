@@ -7,8 +7,10 @@ import uuid
 from decimal import Decimal, InvalidOperation
 
 import requests
+from app.source_errors import SourceNetworkError
 
 from app.neftm import write_json
+from app.locks import provider_lock
 
 BASE = 'https://lkapi.rn-card.ru/api/emv/'
 METHODS = {'v1/GetCardsByContract', 'v2/GetOperByContract'}
@@ -65,9 +67,9 @@ def read(session, credentials, method, **params):
                 return json.loads(b''.join(chunks), parse_float=Decimal)
             except (ValueError, UnicodeError):
                 raise ValueError('Некорректный ответ Роснефти. Предыдущая загрузка сохранена.') from None
-    except requests.RequestException:
+    except requests.RequestException as error:
         # Never propagate a request URL, headers or upstream response containing credentials.
-        raise ValueError('Соединение с Роснефтью прервано. Повторите позже; предыдущая загрузка сохранена.') from None
+        raise SourceNetworkError('Роснефть',error) from None
 
 
 def normalize(cards, operations, contract, start, end):
@@ -114,6 +116,7 @@ def normalize(cards, operations, contract, start, end):
         raise ValueError('Не удалось проверить данные Роснефти. Предыдущая загрузка сохранена.') from None
 
 
+@provider_lock('rosneft-sync')
 def sync(data_dir, start, end):
     start, end = period(start, end)
     if not LOCK.acquire(blocking=False):

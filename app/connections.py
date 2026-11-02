@@ -51,14 +51,30 @@ def with_authorization(results, data_dir):
     from app.transtrade import configured, status as tt_status
     import sqlite3
     if configured(data_dir):
+        from app.transtrade import reconciliation_status
         with sqlite3.connect(data_dir/'fleet.sqlite') as c:
             tt=tt_status(c)
+            history=reconciliation_status(c)
         detail='API-реквизиты настроены; выполните загрузку заявок для проверки.'
         label='Готов к проверке'
         if tt:
             label='API подключён' if tt['status']=='success' else 'Ошибка обновления'
             detail=(f"Последняя успешная загрузка: {tt.get('start','—')} — {tt.get('end','—')}, {tt.get('received',0)} заявок. " if tt.get('synced_at') else '')+tt.get('error','')+' '+tt.get('limitations','')
-        observations['transtrade']=dict(status=label,detail=detail,checked_at=(tt or {}).get('attempted_at',(tt or {}).get('synced_at','Не проверено')))
+        if history:
+            checked=history.get('last_success_at') or history.get('synced_at')
+            if checked:
+                detail+=f" Последняя сверка истории ТТ: {checked}; обработано {history.get('processed',0)} заявок, ранее неизвестных получено по ID: {history.get('discovered_by_id',0)}."
+            pending=(history.get('gap_pending') or 0)+(history.get('known_pending') or 0)
+            if pending:
+                detail+=f" Не проверены в последней порции: {pending} ID."
+            if history.get('status')=='error':
+                label='Ошибка проверки истории'
+                detail+=' '+history.get('error','Историю ТТ не удалось проверить; предыдущие данные сохранены.')
+        else:
+            detail+=' Сверка истории ТТ ещё не выполнялась.'
+        checked_at=max((value for value in ((tt or {}).get('attempted_at'),(tt or {}).get('synced_at'),
+                       (history or {}).get('attempted_at'),(history or {}).get('last_success_at'),(history or {}).get('synced_at')) if value),default='Не проверено')
+        observations['transtrade']=dict(status=label,detail=detail,checked_at=checked_at)
     merged = []
     for source in results:
         row = dict(source)

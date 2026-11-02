@@ -42,6 +42,9 @@ class RefreshService:
         self.running = False
         self.stop_event = threading.Event()
         self.scheduler = None
+        self.engine = None
+        self.started_at = now().isoformat()
+        self.worker = None
         self.state_path = self.data_dir / 'refresh-state.json'
 
     def _read(self):
@@ -66,9 +69,27 @@ class RefreshService:
                     lock.close()
                     state['status'] = 'interrupted'
                     state['message'] = 'Обновление прервано перезапуском. Полученные данные сохранены.'
+            from app import autosync, alerts
+            expected = bool(self.engine) or os.environ.get('FLEET_SCHEDULER')=='external'
+            try:
+                automatic = autosync.public_status(self.data_dir,expected=expected)
+            except (ValueError,OSError):
+                automatic = None
+            if automatic:
+                if state.get('status')=='running':
+                    automatic['manual']=state
+                    automatic['status']='running'
+                if (state.get('last_finished_at') or '')>(automatic.get('last_finished_at') or ''):
+                    automatic['last_finished_at']=state['last_finished_at']
+                state=automatic
+            else:
+                state['server_scheduler'] = bool(self.scheduler and self.scheduler.is_alive())
+            state['scheduler_expected']=expected
+            state.setdefault('started_at',self.started_at)
             state['interval_seconds'] = INTERVAL
-            state['automatic_scope'] = 'Текущий месяц по МСК; история спутника — последние завершённые сутки.'
-            state['server_scheduler'] = bool(self.scheduler and self.scheduler.is_alive())
+            state['automatic_scope'] = ('Текущий месяц — каждые 5 минут, независимо для каждого источника; '
+                'пропущенные дни догружаются порциями, история ТТ дополнительно сверяется раз в сутки.')
+            state['alerts']=alerts.current(self.data_dir,state)
             return state
 
     def _lock(self, name):
@@ -102,8 +123,9 @@ class RefreshService:
             self.running = True
             try:
                 self._save(state)
-                threading.Thread(target=self._run, args=(state, lock, user_id), daemon=True,
-                                 name='fleet-refresh-job').start()
+                self.worker=threading.Thread(target=self._run, args=(state, lock, user_id), daemon=True,
+                                 name='fleet-refresh-job')
+                self.worker.start()
             except Exception:
                 self.running = False
                 lock.close()
@@ -114,6 +136,52 @@ class RefreshService:
         with self.guard:
             state['sources'][key].update(values)
             self._save(state)
+
+    def _transtrade(self, state):
+        """Report period and history outcomes separately; either may fail independently."""
+        from app import transtrade
+        period_error = None
+        values = {}
+        try:
+            options = {'verify_days': False} if state['trigger'] == 'automatic' else {}
+            result = transtrade.sync(self.data_dir, self.db_path, state['from'], state['to'], **options)
+            message = f"Получено {result['received']} заявок за период."
+            values.update(period_status='success', last_period_success_at=now().isoformat())
+        except ValueError as error:
+            period_error = str(error)
+        except Exception:
+            period_error = 'Период ТТ не удалось обновить. Предыдущие данные сохранены.'
+        if period_error:
+            message = period_error
+            values['period_status'] = 'error'
+        self._source(state, 'transtrade', message=message+' Проверяем историю ТТ…', **values)
+        try:
+            historical = transtrade.reconcile(self.data_dir, self.db_path, force=False)
+        except ValueError as error:
+            historical = {'status': 'error', 'error': str(error)}
+        except Exception:
+            historical = {'status': 'error', 'error': 'Историю ТТ не удалось проверить. Предыдущие данные сохранены.'}
+        history_status = historical['status']
+        values['reconciliation_status'] = history_status
+        if historical.get('last_success_at') or historical.get('synced_at'):
+            values['last_reconciliation_success_at'] = historical.get('last_success_at') or historical['synced_at']
+        if history_status == 'success':
+            message += (f" История ТТ сверена: {historical.get('processed', 0)} заявок; "
+                        f"по ID получено {historical.get('recovered_by_id', 0)}, "
+                        f"ранее неизвестных — {historical.get('discovered_by_id', 0)}.")
+        elif history_status == 'busy':
+            message += ' Проверка истории ТТ уже выполняется; повторный запуск пропущен.'
+        elif history_status == 'error' or historical.get('error'):
+            message += ' Проверка истории: '+historical.get('error', 'Не завершена; прежние данные сохранены.')
+            history_status = 'error'
+            values['reconciliation_status'] = 'error'
+        pending = (historical.get('gap_pending') or 0)+(historical.get('known_pending') or 0)
+        if pending:
+            message += f" Не проверены в последней порции: {pending} ID."
+        final_status = 'error' if period_error or history_status == 'error' else 'busy' if history_status == 'busy' else 'success'
+        if final_status == 'success':
+            values['last_success_at'] = now().isoformat()
+        self._source(state, 'transtrade', status=final_status, message=message, **values)
 
     def _run(self, state, lock, user_id):
         from app import transtrade, neftm, rosneft, monitoring, monitoring_history
@@ -129,8 +197,8 @@ class RefreshService:
                         continue
                     self._source(state, key, status='running', message='Получаем данные из источника…')
                     if key == 'transtrade':
-                        result = transtrade.sync(self.data_dir, self.db_path, state['from'], state['to'])
-                        message = f"Получено {result['received']} заявок."
+                        self._transtrade(state)
+                        continue
                     elif key in ('neftm', 'rosneft'):
                         provider = neftm if key == 'neftm' else rosneft
                         result = provider.sync(self.data_dir, state['from'], state['to'])
@@ -197,29 +265,19 @@ class RefreshService:
     def start_scheduler(self):
         if self.scheduler and self.scheduler.is_alive():
             return
+        from app.autosync import Scheduler
         self.stop_event.clear()
-        self.scheduler = threading.Thread(target=self._schedule, daemon=True, name='fleet-refresh-schedule')
-        self.scheduler.start()
+        self.engine=Scheduler(self,INTERVAL)
+        self.engine.start()
+        self.scheduler=self.engine.thread
 
-    def _schedule(self):
-        leader = self._lock('refresh-scheduler.lock')
-        if not leader:
-            return
-        try:
-            with self.guard:
-                state = self._read()
-                state['next_run_at'] = (now()+dt.timedelta(seconds=INTERVAL)).isoformat()
-                self._save(state)
-            while not self.stop_event.wait(1):
-                state = self.status()
-                due = dt.datetime.fromisoformat(state['next_run_at'])
-                if not self.running and now() >= due:
-                    self.start(trigger='automatic')
-        finally:
-            leader.close()
+    def runtime_health(self):
+        return self.engine.health() if self.engine else dict(healthy=False,reason='Планировщик не запущен.',heartbeat_at=None,running=self.running)
 
-    def stop(self):
+    def stop(self,join_timeout=30):
         self.stop_event.set()
+        if self.engine:self.engine.stop(join_timeout=join_timeout)
+        if self.worker and self.worker is not threading.current_thread():self.worker.join(join_timeout)
 
 
 def register(app, auth, data_dir, db_path, get_dataset):

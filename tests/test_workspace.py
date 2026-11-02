@@ -4,6 +4,11 @@ import pytest
 from app import workspace as w,reports
 from app.fuel_history import persist,normalized
 ADMIN={'id':1,'role':'admin','vehicles':[]}
+def confirmation(c, b):
+    from app.coverage import preview
+    p=preview(w.dataset(c),b['source'],b['start'],b['end'])
+    return dict(b,checked_fingerprint=p['checked_fingerprint'],fingerprint_algorithm=p['algorithm'])
+
 @pytest.fixture
 def source():
     rate=dict(id='R1',group='Почта',revenue=1000,payout=400,partner_payout=600,km=100,hours=4,rate=100,partner_rate=150)
@@ -41,7 +46,7 @@ def test_no_route_and_duplicate_not_counted(c,source):
 def test_nonoverlapping_period_no_delta_and_explicit_zero(c):
     q={'from':'2026-07-01','to':'2026-08-31'}
     assert reports.comparison(w.dataset(c),q)['rows'][0]['delta_revenue'] is None
-    for source in ('plans','trips'):w.save_extra(c,'coverage',dict(start=q['from'],end=q['to'],source=source,complete=True),ADMIN)
+    for source in ('plans','trips'):w.save_extra(c,'coverage',confirmation(c,dict(start=q['from'],end=q['to'],source=source,complete=True)),ADMIN)
     assert reports.comparison(w.dataset(c),q)['rows'][0]['delta_revenue']==-100
     q['from']='2026-08-01'
     row=reports.comparison(w.dataset(c),q)['rows'][0];assert row['plan_revenue']==0 and row['state']=='Вне плана'
@@ -110,7 +115,7 @@ def test_merge_keeps_status_provenance_and_delete(c):
     original=w.dataset(c)['directories']['drivers'][0]['id']
     for ident in (other,original):w.create_records(c,'statuses',dict(date='2026-08-01',kind='driver',entity_id=ident,reason='Сервис'),ADMIN)
     w.merge_catalog(c,'drivers',other,original);r=w.dataset(c)['statuses'][0];assert len(r['related_ids'])==1
-    w.edit_record(c,r['id'],{},ADMIN,delete=True);assert not w.dataset(c)['statuses']
+    w.edit_record(c,r['id'],r,ADMIN,delete=True);assert not w.dataset(c)['statuses']
 
 def test_http_workspace_auth_validation_revision_and_backup(tmp_path,monkeypatch,source):
     from app import server

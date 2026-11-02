@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Fleet analytics backup at 03:15 Moscow time
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/Moscow
+AccuracySec=1min
+RandomizedDelaySec=0
+# Do not cause an unexpected daytime outage after a missed overnight run.
+Persistent=false
+Unit=fleet-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,9 +1,41 @@
 """Read-only Excel import. All financial source values retained without inferred tax rules."""
-import collections, datetime as dt, hashlib, json, re, warnings
+import collections, datetime as dt, hashlib, json, os, re, warnings
 from pathlib import Path
 import openpyxl
 warnings.filterwarnings('ignore',category=UserWarning,module='openpyxl')
-SOURCE=Path('/Users/mustafa/Desktop/проект')
+ROOT=Path(__file__).resolve().parent.parent
+STATISTICS_NAME='Статистика 17.09.2026.xlsx'
+PLANNER_NAME='Планировщик ЛОГИСТИКА АА (Р4).xlsx'
+
+def resolve_sources(stat_path=None,plan_path=None,*,required=True):
+    """Resolve explicit uploads, environment or private local configuration at read time."""
+    directory=os.environ.get('FLEET_EXCEL_DIR')
+    directory=Path(directory).expanduser() if directory else None
+    stat_path=stat_path or os.environ.get('FLEET_STATISTICS_XLSX') or (directory/STATISTICS_NAME if directory else None)
+    plan_path=plan_path or os.environ.get('FLEET_PLANNER_XLSX') or (directory/PLANNER_NAME if directory else None)
+    config={}
+    if stat_path is None or plan_path is None:
+        config_path=Path(os.environ.get('FLEET_EXCEL_CONFIG',ROOT/'.local'/'excel-sources.json')).expanduser()
+        if config_path.is_file():
+            try:
+                config=json.loads(config_path.read_text())
+                if not isinstance(config,dict):raise ValueError()
+            except (ValueError,OSError):
+                raise ValueError('Не удалось прочитать локальную настройку исходных книг Excel.') from None
+            # Relative paths belong to the configuration, not to the process working directory.
+            for key in ('directory','statistics','planner'):
+                if config.get(key):
+                    if not isinstance(config[key],str):raise ValueError('Пути исходных книг должны быть строками.')
+                    p=Path(config[key]).expanduser()
+                    config[key]=p if p.is_absolute() else config_path.parent/p
+    directory=config.get('directory')
+    directory=Path(directory).expanduser() if directory else None
+    paths=(stat_path or config.get('statistics') or (directory/STATISTICS_NAME if directory else None),
+           plan_path or config.get('planner') or (directory/PLANNER_NAME if directory else None))
+    paths=tuple(Path(p).expanduser().resolve() if p else None for p in paths)
+    if required and not all(p and p.is_file() for p in paths):
+        raise ValueError('Исходные книги Excel не найдены. Укажите FLEET_EXCEL_DIR либо FLEET_STATISTICS_XLSX и FLEET_PLANNER_XLSX; для повторного импорта можно выбрать обе книги в форме «Импорт Excel».')
+    return paths
 def text(v): return str(v).strip() if v is not None else ''
 def number(v):
     if v is None or v=='': return 0.0
@@ -27,7 +59,7 @@ def vehicle(v):
         return s.translate(str.maketrans('ABEKMHOPCTYX','АВЕКМНОРСТУХ'))
     return text(v)
 def load_excel(stat_path=None,plan_path=None):
-    stat_path=Path(stat_path or SOURCE/'Статистика 17.09.2026.xlsx');plan_path=Path(plan_path or SOURCE/'Планировщик ЛОГИСТИКА АА (Р4).xlsx')
+    stat_path,plan_path=resolve_sources(stat_path,plan_path)
     sw=openpyxl.load_workbook(stat_path,data_only=True);pw=openpyxl.load_workbook(plan_path,data_only=True)
     required={'ТрансТрейд','Спутник','Блокнот','Справочник'}
     if not required.issubset(sw.sheetnames) or not {'Логист','Маршруты Почта','Водители','Автомобили'}.issubset(pw.sheetnames):raise ValueError('Не найдены обязательные листы исходных книг')

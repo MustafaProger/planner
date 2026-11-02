@@ -1,3 +1,4 @@
+from tests.test_workspace import confirmation
 import copy,json,sqlite3
 from pathlib import Path
 import pytest
@@ -69,7 +70,7 @@ def test_null_totals_and_partial_reconciliation():
 
 
 def test_refresh_invalidates_completeness(c):
-    w.save_extra(c,'coverage',dict(start='2026-08-01',end='2026-08-31',source='trips',complete=True),ADMIN)
+    w.save_extra(c,'coverage',confirmation(c,dict(start='2026-08-01',end='2026-08-31',source='trips',complete=True)),ADMIN)
     apply(c,[raw()]);assert not w.dataset(c)['coverage'][0]['complete']
 
 
@@ -109,7 +110,8 @@ def test_signed_readonly_request_and_redacted_error(monkeypatch):
         assert p['signature']==hashlib.md5('###'.join([config['api_key'],p['data'],p['method'],p['random'],config['api_key']]).encode()).hexdigest()
         class Response:
             status_code=200
-            def json(self):return dict(error_code=1,error_text=config['api_key'])
+            def iter_content(self,_):yield json.dumps(dict(error_code=1,error_text=config['api_key'])).encode()
+            def close(self):pass
         return Response()
     monkeypatch.setattr(t.requests,'post',post)
     with pytest.raises(ValueError) as e:t.get_orders(config,{})
@@ -124,7 +126,7 @@ def test_iso_week_group_cross_year():
 
 def test_null_comparison_even_with_confirmed_period(c):
     apply(c,[raw()])
-    for source in ('trips','plans'):w.save_extra(c,'coverage',dict(start='2026-08-01',end='2026-08-31',source=source,complete=True),ADMIN)
+    for source in ('trips','plans'):w.save_extra(c,'coverage',confirmation(c,dict(start='2026-08-01',end='2026-08-31',source=source,complete=True)),ADMIN)
     r=reports.comparison(w.dataset(c),dict(from_='ignored',**{'from':'2026-08-01','to':'2026-08-31'}))['rows'][0]
     assert r['fact_km'] is None and r['delta_km'] is None
 
@@ -190,7 +192,7 @@ def test_sync_recovers_known_list_omissions_atomically(tmp_path,source,monkeypat
 
 def test_recovered_date_move_invalidates_both_periods(c):
     for month in ('08','09'):
-        w.save_extra(c,'coverage',dict(start=f'2026-{month}-01',end=f'2026-{month}-28',source='trips',complete=True),ADMIN)
+        w.save_extra(c,'coverage',confirmation(c,dict(start=f'2026-{month}-01',end=f'2026-{month}-28',source='trips',complete=True)),ADMIN)
     moved=dict(raw(),BeginDateTime='2026-09-01 08:00:00',EndDateTime='2026-09-01 12:00:00')
     result=t.apply(c,[],'2026-08-01','2026-08-31',[moved])
     assert result['moved_out_of_period']==1 and result['received']==0 and result['missing']==0

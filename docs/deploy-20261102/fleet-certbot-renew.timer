@@ -1,0 +1,11 @@
+[Unit]
+Description=Check charterstats.ru certificate renewal twice daily
+
+[Timer]
+OnCalendar=*-*-* 01,13:00:00 UTC
+RandomizedDelaySec=1800
+Persistent=true
+Unit=fleet-certbot-renew.service
+
+[Install]
+WantedBy=timers.target

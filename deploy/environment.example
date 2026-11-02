@@ -1,0 +1,13 @@
+# No credentials belong in this file. Keep the installed file root-owned, mode 0640.
+FLEET_DATA=/var/lib/fleet-analytics
+FLEET_SCHEDULER=external
+# Enable for the HTTPS reverse proxy deployment described in DEPLOYMENT.md.
+FLEET_SECURE_COOKIE=1
+# Exact hostname matching nginx server_name; no scheme, port or wildcard.
+FLEET_PUBLIC_HOST=charterstats.ru
+# Trust only the one local nginx hop; it must overwrite forwarding headers.
+FLEET_TRUST_PROXY=1
+# Public installations use the existing login, never the local bootstrap URL.
+FLEET_ALLOW_BOOTSTRAP=0
+FLEET_REQUIRED_PROVIDERS=transtrade,monitoring,rosneft,neftm
+PORT=8765
