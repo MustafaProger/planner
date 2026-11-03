@@ -1,0 +1,41 @@
+{
+  "test": "tests/test_sidebar_scroll.cjs",
+  "playwright_resolvable": false,
+  "error_code": "MODULE_NOT_FOUND",
+  "note": "Dependency resolution only. The legacy browser test and a fresh full authenticated browser acceptance were not run in this followup.",
+  "bundled_runtime": {
+    "node": "/Users/mustafa/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node",
+    "node_modules": "/Users/mustafa/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules",
+    "packages": [
+      {
+        "name": "playwright",
+        "resolved": "/Users/mustafa/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.js"
+      },
+      {
+        "name": "playwright-core",
+        "resolved": "/Users/mustafa/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright-core/index.js"
+      },
+      {
+        "name": "@playwright/test",
+        "error_code": "MODULE_NOT_FOUND"
+      }
+    ]
+  },
+  "bundled_execution": {
+    "command": "NODE_PATH=<bundled node_modules> PLAYWRIGHT_CHANNEL=chrome node --test --test-timeout=40000 tests/test_sidebar_scroll.cjs",
+    "scope": "Separate browser and mocked fleet.test requests only; no real user profile/database/providers",
+    "exit_code": 1,
+    "timed_out": true,
+    "seconds": 45.027,
+    "stdout": "✖ sidebar keeps scroll across navigation and rerender (desktop) (30696.748875ms)\n\nInterrupted while running:\n\n⚠ tests/test_sidebar_scroll.cjs (tests/test_sidebar_scroll.cjs:1:1)\n",
+    "stderr": ""
+  },
+  "desktop_diagnostic": {
+    "command": "NODE_PATH=<bundled node_modules> PLAYWRIGHT_CHANNEL=chrome node --test --test-name-pattern=desktop tests/test_sidebar_scroll.cjs",
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 563.696,
+    "stdout": "✖ sidebar keeps scroll across navigation and rerender (desktop) (563520.488458ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 563666.090166\n\n✖ failing tests:\n\ntest at tests/test_sidebar_scroll.cjs:9:3\n✖ sidebar keeps scroll across navigation and rerender (desktop) (563520.488458ms)\n  locator.click: Timeout 30000ms exceeded.\n  Call log:\n  \u001b[2m  - waiting for locator('[data-tab=\"transtrade\"]')\u001b[22m\n  \n      at TestContext.<anonymous> (/Users/mustafa/Documents/ChatGPT/Логистика — аналитика автопарка/tests/test_sidebar_scroll.cjs:29:49) {\n    name: 'TimeoutError',\n    log: [ `  - waiting for locator('[data-tab=\"transtrade\"]')` ]\n  }\n",
+    "stderr": ""
+  }
+}

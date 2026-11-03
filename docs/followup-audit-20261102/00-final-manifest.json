@@ -1,0 +1,90 @@
+{
+  "prepared_at": "2026-11-02T11:23:48.006864+00:00",
+  "files": [
+    {
+      "path": "00-CYCLE.md",
+      "bytes": 3541,
+      "sha256": "1ac501ffdb66be1915c8ecc8894bcb21676bce4c7b5ed9d8b1b75e21aebd8508"
+    },
+    {
+      "path": "00-baseline.json",
+      "bytes": 54957,
+      "sha256": "f56d759216a0d5d98e370fc2c568a3ad6632f9bcc422d3fa2aca9b75382ca8f8"
+    },
+    {
+      "path": "00-preservation-check.json",
+      "bytes": 535,
+      "sha256": "cfd523ae479eba2c015425b6f9af24ea58c8b85e76b83315155bb5a63d37c16e"
+    },
+    {
+      "path": "01-chat-coverage.json",
+      "bytes": 10827,
+      "sha256": "f6dbc9e22caea7626d8ebc7cc1437843c0f30585f6f0213a6c035c739c3cc368"
+    },
+    {
+      "path": "01-completed.md",
+      "bytes": 25621,
+      "sha256": "d255903cf7f557c419812db738dcfb83d723944271f3111aca6a0dc104528a3d"
+    },
+    {
+      "path": "02-browser-test-environment.json",
+      "bytes": 2606,
+      "sha256": "393ca7d6890313167790525dc7e6185d1ecf5803d85d1a6acc6491b6058f5ea6"
+    },
+    {
+      "path": "02-coverage.json",
+      "bytes": 966,
+      "sha256": "1eada2d254f07a84d75abe0afe9e962af473f2d9b430f62526b856f2f4453cdf"
+    },
+    {
+      "path": "02-evidence-probes.json",
+      "bytes": 2270,
+      "sha256": "c7057025878637ee442da696466bb7bec1801e1731c524db8e1cc1918be7c112"
+    },
+    {
+      "path": "02-public-runtime.json",
+      "bytes": 1913,
+      "sha256": "bde183d9e737b6061cfbb1069c768082efb7f919d8bfa68f6c34ce25461bfa44"
+    },
+    {
+      "path": "02-remaining.md",
+      "bytes": 32439,
+      "sha256": "f6616519c43d025856c04e3de1da0c1965e6890c5464c35f155673243568b732"
+    },
+    {
+      "path": "02-tests-js.json",
+      "bytes": 491,
+      "sha256": "ecb0145f4b8299687a3c94379a6d9897a50cfa79a1cc2a9ba3c5d024f9df074a"
+    },
+    {
+      "path": "02-tests-python.json",
+      "bytes": 2017,
+      "sha256": "dafc7a77143e80520359e6db0b978cc79742b6693f25e9281603a4dbba57c135"
+    },
+    {
+      "path": "03-solution-coverage.json",
+      "bytes": 1705,
+      "sha256": "4b0c9b95135908b34c34350843d375509c8456716f11710c9b44807606990bcf"
+    },
+    {
+      "path": "03-solutions.md",
+      "bytes": 26354,
+      "sha256": "71d46b79b760ac516aad0b7db5d14b2629ebb21f405eba5e1ab4a44c1b312366"
+    },
+    {
+      "path": "04-handoff-check.json",
+      "bytes": 2000,
+      "sha256": "52a1185a085902b28e002dcb5e34a9481919e4d50742b5c8c32459cec55a02b8"
+    },
+    {
+      "path": "04-new-chat-prompt.txt",
+      "bytes": 10983,
+      "sha256": "b7f4386e1546289bfa19cd493c2ca34e7ef36c686a6ad9aed60d59692e86f002"
+    },
+    {
+      "path": "HANDOFF.md",
+      "bytes": 21140,
+      "sha256": "4dd3ccfc73ea50c8535dbf37c101193914694e2841599052fde089476a8c9c82"
+    }
+  ]
+}

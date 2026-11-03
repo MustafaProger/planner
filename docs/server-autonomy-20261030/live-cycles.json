@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-30T11:07:49.212897",
+  "first_started_at": "2026-10-30T11:01:55.781926",
+  "second_cycle": {
+    "transtrade:current": {
+      "status": "success",
+      "last_attempt_at": "2026-10-30T11:06:56.601679+03:00",
+      "last_success_at": "2026-10-30T11:06:57.112747+03:00",
+      "pending_days": null,
+      "next_run_at": "2026-10-30T11:11:56.601679+03:00"
+    },
+    "transtrade:history": {
+      "status": "success",
+      "last_attempt_at": "2026-10-30T11:06:57.615522+03:00",
+      "last_success_at": "2026-10-30T11:06:57.734038+03:00",
+      "pending_days": 0,
+      "next_run_at": "2026-10-30T11:11:57.615522+03:00"
+    },
+    "neftm:current": {
+      "status": "success",
+      "last_attempt_at": "2026-10-30T11:06:56.602119+03:00",
+      "last_success_at": "2026-10-30T11:06:57.278428+03:00",
+      "pending_days": null,
+      "next_run_at": "2026-10-30T11:11:56.602119+03:00"
+    },
+    "neftm:history": {
+      "status": "success",
+      "last_attempt_at": "2026-10-30T11:06:57.617093+03:00",
+      "last_success_at": "2026-10-30T11:06:58.111968+03:00",
+      "pending_days": 16,
+      "next_run_at": "2026-10-30T11:11:57.617093+03:00"
+    },
+    "rosneft:current": {
+      "status": "error",
+      "last_attempt_at": "2026-10-30T11:06:56.602433+03:00",
+      "last_success_at": "2026-10-30T10:44:02.978935+03:00",
+      "pending_days": null,
+      "next_run_at": "2026-10-30T11:11:56.602433+03:00"
+    },
+    "rosneft:history": {
+      "status": "error",
+      "last_attempt_at": "2026-10-30T11:07:06.695096+03:00",
+      "last_success_at": null,
+      "pending_days": 30,
+      "next_run_at": "2026-10-30T11:12:06.695096+03:00"
+    },
+    "monitoring:current": {
+      "status": "error",
+      "last_attempt_at": "2026-10-30T11:06:56.603179+03:00",
+      "last_success_at": "2026-10-29T16:36:26.120947+03:00",
+      "pending_days": null,
+      "next_run_at": "2026-10-30T11:11:56.603179+03:00"
+    },
+    "monitoring:history": {
+      "status": "running",
+      "last_attempt_at": "2026-10-30T11:07:06.696911+03:00",
+      "last_success_at": null,
+      "pending_days": 31,
+      "next_run_at": "2026-10-30T11:12:06.696911+03:00"
+    }
+  },
+  "health": {
+    "status": "ok",
+    "updates": "ok",
+    "web": "ok"
+  },
+  "notification_configured": false
+}

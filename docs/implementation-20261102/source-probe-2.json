@@ -1,0 +1,102 @@
+{
+  "probes": [
+    {
+      "provider": "neftm",
+      "at": "2026-11-02T08:22:53.649703+00:00",
+      "status": "success",
+      "rows": 0,
+      "as_of": "2026-11-02T08:22:54.303968+00:00",
+      "elapsed_seconds": 0.66
+    },
+    {
+      "provider": "rosneft",
+      "at": "2026-11-02T08:22:54.307622+00:00",
+      "status": "success",
+      "rows": 4,
+      "as_of": "2026-11-02T08:22:56.134887+00:00",
+      "elapsed_seconds": 1.84
+    },
+    {
+      "provider": "monitoring",
+      "at": "2026-11-02T08:22:56.146371+00:00",
+      "status": "success",
+      "rows": 19,
+      "as_of": "2026-11-02T08:22:57.786716+00:00",
+      "elapsed_seconds": 1.64
+    }
+  ],
+  "scheduler": {
+    "transtrade:current": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": null,
+      "last_attempt_at": "2026-11-02T11:22:25.274843+03:00",
+      "last_success_at": "2026-11-02T11:22:25.558747+03:00",
+      "message": "Получено 0 записей за 2026-11-01 — 2026-11-02."
+    },
+    "transtrade:history": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": 0,
+      "last_attempt_at": "2026-11-02T11:22:41.377531+03:00",
+      "last_success_at": "2026-11-02T11:22:41.466098+03:00",
+      "message": "Пропущенных завершённых дней нет."
+    },
+    "neftm:current": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": null,
+      "last_attempt_at": "2026-11-02T11:22:25.275650+03:00",
+      "last_success_at": "2026-11-02T11:22:26.203698+03:00",
+      "message": "Получено 1 записей за 2026-11-01 — 2026-11-02."
+    },
+    "neftm:history": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": 0,
+      "last_attempt_at": "2026-11-02T11:22:39.362719+03:00",
+      "last_success_at": "2026-11-02T11:22:39.590837+03:00",
+      "message": "Пропущенных завершённых дней нет."
+    },
+    "rosneft:current": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": null,
+      "last_attempt_at": "2026-11-02T11:22:25.276426+03:00",
+      "last_success_at": "2026-11-02T11:22:27.377124+03:00",
+      "message": "Получено 5 записей за 2026-11-01 — 2026-11-02."
+    },
+    "rosneft:history": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": 0,
+      "last_attempt_at": "2026-11-02T11:22:49.445421+03:00",
+      "last_success_at": "2026-11-02T11:22:49.576347+03:00",
+      "message": "Пропущенных завершённых дней нет."
+    },
+    "monitoring:current": {
+      "status": "success",
+      "from": null,
+      "to": null,
+      "pending_days": null,
+      "last_attempt_at": "2026-11-02T11:22:25.277121+03:00",
+      "last_success_at": "2026-11-02T11:22:28.499691+03:00",
+      "message": "Обновлено 19 объектов."
+    },
+    "monitoring:history": {
+      "status": "success",
+      "from": "2026-09-16",
+      "to": "2026-09-16",
+      "pending_days": 18,
+      "last_attempt_at": "2026-11-02T11:22:39.363526+03:00",
+      "last_success_at": "2026-11-02T11:22:45.808708+03:00",
+      "message": "Догружен период 2026-09-15 — 2026-09-15."
+    }
+  }
+}

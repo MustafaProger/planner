@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-30T11:05:34.769230",
+  "backup": "/Users/mustafa/Documents/ChatGPT/Логистика — аналитика автопарка/data/server-autonomy-20261030-110155/fleet.sqlite",
+  "integrity": "ok",
+  "protected_records": 1953,
+  "protected_unchanged": true,
+  "manual_categories_preserved": true,
+  "trip_count": 2975,
+  "unique_trip_ids": 2975,
+  "new_records": 0,
+  "changed_records": 0
+}

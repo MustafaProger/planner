@@ -1,0 +1,770 @@
+{
+  "captured_at": "2026-11-02T07:23:30.223139+00:00",
+  "head": "4ef7bb8f32507cc028680deabe418944b53ccf35",
+  "branch": "codex/logistics-analytics",
+  "purpose": "Read-only evidence baseline before five-agent audit; existing files must be preserved. Hashes are not backups. No application changes authorized in this audit stage.",
+  "existing_changed_files": [
+    {
+      "status": " M",
+      "path": "README.md",
+      "size": 16956,
+      "sha256": "95a9567a249bf1de9ab8e137566cd32b6ce6b188525b206866cf4119823a6789"
+    },
+    {
+      "status": " M",
+      "path": "app/connections.py",
+      "size": 8733,
+      "sha256": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e"
+    },
+    {
+      "status": " M",
+      "path": "app/monitoring.py",
+      "size": 7691,
+      "sha256": "74c2af19f6c08d7c2368e8ee36552b8d3ea1d056c9f3866100fb0c2866165185"
+    },
+    {
+      "status": " M",
+      "path": "app/neftm.py",
+      "size": 5329,
+      "sha256": "ba24a9dc7b17e7c3c097d761b59af2fd6696fb8574731603fbb0a11945b98c37"
+    },
+    {
+      "status": " M",
+      "path": "app/refresh.py",
+      "size": 16133,
+      "sha256": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c"
+    },
+    {
+      "status": " M",
+      "path": "app/rosneft.py",
+      "size": 7551,
+      "sha256": "701af124b9e6437d4a9498c12d29e7b438747dcb3aceb5eb17ffa959b648a7ce"
+    },
+    {
+      "status": " M",
+      "path": "app/server.py",
+      "size": 19937,
+      "sha256": "9d635d5c887380138c1e6ac12ea80c0b97974fc38d705d87a3c30dd6ad1079e7"
+    },
+    {
+      "status": " M",
+      "path": "app/static/index.html",
+      "size": 663,
+      "sha256": "98f1dd7c3102249e3e41ea6a53f44a15fca1b73412ca2a88e8a2cae4cd900b25"
+    },
+    {
+      "status": " M",
+      "path": "app/static/main.js",
+      "size": 86002,
+      "sha256": "a1752aed80587f6db4131d3b7b2e4e85d6698503e6b29795aaddb0f41c4f94cd"
+    },
+    {
+      "status": " M",
+      "path": "app/static/refresh.js",
+      "size": 11339,
+      "sha256": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf"
+    },
+    {
+      "status": " M",
+      "path": "app/static/style.css",
+      "size": 32080,
+      "sha256": "a55baa301654ab2fa0707f9d508580c6d2717e55cef666e325bf23e21394cda3"
+    },
+    {
+      "status": " M",
+      "path": "app/static/ui.js",
+      "size": 73756,
+      "sha256": "f4cf67741d6f8358c9d5a9a24809c44462be666711a32ed753e607d424e3b64a"
+    },
+    {
+      "status": " M",
+      "path": "app/static/workspace.js",
+      "size": 37822,
+      "sha256": "ccf743d4edcc2129056bb086bf795b18ae298ff0238aee48b0fc446f0ba6813d"
+    },
+    {
+      "status": " M",
+      "path": "app/transtrade.py",
+      "size": 28486,
+      "sha256": "8ed1be61405f27fff7744490ad2612cd416f8d8aa19fce23dc272f28f32191eb"
+    },
+    {
+      "status": " M",
+      "path": "docs/Подключения.md",
+      "size": 10383,
+      "sha256": "209aaaa1afc503846028b3232dea30856e137da3a80f9b5cf341a7725a808e56"
+    },
+    {
+      "status": " M",
+      "path": "docs/Руководство-заказчика.md",
+      "size": 29451,
+      "sha256": "7842c11f1a569630364b5f3258ac892fcfdb1731b004830646d97c1b1f70b4ee"
+    },
+    {
+      "status": " M",
+      "path": "tests/test_app.py",
+      "size": 13308,
+      "sha256": "737b4e1249ad277bb03484f93fff59c4e350e06f75bc6c56494ad9a9118d6e1a"
+    },
+    {
+      "status": " M",
+      "path": "tests/test_refresh.py",
+      "size": 16246,
+      "sha256": "bc277b24b3af08df08901b69c1402e4a3b7b56fc90e916c5da826b95f153a4b5"
+    },
+    {
+      "status": " M",
+      "path": "tests/test_refresh_ui.cjs",
+      "size": 10120,
+      "sha256": "93ebf2cfd1002b7257b080cd33ee993fcf6ee9b87f81861416f264657b268939"
+    },
+    {
+      "status": " M",
+      "path": "tests/test_transtrade.py",
+      "size": 10959,
+      "sha256": "2ec39f8ec03458dcbe50d09cdebe1e86709547ab537acabc8488fb481bb7d4c2"
+    },
+    {
+      "status": "??",
+      "path": "app/alerts.py",
+      "size": 19228,
+      "sha256": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20"
+    },
+    {
+      "status": "??",
+      "path": "app/alertwatch.py",
+      "size": 2166,
+      "sha256": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498"
+    },
+    {
+      "status": "??",
+      "path": "app/autosync.py",
+      "size": 19833,
+      "sha256": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720"
+    },
+    {
+      "status": "??",
+      "path": "app/catchup.py",
+      "size": 17194,
+      "sha256": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803"
+    },
+    {
+      "status": "??",
+      "path": "app/health.py",
+      "size": 2600,
+      "sha256": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4"
+    },
+    {
+      "status": "??",
+      "path": "app/locks.py",
+      "size": 1077,
+      "sha256": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8"
+    },
+    {
+      "status": "??",
+      "path": "app/static/motion.js",
+      "size": 6405,
+      "sha256": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986"
+    },
+    {
+      "status": "??",
+      "path": "app/worker.py",
+      "size": 3240,
+      "sha256": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b"
+    },
+    {
+      "status": "??",
+      "path": "deploy/__pycache__/backup.cpython-312.pyc",
+      "size": 3487,
+      "sha256": "e116eb1220eded272b7b6ed30b0bb689f3c8bc4d612949b3cdbffb7b808aeec4"
+    },
+    {
+      "status": "??",
+      "path": "deploy/__pycache__/preflight.cpython-312.pyc",
+      "size": 6714,
+      "sha256": "6597c912196e52190860714412269060eb43d0cbc447599466332196dc1318c2"
+    },
+    {
+      "status": "??",
+      "path": "deploy/backup.py",
+      "size": 1912,
+      "sha256": "885ae52c9726a737bcc37600b1847e427aed95ed4d2ef62ae0da0297d6aa8664"
+    },
+    {
+      "status": "??",
+      "path": "deploy/environment.example",
+      "size": 315,
+      "sha256": "c1b0ee2ca52fa02b2a8c069d576a216d064983852854835bf32e0e5d3b4116fd"
+    },
+    {
+      "status": "??",
+      "path": "deploy/fleet-alerts.service",
+      "size": 652,
+      "sha256": "b6bd300f089f1e981220f0c1f937e3640c83b5cc12f1da0d95bfca72542a1ee2"
+    },
+    {
+      "status": "??",
+      "path": "deploy/fleet-alerts.timer",
+      "size": 194,
+      "sha256": "0ccd35ccbe6babbe271404df139458e71b5a73e01f90999a2875ceaef7f3646e"
+    },
+    {
+      "status": "??",
+      "path": "deploy/fleet-web.service",
+      "size": 864,
+      "sha256": "7709da98ed03eb76c96f7b1b8dd0d024a7abf463ba956495e33e53857b9e2da8"
+    },
+    {
+      "status": "??",
+      "path": "deploy/fleet-worker.service",
+      "size": 894,
+      "sha256": "a81d36b9f824c322709f91859fce9a376e36f1a0040c19d2f4b52af42c810cc6"
+    },
+    {
+      "status": "??",
+      "path": "deploy/nginx.example.conf",
+      "size": 957,
+      "sha256": "fb2ff6c1cce60ba5c4d4a84f19ba569ab0c7a91fefdadccc64bc99957e025e86"
+    },
+    {
+      "status": "??",
+      "path": "deploy/preflight.py",
+      "size": 4143,
+      "sha256": "1387f37a827077c2075a715e459cfbbfbc7c44cd51551931167dd0e24145cef6"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/check.cjs",
+      "size": 2621,
+      "sha256": "1193f359765142fd25d88dcac40bc8bc571bdad938e2f977ec666392f21ca0d7"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/comparison-1440.png",
+      "size": 154339,
+      "sha256": "f51cb1d528d64b77fd18344309ffd8588dadc70b9caae2db6e90b4903ae4ffec"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/comparison-390.png",
+      "size": 63547,
+      "sha256": "9bf5133b256ab19e9a1e9322430487628b6ca96ae2dec9ffc328074122b85018"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/comparison-header.png",
+      "size": 7852,
+      "sha256": "9d020f9f48b0078d49f927f8a70eebce5b3df8f618779b681c23e9914848ab18"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/filter-placeholders.png",
+      "size": 17169,
+      "sha256": "ffb9553f13ddb823146bb125c23917d15a99ab08db4242de192abc31e4642982"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/fuel-inline-dates.png",
+      "size": 209288,
+      "sha256": "23f2145f2f80f2c5a219a6001ae4cc52de40ef2e744889246a52dc8da5a81853"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/months-mobile.png",
+      "size": 7549,
+      "sha256": "1256316665c894c7ffaa1937cdf5ae6081411e64ea8717baab49019cf3a4c49e"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/results.json",
+      "size": 14551,
+      "sha256": "825f4655c2fb6b1d2e6f774d1a1988a036680286652ef4e3d51661d66587dbce"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/statistics-1440.png",
+      "size": 167549,
+      "sha256": "05c0bfc09be2fa57bd967486f0873fb521e17d824ea387307078bedf4351131e"
+    },
+    {
+      "status": "??",
+      "path": "docs/compact-tables-20261029/statistics-390.png",
+      "size": 64572,
+      "sha256": "bc7b51d287f8770ff70e34033cdefa6e81a59e6c9072586f175f27eda1752c89"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/changes.patch",
+      "size": 5508,
+      "sha256": "1e7ceafee0f05488e1860edda06cf6e7093c320b4042a12e0a594b21c7466737"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/check.cjs",
+      "size": 2431,
+      "sha256": "2d5296dd7792f906b2c63dae4d15effd828cd284ac56696916c45ce0aa2ec4c0"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/chromium.png",
+      "size": 144638,
+      "sha256": "f8a87454d6d1f5b9d207f51f254c9412e371d4271b2dc3f62630ad2fafc34cf0"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/results.json",
+      "size": 922,
+      "sha256": "8868e13080c79d1359f5a57d4f9f0ff170f05d196eba8e6aa7dd75c003e3e489"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/webkit.png",
+      "size": 185953,
+      "sha256": "8c2c2eb8e8dc179adff70fb3f683b3ff0df022f31de7ddb2e144c14d2c4ce574"
+    },
+    {
+      "status": "??",
+      "path": "docs/downtime-control-20261029/workspace.js.before",
+      "size": 35692,
+      "sha256": "86eb2ed817f1a8c379e96705a86556358ebe22d1a1959bdb8b76780fa80a0dc5"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/RESULT.md",
+      "size": 3897,
+      "sha256": "3f1a646856a11dc5baaae01483eaec7c12057448485a83e17a6e7f5c9aabb0d7"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/REVERTED.md",
+      "size": 639,
+      "sha256": "ce75ccaa1a18b3f60356d34b3995755bfffe4d200cb0eac7107e0aaeafa31ac7"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/audit-integrations.cjs",
+      "size": 2646,
+      "sha256": "340532111684c42470d2dd70c87b82a2ff8c774ace528c4cf95e0f0d710404c5"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/audit-plan.cjs",
+      "size": 2584,
+      "sha256": "62aeff6a57e5274e83644ceef5d0cf7cf6b7a0c3d58625160105bfca4a544630"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/audit.cjs",
+      "size": 2607,
+      "sha256": "707510a25664c5904d832cf7f4d043d4cb28e1443004d9005d91cfb7a219ec65"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/changes.patch",
+      "size": 87008,
+      "sha256": "208d5bc899e72bf9559189f463f78c792c5a4bb0f29521b50078e990093e6c8f"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/chromium-orders.png",
+      "size": 139819,
+      "sha256": "71b3a40259710fa0d00402f77567e02a44d6d1401791b245e5a6ef06da0ce876"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/chromium-planreport.png",
+      "size": 123402,
+      "sha256": "a9617506340684f245c8e270f8fff510b0da723441659855d9e2b0026d23d5df"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/integration-results.json",
+      "size": 6250,
+      "sha256": "56d37e359bde8ce5f75c8d612aaf102c1a96d63eeb4ec8dc7df919e837534bfb"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/main.js.before",
+      "size": 83916,
+      "sha256": "9bba410c02a49e631d9aab5e3f2b00ce966dbd95afa4f478db7ca2779c5a8cfe"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/plan-results.json",
+      "size": 260,
+      "sha256": "2136312ffb5fc45160b9ee2f464d5d4d67dd0bd087cae1cd88c2bb39a107e1e8"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/results.json",
+      "size": 35358,
+      "sha256": "d8f1b500ccf9464c0d9a7c45fffb8e154140ff4d0519aee8bfcb90bfe1b7c6f0"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/source-sha256.json",
+      "size": 331,
+      "sha256": "3f1c5fd417644ec9165eea87497bc3ba2743a9e6136d4946498b6b3587d33721"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/style.css.before",
+      "size": 30558,
+      "sha256": "1707358e3841b62134cb43623140bfe97f58792c77aad60a4d8373e29a7dcb97"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/ui.js.before",
+      "size": 73758,
+      "sha256": "b367e1f3e409d4b67dc0846d54208ebafda75ddb2a7b9f3ad8ffccce4ceb6a6c"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/webkit-orders.png",
+      "size": 175628,
+      "sha256": "2996d98d110ce8d5fb0f504df396831438979e1596ba12c661210b92fa3b3ea2"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-audit-20261029/workspace.js.before",
+      "size": 35692,
+      "sha256": "86eb2ed817f1a8c379e96705a86556358ebe22d1a1959bdb8b76780fa80a0dc5"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/REVERTED.md",
+      "size": 373,
+      "sha256": "ddde1ae43950e0beca8e28d24467c8644b59d9b2cf2db75512ef663906af2abb"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/audit.cjs",
+      "size": 2697,
+      "sha256": "6b8090c4ca4efc1b9e0d63cf82444389418f171f6fc35b0fb9f9d99936d55f1a"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/changes.patch",
+      "size": 15900,
+      "sha256": "9cb4dcc3f6bb43a146db705c804f862b9f1ff604dd6d4af2c4851c77902a8922"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/chromium-downtime.png",
+      "size": 127321,
+      "sha256": "14ba2004f4c37f4351ec209eabad3d23ce3da8c2fb1f89f8ec26509514751bcf"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/chromium-orders.png",
+      "size": 125272,
+      "sha256": "144822610f24712b50dd08eee21cfd115c1eae79a1c4c887e4256869cd59b3df"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/results.json",
+      "size": 28569,
+      "sha256": "b506ae41e90a84f0acdf0d8908a2f2ef91f01dac6efcf9f1eff65f8f6f9cff47"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/style.css.before",
+      "size": 30562,
+      "sha256": "057c53af0a5bf5ba58b7d4fef3e4e92b42962751a0e516cfe12cf31ca26c7f78"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/webkit-downtime.png",
+      "size": 164870,
+      "sha256": "47fecc341f92c3fa34c6a221f4cacf93553547bdd2908ad3d8017cf6c466e903"
+    },
+    {
+      "status": "??",
+      "path": "docs/layout-right-20261029/webkit-orders.png",
+      "size": 163184,
+      "sha256": "095ac3cbebb4280ba7afef6d583d991c64e63904d99c3facc133c0fff31e6cea"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/ALERTS.md",
+      "size": 10998,
+      "sha256": "801db45c3024849419051090b2bee5b670cf554dacc63341b4311315e099380c"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/DEPLOYMENT.md",
+      "size": 14466,
+      "sha256": "207fa92f2cddd0aaec3059ed8e98560a6ec941c1df79774052349f9b0bace194"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/RESULT.md",
+      "size": 11039,
+      "sha256": "4f77b690be0308a586505d83ab433e531b58a90c914472f5be8223dabd1aaebe"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/browser-check.json",
+      "size": 599,
+      "sha256": "fb98128bf05b521a1282bc45376cde58412afce15851fc143bc5f4cf83b9563e"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/chromium-1440.png",
+      "size": 137235,
+      "sha256": "c05d2f7a95a2e038e798b8450538dc80c29e688dd885aab10fcb8e6f52e9214d"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/chromium-390.png",
+      "size": 45574,
+      "sha256": "64bdd4bccc4788d0be5462abad22f89987214b1a87cf41e828d0604ef0eac793"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/data-verification.json",
+      "size": 412,
+      "sha256": "1884e12541fce07464a4a13975b0d4e5392a3e9edfb3ed4b3167dc14f1e699c0"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/live-cycles.json",
+      "size": 2281,
+      "sha256": "7d2f2bca416ede4fef190f101c160603f2aa33d3c1a07c7e2b4db196ecdffc7b"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/live-restart.json",
+      "size": 220,
+      "sha256": "6be539f6f3a43808d4973c5f77ecc7be908b5ccf493806199b1665cf13741820"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/webkit-1440.png",
+      "size": 161154,
+      "sha256": "b3186f766b5725a1b44db04dd36c51a23130d231e6781215b2e70a5096d11114"
+    },
+    {
+      "status": "??",
+      "path": "docs/server-autonomy-20261030/webkit-390.png",
+      "size": 57266,
+      "sha256": "cd279dad23b0010ffbec7134029d8b23356b00835e5fcc3ede7b933944f00344"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-investigation-20261029/REPORT.md",
+      "size": 15228,
+      "sha256": "e1d3a3ad74fd90ad6f097f7733b0c5d5b0e3c0f0883d2476860fbcc183b4a211"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-investigation-20261029/SUPPORT-REQUEST.md",
+      "size": 10432,
+      "sha256": "3056daf1664b6adb3e51abe020f78f82d0fcab4bf5e7b49d5e06732be9e50a50"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-investigation-20261029/evidence.json",
+      "size": 10045,
+      "sha256": "ba39d99af7fa00600f18c58c7998384923ccd2112b0f6c6d8aa19bae1663f247"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/RESULT.md",
+      "size": 12077,
+      "sha256": "ad74be9ee1921a16f839f8c5f7efc296265e72f7318e8ce58e8456f0f57d7d48"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/SUPPORT-FOLLOWUP.md",
+      "size": 1709,
+      "sha256": "3d9b784c8c6e4174581b61eac50272176387524cfc9407e993c109892479661b"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/check-ui.cjs",
+      "size": 3054,
+      "sha256": "9d80f9b2ee552f2baab3f4751416783e2d6c6eeb482cc2e57fcc2173117c7e00"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/evidence.json",
+      "size": 13219,
+      "sha256": "b44761efaaa5044260662fbbcf8a9505e94fa1603cef9e7ce05350b6076fde66"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/final-verification.json",
+      "size": 549,
+      "sha256": "0af0731eb66351ec9cb0210e65191b9222d26693686a83767980d91e1c7debcf"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/history-chromium-1440.png",
+      "size": 40780,
+      "sha256": "e56f6ce9cf7823a17f9971ee5dd648bdc0da4a7ef60cf3cfa6fe23f7f8b4ea9e"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/history-chromium-390.png",
+      "size": 41916,
+      "sha256": "996a20bf8e88a56222f89064e0a57bc887e6d57b5695120a7242d9eb055002f2"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/history-webkit-1440.png",
+      "size": 48420,
+      "sha256": "600206c8bf9bb50f6c9212aa9d6ce71117586874e30684ff458fe55d1b33e19c"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/history-webkit-390.png",
+      "size": 48987,
+      "sha256": "1267a1d0d2a956d1e63640448305233f35c599bd77a1839facca17f738cead7f"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/repeat.json",
+      "size": 2803,
+      "sha256": "b8ba0c585263b28f9a91205f4c9cbe3c58cc51c48a5f4d6bbd5b766ae75f7bd4"
+    },
+    {
+      "status": "??",
+      "path": "docs/transtrade-sync-20261030/ui-results.json",
+      "size": 3892,
+      "sha256": "f039ae09658096353e35cadf8937bc7deff8b0eab38d94c6690b712c5c3e1a18"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/REQUIREMENTS.md",
+      "size": 34205,
+      "sha256": "6409c7be3a30db7da73b00774ae11ebfa359b67b0084b90ccf1e4078a016da9a"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/RESULT.md",
+      "size": 8911,
+      "sha256": "82c1c89174b9b9a0a86796930ce52abe6b1bbed4acb99c7cf1bb0732d2360e73"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/coverage-evidence.json",
+      "size": 843,
+      "sha256": "e0de695a3c496fe2d0ad1daa76eae49584cbf3c1c75ccec5fd6081065844ea2b"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/directories-1440.jpg",
+      "size": 103145,
+      "sha256": "24f74ede43df6d7389cfba0f480c50b0c08992b31ae5d7c7a7334c3c75c6fe91"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/economics-help.jpg",
+      "size": 87825,
+      "sha256": "24f56bfdbc4975ba3b3908bef81b1afc280ab5c959fc9ad4b9cae99fca5b0f9d"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/excel-verification.json",
+      "size": 14625,
+      "sha256": "ada38b5d33484083bbcdd7128f7497c632f5af992ed68b778ed373bd0fccd096"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/guide-320.jpg",
+      "size": 3177,
+      "sha256": "612e90ad8b0051be51a535c778eea8e7535e0e41beac5787246115f35bbc338a"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/interaction-checks.json",
+      "size": 832,
+      "sha256": "8b1d8d9fef1a3039ea1b65787002a82427e72636742329d8df53adba5c066acf"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/refresh-expanded.jpg",
+      "size": 78884,
+      "sha256": "852992bd0793995d1914c536b03e470f6d7c4de886cc858978d0c9aa1691cf68"
+    },
+    {
+      "status": "??",
+      "path": "docs/ui-followup-20261029/responsive-checks.json",
+      "size": 16108,
+      "sha256": "dd9871877766f16b83cbd06bf5db7d4fea5c2c4ea87e949aa1f6404d11971441"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_alerts.py",
+      "size": 13939,
+      "sha256": "7ec3e3c20fa73437ecaaed10a7fba16b13b3ae993dc0c6eae4aef7b4cb5170ab"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_alertwatch.py",
+      "size": 3042,
+      "sha256": "4968aa88d9adf237b3e6eea188dcf7320c8b484ffbb6632c283e584373a28690"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_autosync.py",
+      "size": 7640,
+      "sha256": "09def98513d493ee277604efa909b548438a93d9ba35ebcad7252ee047df89bb"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_autosync_alerts.py",
+      "size": 3667,
+      "sha256": "5b6f0cc50427c452d16cbb21d32394e31af0eaae0da8f896d7cb0863103cc49c"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_autosync_catchup.py",
+      "size": 7975,
+      "sha256": "7359046783fbdb4a731d1bd8e1190798acdbe1b4efca416971a92babaddd8b87"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_autosync_process.py",
+      "size": 3437,
+      "sha256": "ce66fd57a769c979ebfd3051a76a0f4bf60be187808bd5cba311940c82818ee4"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_autosync_storage.py",
+      "size": 3335,
+      "sha256": "030b4613d2c5d3b34912d15dec8d474efc616a054c11f063e56b8a134df615d6"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_catchup.py",
+      "size": 14688,
+      "sha256": "99903fc9fc0b83d95722542f7b198b9a003d7e1c778595f8d855f517710fff11"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_motion.cjs",
+      "size": 10768,
+      "sha256": "29a910cb813a1f19d27bd0bfa909d4a1561217f0f52f5face985b4494759a03d"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_runtime_integration.py",
+      "size": 8062,
+      "sha256": "09bd72100b01c2cb6e59f1c60172d402dc3af8ceee3553b1e2c1b3f7d61701c0"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_transtrade_reconciliation.py",
+      "size": 16559,
+      "sha256": "770e8e3cfde52baea349569d6a6a3cdbf7e8e775494b7f875fbce95abd98b15e"
+    },
+    {
+      "status": "??",
+      "path": "tests/test_worker.py",
+      "size": 8226,
+      "sha256": "bd76ddf78766b0e48c4b0e6dd2abdfb4e23117c00888fd5ee20077afe2016193"
+    }
+  ]
+}

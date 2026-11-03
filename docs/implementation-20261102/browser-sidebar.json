@@ -1,0 +1,12 @@
+{
+  "desktop": {
+    "scrollBefore": 421.2120971679687,
+    "scrollAfter": 421.2120971679687,
+    "scrollBack": 421.2120971679687
+  },
+  "scope": "real CUA navigation and browser Back; legacy Playwright test unavailable",
+  "mobile": {
+    "mobileScrollBefore": 622.7272338867188,
+    "mobileScrollAfter": 616.6666259765625
+  }
+}

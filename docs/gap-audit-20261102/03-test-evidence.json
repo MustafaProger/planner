@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-02",
+  "python_standard": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 281,
+    "setup_errors": 20,
+    "seconds": 6.57,
+    "cause": "FileNotFoundError: obsolete default /Users/mustafa/Desktop/проект/Статистика 17.09.2026.xlsx"
+  },
+  "python_import_tests_only": {
+    "command": "from pathlib import Path; import pytest; from app import importer; importer.SOURCE=Path('/Users/mustafa/Desktop/планировщик'); pytest.main(['-q','tests/test_app.py'])",
+    "passed": 21,
+    "seconds": 4.21,
+    "files_modified": false,
+    "qualification": "SOURCE overridden in process only; standard command remains broken"
+  },
+  "javascript": {
+    "command": "node --test tests/test_navigation.cjs tests/test_planviews.cjs tests/test_refresh_ui.cjs tests/test_ui_information.cjs tests/test_motion.cjs",
+    "passed": 29,
+    "failed": 0
+  },
+  "live_health": {
+    "url": "http://127.0.0.1:8765/healthz",
+    "http_status": 200,
+    "body": {
+      "status": "ok",
+      "updates": "ok",
+      "web": "ok"
+    },
+    "qualification": "does not certify source success or business completeness"
+  }
+}

@@ -1,0 +1,245 @@
+section Section1;
+
+shared ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Измененный тип" = Table.TransformColumnTypes(Источник,{{"№ заказа", type text}, {"Клиент", type text}, {"Исполнитель", type text}, {"Водитель", type text}, {"Тип транспорта", type text}, {"Расчет Клт", type text}, {"Расчет Исп", type text}}),
+    #"Обрезанный текст" = Table.TransformColumns(#"Измененный тип",{{"Тип транспорта", Text.Trim, type text}, {"Расчет Клт", Text.Trim, type text}, {"Расчет Исп", Text.Trim, type text}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Обрезанный текст",{{"Тип транспорта", Text.Upper, type text}, {"Расчет Клт", Text.Upper, type text}, {"Расчет Исп", Text.Upper, type text}}),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Текст в верхнем регистре",{{"КМ", type number}, {"Исполнителю", type number}, {"Сумма", type number}, {"Номер а/м", type text}}),
+    #"Обрезанный текст1" = Table.TransformColumns(#"Измененный тип1",{{"Водитель", Text.Trim, type text}, {"Исполнитель", Text.Trim, type text}, {"Клиент", Text.Trim, type text}}),
+    #"Измененный тип2" = Table.TransformColumnTypes(#"Обрезанный текст1",{{"Окончание заказа", type datetime}, {"Начало заказа", type datetime}}),
+    #"Измененный тип3" = Table.TransformColumnTypes(#"Измененный тип2",{{"Начало заказа", type number}, {"Окончание заказа", type number}}),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Измененный тип3", "Пользовательский", each [Окончание заказа]-[Начало заказа]),
+    #"Измененный тип4" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Начало заказа", type datetime}}),
+    #"Вставлено: дата" = Table.AddColumn(#"Измененный тип4", "Дата", each DateTime.Date([Начало заказа]), type date),
+    #"Удаленные столбцы" = Table.RemoveColumns(#"Вставлено: дата",{"Начало заказа", "Окончание заказа"}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Удаленные столбцы",{{"Пользовательский", "Смена час"}}),
+    #"Измененный тип5" = Table.TransformColumnTypes(#"Переименованные столбцы",{{"Смена час", type number}})
+in
+    #"Измененный тип5" ;
+
+shared СП1_Клиент_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Другие удаленные столбцы" = Table.SelectColumns(Источник,{"Клиент"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Клиент", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Клиент"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Клиент", Text.Trim, type text}})
+in
+    #"Обрезанный текст";
+
+shared СП2_Исполнитель_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] = "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Исполнитель"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Исполнитель", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Исполнитель"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Удаленные дубликаты", "Принадлежность", each "КОМПАНИЯ"),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Принадлежность", type text}}),
+    #"Добавленный запрос" = Table.Combine({#"Измененный тип1", ИсполнительЭкспедиция_ТрансТрейд})
+in
+    #"Добавленный запрос";
+
+shared СП3_Водитель_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] = "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Исполнитель", "Водитель"}),
+    #"Переупорядоченные столбцы" = Table.ReorderColumns(#"Другие удаленные столбцы",{"Водитель", "Исполнитель"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Переупорядоченные столбцы",{{"Водитель", type text}, {"Исполнитель", type text}}),
+    #"Выполнена капитализация каждого слова" = Table.TransformColumns(#"Измененный тип",{{"Водитель", Text.Proper, type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Выполнена капитализация каждого слова", {"Водитель"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки", {"Водитель"}),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Водитель", Text.Trim, type text}, {"Исполнитель", Text.Trim, type text}}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Обрезанный текст",{{"Исполнитель", "Принадлежность"}}),
+    #"Добавленный запрос" = Table.Combine({#"Переименованные столбцы", ВодительЭкспедитор_ТрансТрейд})
+in
+    #"Добавленный запрос";
+
+shared СП4_ТипТранспорта_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Другие удаленные столбцы" = Table.SelectColumns(Источник,{"Тип транспорта"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Тип транспорта", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Тип транспорта"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Тип транспорта", Text.Trim, type text}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Обрезанный текст",{{"Тип транспорта", Text.Upper, type text}})
+in
+    #"Текст в верхнем регистре";
+
+shared СП5_НомерАм_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] = "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Номер а/м"}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Другие удаленные столбцы", {"Номер а/м"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки", {"Номер а/м"}),
+    #"Объединенные запросы" = Table.NestedJoin(#"Удаленные дубликаты", {"Номер а/м"}, МаркаЧартер, {"ГосНомер"}, "МаркаЧартер", JoinKind.RightOuter),
+    #"Развернутый элемент МаркаЧартер1" = Table.ExpandTableColumn(#"Объединенные запросы", "МаркаЧартер", {"ГосНомер", "Марка"}, {"ГосНомер", "Марка"}),
+    #"Переименованные столбцы1" = Table.RenameColumns(#"Развернутый элемент МаркаЧартер1",{{"ГосНомер", "Номер а/м1"}}),
+    #"Удаленные столбцы" = Table.RemoveColumns(#"Переименованные столбцы1",{"Номер а/м"}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Удаленные столбцы",{{"Номер а/м1", "Номер а/м"}}),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Переименованные столбцы", "Принадлежность", each "ООО ЧАРТЕР"),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Принадлежность", type text}}),
+    #"Переупорядоченные столбцы" = Table.ReorderColumns(#"Измененный тип",{"Номер а/м", "Принадлежность", "Марка"}),
+    #"Добавленный запрос" = Table.Combine({#"Переупорядоченные столбцы", НомерАмЭкспедиция_ТрансТрейд})
+in
+    #"Добавленный запрос";
+
+shared #"СП6_Расчет Клт_ТрансТрейд" = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Другие удаленные столбцы" = Table.SelectColumns(Источник,{"Расчет Клт"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Расчет Клт", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Расчет Клт"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Расчет Клт", Text.Trim, type text}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Обрезанный текст",{{"Расчет Клт", Text.Upper, type text}})
+in
+    #"Текст в верхнем регистре";
+
+shared СП7_РасчетИсп_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Другие удаленные столбцы" = Table.SelectColumns(Источник,{"Расчет Исп"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Расчет Исп", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Расчет Исп"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Расчет Исп", Text.Trim, type text}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Обрезанный текст",{{"Расчет Исп", Text.Upper, type text}})
+in
+    #"Текст в верхнем регистре";
+
+shared ИсполнительЭкспедиция_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] <> "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Исполнитель"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Исполнитель", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Исполнитель"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Исполнитель", Text.Trim, type text}}),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Обрезанный текст", "Принадлежность", each "ЭКСПЕДИЦИЯ"),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Принадлежность", type text}})
+in
+    #"Измененный тип1";
+
+shared ВодительЭкспедитор_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] <> "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Водитель"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Водитель", type text}}),
+    #"Выполнена капитализация каждого слова" = Table.TransformColumns(#"Измененный тип",{{"Водитель", Text.Proper, type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Выполнена капитализация каждого слова", {"Водитель"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Водитель", Text.Trim, type text}}),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Обрезанный текст", "Принадлежность", each "ЭКСПЕДИЦИЯ"),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Принадлежность", type text}})
+in
+    #"Измененный тип1";
+
+shared НомерАмЭкспедиция_ТрансТрейд = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Строки с примененным фильтром" = Table.SelectRows(Источник, each ([Исполнитель] <> "ООО ""ЧАРТЕР""")),
+    #"Другие удаленные столбцы" = Table.SelectColumns(#"Строки с примененным фильтром",{"Номер а/м"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Другие удаленные столбцы",{{"Номер а/м", type text}}),
+    #"Удаленные ошибки" = Table.RemoveRowsWithErrors(#"Измененный тип", {"Номер а/м"}),
+    #"Удалены пустые строки" = Table.SelectRows(#"Удаленные ошибки", each not List.IsEmpty(List.RemoveMatchingItems(Record.FieldValues(_), {"", null}))),
+    #"Удаленные дубликаты" = Table.Distinct(#"Удалены пустые строки"),
+    #"Обрезанный текст" = Table.TransformColumns(#"Удаленные дубликаты",{{"Номер а/м", Text.Trim, type text}}),
+    #"Добавлен пользовательский объект" = Table.AddColumn(#"Обрезанный текст", "Принадлежность", each "ЭКСПЕДИЦИЯ"),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Добавлен пользовательский объект",{{"Принадлежность", type text}}),
+    #"Добавлен пользовательский объект1" = Table.AddColumn(#"Измененный тип1", "Марка", each "Наемники")
+in
+    #"Добавлен пользовательский объект1";
+
+shared МаркаЧартер = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_МаркаЧартер"]}[Content],
+    #"Измененный тип" = Table.TransformColumnTypes(Источник,{{"ГосНомер", type text}, {"Марка", type text}}),
+    #"Обрезанный текст" = Table.TransformColumns(#"Измененный тип",{{"ГосНомер", Text.Trim, type text}, {"Марка", Text.Trim, type text}})
+in
+    #"Обрезанный текст";
+
+shared Спутник = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_Спутник"]}[Content],
+    #"Удаленные столбцы" = Table.RemoveColumns(Источник,{"№", "Нач. пробег", "Кон. пробег", "Остановка, время", "Адрес начала", "Адрес конца"}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Удаленные столбцы",{{"Холостой ход, время", type time}, {"Движение, время", type time}, {"Моточасы", type time}, {"Пробег, км", type number}, {"Продолжительность", type time}, {"Конец", type datetime}, {"Начало", type datetime}, {"Объект", type text}}),
+    #"Объединенные запросы" = Table.NestedJoin(#"Измененный тип", {"Объект"}, СпутникАвто, {"Объект"}, "УТ_СпутникАвто", JoinKind.LeftOuter),
+    #"Развернутый элемент УТ_СпутникАвто" = Table.ExpandTableColumn(#"Объединенные запросы", "УТ_СпутникАвто", {"ГосНомер"}, {"ГосНомер"}),
+    #"Удаленные столбцы1" = Table.RemoveColumns(#"Развернутый элемент УТ_СпутникАвто",{"Объект"}),
+    #"Дублированный столбец" = Table.DuplicateColumn(#"Удаленные столбцы1", "Начало", "Копия Начало"),
+    #"Извлеченная дата" = Table.TransformColumns(#"Дублированный столбец",{{"Копия Начало", DateTime.Date, type date}}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Извлеченная дата",{{"Копия Начало", "Дата"}})
+in
+    #"Переименованные столбцы";
+
+shared СпутникАвто = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_СпутникАвто"]}[Content],
+    #"Измененный тип" = Table.TransformColumnTypes(Источник,{{"Объект", type text}, {"ГосНомер", type text}})
+in
+    #"Измененный тип";
+
+shared БлокнотСтатус1 = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_БлокнотСтатус"]}[Content],
+    #"Измененный тип" = Table.TransformColumnTypes(Источник,{{"Дата", type date}, {"Автомобиль", type text}, {"Статус Автомобиля", type text}, {"Водитель", type text}, {"Статус Водителя", type text}}),
+    #"Удаленные столбцы" = Table.RemoveColumns(#"Измененный тип",{"Автомобиль", "Статус Автомобиля"}),
+    #"Несвернутые столбцы" = Table.UnpivotOtherColumns(#"Удаленные столбцы", {"Дата", "Статус Водителя"}, "Атрибут", "Значение"),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Несвернутые столбцы",{{"Статус Водителя", "Статус"}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Переименованные столбцы",{{"Статус", Text.Upper, type text}}),
+    #"Текст в нижнем регистре" = Table.TransformColumns(#"Текст в верхнем регистре",{{"Статус", Text.Lower, type text}})
+in
+    #"Текст в нижнем регистре";
+
+shared БлокнотСтатус2 = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_БлокнотСтатус"]}[Content],
+    #"Измененный тип" = Table.TransformColumnTypes(Источник,{{"Дата", type date}, {"Автомобиль", type text}, {"Статус Автомобиля", type text}, {"Водитель", type text}, {"Статус Водителя", type text}}),
+    #"Удаленные столбцы" = Table.RemoveColumns(#"Измененный тип",{"Водитель", "Статус Водителя"}),
+    #"Несвернутые столбцы" = Table.UnpivotOtherColumns(#"Удаленные столбцы", {"Дата", "Статус Автомобиля"}, "Атрибут", "Значение"),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Несвернутые столбцы",{{"Статус Автомобиля", "Статус"}}),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Переименованные столбцы",{{"Статус", Text.Upper, type text}}),
+    #"Текст в нижнем регистре" = Table.TransformColumns(#"Текст в верхнем регистре",{{"Статус", Text.Lower, type text}})
+in
+    #"Текст в нижнем регистре";
+
+shared ТрансТрейдСтатус1 = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Удаленные столбцы" = Table.RemoveColumns(Источник,{"№ заказа", "Окончание заказа", "Тип транспорта", "Сумма", "Расчет Клт", "Исполнителю", "Расчет Исп", "КМ"}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Удаленные столбцы",{{"Номер а/м", "Автомобиль"}}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Переименованные столбцы",{{"Начало заказа", type date}, {"Клиент", type text}}),
+    #"Переименованные столбцы1" = Table.RenameColumns(#"Измененный тип",{{"Начало заказа", "Дата"}, {"Клиент", "Статус"}}),
+    #"Строки с примененным фильтром" = Table.SelectRows(#"Переименованные столбцы1", each ([Исполнитель] = "ООО ""ЧАРТЕР""")),
+    #"Удаленные столбцы1" = Table.RemoveColumns(#"Строки с примененным фильтром",{"Исполнитель", "Водитель"}),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Удаленные столбцы1",{{"Автомобиль", type text}}),
+    #"Несвернутые столбцы" = Table.UnpivotOtherColumns(#"Измененный тип1", {"Дата", "Статус"}, "Атрибут", "Значение"),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Несвернутые столбцы",{{"Статус", Text.Upper, type text}}),
+    #"Извлеченный текст между разделителями" = Table.TransformColumns(#"Текст в верхнем регистре", {{"Статус", each Text.BetweenDelimiters(_, " ", " "), type text}}),
+    #"Текст в нижнем регистре" = Table.TransformColumns(#"Извлеченный текст между разделителями",{{"Статус", Text.Lower, type text}})
+in
+    #"Текст в нижнем регистре";
+
+shared ТрансТрейдСтатус2 = let
+    Источник = Excel.CurrentWorkbook(){[Name="УТ_ТрансТрейд"]}[Content],
+    #"Удаленные столбцы" = Table.RemoveColumns(Источник,{"№ заказа", "Окончание заказа", "Тип транспорта", "Сумма", "Расчет Клт", "Исполнителю", "Расчет Исп", "КМ"}),
+    #"Переименованные столбцы" = Table.RenameColumns(#"Удаленные столбцы",{{"Номер а/м", "Автомобиль"}}),
+    #"Измененный тип" = Table.TransformColumnTypes(#"Переименованные столбцы",{{"Начало заказа", type date}, {"Клиент", type text}}),
+    #"Переименованные столбцы1" = Table.RenameColumns(#"Измененный тип",{{"Начало заказа", "Дата"}, {"Клиент", "Статус"}}),
+    #"Строки с примененным фильтром" = Table.SelectRows(#"Переименованные столбцы1", each ([Исполнитель] = "ООО ""ЧАРТЕР""")),
+    #"Удаленные столбцы1" = Table.RemoveColumns(#"Строки с примененным фильтром",{"Исполнитель", "Автомобиль"}),
+    #"Измененный тип1" = Table.TransformColumnTypes(#"Удаленные столбцы1",{{"Водитель", type text}}),
+    #"Несвернутые столбцы" = Table.UnpivotOtherColumns(#"Измененный тип1", {"Дата", "Статус"}, "Атрибут", "Значение"),
+    #"Текст в верхнем регистре" = Table.TransformColumns(#"Несвернутые столбцы",{{"Статус", Text.Upper, type text}}),
+    #"Извлеченный текст между разделителями" = Table.TransformColumns(#"Текст в верхнем регистре", {{"Статус", each Text.BetweenDelimiters(_, " ", " "), type text}}),
+    #"Текст в нижнем регистре" = Table.TransformColumns(#"Извлеченный текст между разделителями",{{"Статус", Text.Lower, type text}})
+in
+    #"Текст в нижнем регистре";
+
+shared Статус = let
+    Источник = Table.Combine({БлокнотСтатус1, БлокнотСтатус2, ТрансТрейдСтатус1, ТрансТрейдСтатус2}),
+    #"Выполнена капитализация каждого слова" = Table.TransformColumns(Источник,{{"Статус", Text.Proper, type text}})
+in
+    #"Выполнена капитализация каждого слова";

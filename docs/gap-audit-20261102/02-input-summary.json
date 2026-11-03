@@ -1,0 +1,51 @@
+{
+  "planner": {
+    "dated_plan_rows": 1436,
+    "date_min": "2026-07-11 00:00:00",
+    "date_max": "2026-09-30 00:00:00",
+    "empty_driver": 0,
+    "empty_vehicle": 0,
+    "driver_equals_vehicle": 849,
+    "empty_route": 0,
+    "duplicate_full_plan_rows": 1,
+    "route_rows": 114,
+    "routes_without_effective_date": 114,
+    "route_duplicates": {},
+    "unmatched_route_count": 0
+  },
+  "statistics": {
+    "order_rows_with_number": 996,
+    "unique_order_numbers": 996,
+    "revenue_raw": 13724319.06,
+    "payout_raw": 6930671.46,
+    "km_raw": 99197.0,
+    "types": {
+      "1.5 тонны ": 754,
+      "доплата ": 8,
+      "ШТРАФ ВОДИТЕЛЮ": 86,
+      "Сервис": 19,
+      "5 тонн": 61,
+      "Погрузочно-Разгрузочные работы": 64,
+      "УДЕРЖАНО": 4
+    },
+    "sat_rows": 335,
+    "sat_km": 54294.4,
+    "status_rows": 134,
+    "car_status_types": {
+      "ПростойБольничный": 5,
+      "ПростойВыходной": 22,
+      "ПростойОтпуск": 45,
+      "ПростойСервис": 41,
+      "Пересменка": 1,
+      "БезВодителя": 20
+    },
+    "driver_status_types": {
+      "Больничный": 5,
+      "Выходной": 21,
+      "Отпуск": 20,
+      "Сервис": 2,
+      "Пересменка": 1,
+      "null": 85
+    }
+  }
+}

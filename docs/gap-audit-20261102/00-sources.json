@@ -1,0 +1,45 @@
+[
+  {
+    "role": "customer_transcript",
+    "path": "/Users/mustafa/Desktop/планировщик/Новая запись 30 (mp3cut.net).txt",
+    "exists": true,
+    "size": 82859,
+    "sha256": "db91ada3419af321fe296e3cbebf4985bd9b9a3009c79f0ab0d957eaadc38d6f"
+  },
+  {
+    "role": "planner_workbook",
+    "path": "/Users/mustafa/Desktop/планировщик/Планировщик ЛОГИСТИКА АА (Р4).xlsx",
+    "exists": true,
+    "size": 715991,
+    "sha256": "1229cce8f59336c9d26031081cbaa5b99b9e559298a05fda7fe7a0977a295d7a"
+  },
+  {
+    "role": "statistics_workbook",
+    "path": "/Users/mustafa/Desktop/планировщик/Статистика 17.09.2026.xlsx",
+    "exists": true,
+    "size": 1737162,
+    "sha256": "a866ffeb9fcdba0220095ba2e9ea1a76d782598997eed5888c259e4536e5eb77"
+  },
+  {
+    "role": "planner_relationships",
+    "path": "/var/folders/1b/w5cbgmqx2q37n6c87lcdxj380000gn/T/codex-clipboard-2cf6c5d7-d6d9-4342-99e1-f1f4bd3926f0.jpg",
+    "exists": true,
+    "size": 64493,
+    "sha256": "3b7f58c09128448d1435cb461fce33913beac11eebc6a235743d5668cc6eebd7",
+    "audit_copy": "docs/gap-audit-20261102/assets/planner_relationships.jpg"
+  },
+  {
+    "role": "statistics_relationships",
+    "path": "/var/folders/1b/w5cbgmqx2q37n6c87lcdxj380000gn/T/codex-clipboard-24210beb-3acb-4e06-9a20-617a342c6927.jpg",
+    "exists": true,
+    "size": 118541,
+    "sha256": "63da31ca3ad9df20aacc848ac6bdb8edecf46d78dbf2217c534f70e79a0e76ac",
+    "audit_copy": "docs/gap-audit-20261102/assets/statistics_relationships.jpg"
+  },
+  {
+    "role": "credentials_private",
+    "path": "/Users/mustafa/Desktop/планировщик/доступы.xlsx",
+    "exists": true,
+    "handling": "Contents not read by coordinator and not copied; any necessary future use must keep secrets out of reports, chat and Git."
+  }
+]

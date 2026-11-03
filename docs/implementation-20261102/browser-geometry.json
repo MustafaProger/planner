@@ -1,0 +1,321 @@
+{
+  "test": "isolated acceptance database",
+  "desktop": [
+    {
+      "content": 3947,
+      "path": "/analytics/dashboard",
+      "scroll": 1439,
+      "title": "Обзор сверки",
+      "width": 1439
+    },
+    {
+      "content": 8058,
+      "path": "/analytics/statistics",
+      "scroll": 1439,
+      "title": "Статистика",
+      "width": 1439
+    },
+    {
+      "content": 9642,
+      "path": "/analytics/comparison",
+      "scroll": 1439,
+      "title": "План–факт",
+      "width": 1439
+    },
+    {
+      "content": 74603,
+      "path": "/analytics/reconcile",
+      "scroll": 1439,
+      "title": "Сверка со спутником",
+      "width": 1439
+    },
+    {
+      "content": 359,
+      "path": "/analytics/planreport",
+      "scroll": 1439,
+      "title": "Сводка плана",
+      "width": 1439
+    },
+    {
+      "content": 2894,
+      "path": "/analytics/downtime",
+      "scroll": 1439,
+      "title": "Работа и простои",
+      "width": 1439
+    },
+    {
+      "content": 24293,
+      "path": "/analytics/economics",
+      "scroll": 1439,
+      "title": "Экономика",
+      "width": 1439
+    },
+    {
+      "content": 34762,
+      "path": "/planning/calendar",
+      "scroll": 1439,
+      "title": "Календарь",
+      "width": 1439
+    },
+    {
+      "content": 630,
+      "path": "/planning/planner",
+      "scroll": 1439,
+      "title": "Планировщик",
+      "width": 1439
+    },
+    {
+      "content": 637713,
+      "path": "/data/orders",
+      "scroll": 1439,
+      "title": "Заявки ТрансТрейд",
+      "width": 1439
+    },
+    {
+      "content": 2281,
+      "path": "/data/monitoringdata",
+      "scroll": 1439,
+      "title": "Показания спутника",
+      "width": 1439
+    },
+    {
+      "content": 59245,
+      "path": "/data/telemetry",
+      "scroll": 1439,
+      "title": "Спутник из Excel",
+      "width": 1439
+    },
+    {
+      "content": 12544,
+      "path": "/data/neftmdata",
+      "scroll": 1439,
+      "title": "Операции Нефтьмагистрали",
+      "width": 1439
+    },
+    {
+      "content": 31783,
+      "path": "/data/rosneftdata",
+      "scroll": 1439,
+      "title": "Операции Роснефти",
+      "width": 1439
+    },
+    {
+      "content": 7115,
+      "path": "/data/directories",
+      "scroll": 1439,
+      "title": "Справочники",
+      "width": 1439
+    },
+    {
+      "content": 4685,
+      "path": "/control/quality",
+      "scroll": 1439,
+      "title": "Качество данных",
+      "width": 1439
+    },
+    {
+      "content": 555,
+      "path": "/control/coverage",
+      "scroll": 1439,
+      "title": "Полнота периодов",
+      "width": 1439
+    },
+    {
+      "content": 352,
+      "path": "/control/fuelcards",
+      "scroll": 1439,
+      "title": "Карты и автомобили",
+      "width": 1439
+    },
+    {
+      "content": 331,
+      "path": "/control/expenses",
+      "scroll": 1439,
+      "title": "Расходы",
+      "width": 1439
+    },
+    {
+      "content": 1024,
+      "path": "/settings/connections",
+      "scroll": 1439,
+      "title": "Подключения",
+      "width": 1439
+    },
+    {
+      "content": 967,
+      "path": "/settings/excel",
+      "scroll": 1439,
+      "title": "Импорт Excel",
+      "width": 1439
+    },
+    {
+      "content": 16350,
+      "path": "/settings/users",
+      "scroll": 1439,
+      "title": "Доступы и журнал",
+      "width": 1439
+    },
+    {
+      "content": 24855,
+      "path": "/help/guide",
+      "scroll": 1439,
+      "title": "Как пользоваться",
+      "width": 1439
+    },
+    {
+      "content": 36257,
+      "path": "/control/evidence",
+      "scroll": 1439,
+      "title": "Километраж и смены",
+      "width": 1439
+    }
+  ],
+  "mobile": [
+    {
+      "path": "/analytics/dashboard",
+      "scroll": 319,
+      "title": "Обзор сверки",
+      "width": 319
+    },
+    {
+      "path": "/analytics/statistics",
+      "scroll": 319,
+      "title": "Статистика",
+      "width": 319
+    },
+    {
+      "path": "/analytics/comparison",
+      "scroll": 319,
+      "title": "План–факт",
+      "width": 319
+    },
+    {
+      "path": "/analytics/reconcile",
+      "scroll": 319,
+      "title": "Сверка со спутником",
+      "width": 319
+    },
+    {
+      "path": "/analytics/planreport",
+      "scroll": 319,
+      "title": "Сводка плана",
+      "width": 319
+    },
+    {
+      "path": "/analytics/downtime",
+      "scroll": 319,
+      "title": "Работа и простои",
+      "width": 319
+    },
+    {
+      "path": "/analytics/economics",
+      "scroll": 319,
+      "title": "Экономика",
+      "width": 319
+    },
+    {
+      "path": "/planning/calendar",
+      "scroll": 319,
+      "title": "Календарь",
+      "width": 319
+    },
+    {
+      "path": "/planning/planner",
+      "scroll": 319,
+      "title": "Планировщик",
+      "width": 319
+    },
+    {
+      "path": "/data/orders",
+      "scroll": 319,
+      "title": "Заявки ТрансТрейд",
+      "width": 319
+    },
+    {
+      "path": "/data/monitoringdata",
+      "scroll": 319,
+      "title": "Показания спутника",
+      "width": 319
+    },
+    {
+      "path": "/data/telemetry",
+      "scroll": 319,
+      "title": "Спутник из Excel",
+      "width": 319
+    },
+    {
+      "path": "/data/neftmdata",
+      "scroll": 319,
+      "title": "Операции Нефтьмагистрали",
+      "width": 319
+    },
+    {
+      "path": "/data/rosneftdata",
+      "scroll": 319,
+      "title": "Операции Роснефти",
+      "width": 319
+    },
+    {
+      "path": "/data/directories",
+      "scroll": 319,
+      "title": "Справочники",
+      "width": 319
+    },
+    {
+      "path": "/control/quality",
+      "scroll": 319,
+      "title": "Качество данных",
+      "width": 319
+    },
+    {
+      "path": "/control/coverage",
+      "scroll": 319,
+      "title": "Полнота периодов",
+      "width": 319
+    },
+    {
+      "path": "/control/fuelcards",
+      "scroll": 319,
+      "title": "Карты и автомобили",
+      "width": 319
+    },
+    {
+      "path": "/control/expenses",
+      "scroll": 319,
+      "title": "Расходы",
+      "width": 319
+    },
+    {
+      "path": "/control/evidence",
+      "scroll": 319,
+      "title": "Километраж и смены",
+      "width": 319
+    },
+    {
+      "path": "/settings/connections",
+      "scroll": 319,
+      "title": "Подключения",
+      "width": 319
+    },
+    {
+      "path": "/settings/excel",
+      "scroll": 319,
+      "title": "Импорт Excel",
+      "width": 319
+    },
+    {
+      "path": "/settings/users",
+      "scroll": 319,
+      "title": "Доступы и журнал",
+      "width": 319
+    },
+    {
+      "path": "/help/guide",
+      "scroll": 319,
+      "title": "Как пользоваться",
+      "width": 319
+    }
+  ],
+  "mobileMethod": "same-origin iframe, CSS width319; not native device/touch",
+  "directEvidenceAfterFix": "200, title and visible date filters verified"
+}

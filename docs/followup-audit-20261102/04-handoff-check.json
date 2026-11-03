@@ -1,0 +1,65 @@
+{
+  "prepared_at": "2026-11-02T11:22:45.164118+00:00",
+  "role": "fourth_handoff_builder",
+  "mode": "research_handoff_only",
+  "inputs": [
+    {
+      "path": "01-completed.md",
+      "sha256": "d255903cf7f557c419812db738dcfb83d723944271f3111aca6a0dc104528a3d",
+      "read_in_full": true
+    },
+    {
+      "path": "02-remaining.md",
+      "sha256": "f6616519c43d025856c04e3de1da0c1965e6890c5464c35f155673243568b732",
+      "read_in_full": true
+    },
+    {
+      "path": "03-solutions.md",
+      "sha256": "71d46b79b760ac516aad0b7db5d14b2629ebb21f405eba5e1ab4a44c1b312366",
+      "read_in_full": true
+    }
+  ],
+  "checks": {
+    "all_followup_ids_present": true,
+    "customer_matrix_referenced": true,
+    "readiness_coverage_referenced": true,
+    "correct_head": true,
+    "correct_upstream": true,
+    "target_files_present": true,
+    "secret_patterns_absent": true
+  },
+  "scope": {
+    "G01_G06_remain_closed": true,
+    "F01_F02_required_fixes": true,
+    "F03_facts_and_configuration_not_fabricated": true,
+    "F04_acceptance_separate_from_unit_pass": true,
+    "mileage_remains_explicitly_deferred": true,
+    "local_commit_push_authorized_with_explicit_remainder": true,
+    "automatic_production_rollout_not_planned": true,
+    "production_business_mutations_not_planned": true,
+    "local_production_worker_not_restarted": true
+  },
+  "output_files": [
+    {
+      "path": "HANDOFF.md",
+      "sha256": "4dd3ccfc73ea50c8535dbf37c101193914694e2841599052fde089476a8c9c82",
+      "bytes": 21140
+    },
+    {
+      "path": "04-new-chat-prompt.txt",
+      "sha256": "b7f4386e1546289bfa19cd493c2ca34e7ef36c686a6ad9aed60d59692e86f002",
+      "bytes": 10983
+    }
+  ],
+  "thread_creation": {
+    "performed": false,
+    "owner": "root",
+    "requested_model": "gpt-6-astra",
+    "thinking": "ultra",
+    "projectId": "4dcee891-6d9f-4567-800f-0f42e4d2ee30",
+    "environment": "local"
+  },
+  "application_changed": false,
+  "working_data_changed": false,
+  "git_mutation_performed": false
+}

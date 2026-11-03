@@ -1,0 +1,1529 @@
+{
+  "captured_at": "2026-11-02T10:50:05.816733+00:00",
+  "head": "677636891dcfc13109d0467f9b3448af3a709daa",
+  "branch": "codex/logistics-analytics",
+  "upstream": "origin/codex/logistics-analytics",
+  "status_before_audit": [
+    " M docs/Подключения.md",
+    " M docs/Руководство-заказчика.md",
+    "?? docs/compact-tables-20261029/check.cjs",
+    "?? docs/compact-tables-20261029/comparison-1440.png",
+    "?? docs/compact-tables-20261029/comparison-390.png",
+    "?? docs/compact-tables-20261029/comparison-header.png",
+    "?? docs/compact-tables-20261029/filter-placeholders.png",
+    "?? docs/compact-tables-20261029/fuel-inline-dates.png",
+    "?? docs/compact-tables-20261029/months-mobile.png",
+    "?? docs/compact-tables-20261029/results.json",
+    "?? docs/compact-tables-20261029/statistics-1440.png",
+    "?? docs/compact-tables-20261029/statistics-390.png",
+    "?? docs/downtime-control-20261029/changes.patch",
+    "?? docs/downtime-control-20261029/check.cjs",
+    "?? docs/downtime-control-20261029/chromium.png",
+    "?? docs/downtime-control-20261029/results.json",
+    "?? docs/downtime-control-20261029/webkit.png",
+    "?? docs/downtime-control-20261029/workspace.js.before",
+    "?? docs/gap-audit-20261102/00-COORDINATION.md",
+    "?? docs/gap-audit-20261102/00-baseline.json",
+    "?? docs/gap-audit-20261102/00-final-manifest.json",
+    "?? docs/gap-audit-20261102/00-preservation-check.json",
+    "?? docs/gap-audit-20261102/00-sources.json",
+    "?? docs/gap-audit-20261102/01-history-coverage.json",
+    "?? docs/gap-audit-20261102/01-history.md",
+    "?? docs/gap-audit-20261102/02-input-summary.json",
+    "?? docs/gap-audit-20261102/02-planner-powerquery.txt",
+    "?? docs/gap-audit-20261102/02-requirements.md",
+    "?? docs/gap-audit-20261102/02-stats-powerquery.txt",
+    "?? docs/gap-audit-20261102/02-workbook-structure.json",
+    "?? docs/gap-audit-20261102/03-current-evidence.json",
+    "?? docs/gap-audit-20261102/03-functionality.md",
+    "?? docs/gap-audit-20261102/03-probes.json",
+    "?? docs/gap-audit-20261102/03-refresh-evidence.json",
+    "?? docs/gap-audit-20261102/03-test-evidence.json",
+    "?? docs/gap-audit-20261102/04-gaps.md",
+    "?? docs/gap-audit-20261102/04-independent-probes.json",
+    "?? docs/gap-audit-20261102/05-report-fields.png",
+    "?? docs/gap-audit-20261102/05-solution-coverage.json",
+    "?? docs/gap-audit-20261102/05-solutions.md",
+    "?? docs/gap-audit-20261102/05-tt-mileage-research.md",
+    "?? docs/gap-audit-20261102/HANDOFF.md",
+    "?? docs/gap-audit-20261102/assets/planner_relationships.jpg",
+    "?? docs/gap-audit-20261102/assets/statistics_relationships.jpg",
+    "?? docs/implementation-20261102/RESULTS.md",
+    "?? docs/implementation-20261102/TT-MILEAGE-NEXT-STEP.md",
+    "?? docs/implementation-20261102/acceptance-matrix.md",
+    "?? docs/implementation-20261102/browser-geometry.json",
+    "?? docs/implementation-20261102/browser-roles.json",
+    "?? docs/implementation-20261102/browser-sidebar.json",
+    "?? docs/implementation-20261102/comparison-390.png",
+    "?? docs/implementation-20261102/comparison-desktop.png",
+    "?? docs/implementation-20261102/comparison-mobile.png",
+    "?? docs/implementation-20261102/data-and-deployment.md",
+    "?? docs/implementation-20261102/delete-conflict.png",
+    "?? docs/implementation-20261102/diff-audit.md",
+    "?? docs/implementation-20261102/evidence-desktop.png",
+    "?? docs/implementation-20261102/evidence.md",
+    "?? docs/implementation-20261102/integrity.md",
+    "?? docs/implementation-20261102/migration-preservation.json",
+    "?? docs/implementation-20261102/mileage-source-probe.json",
+    "?? docs/implementation-20261102/mileage-template.csv",
+    "?? docs/implementation-20261102/reporting.md",
+    "?? docs/implementation-20261102/shift-form-320.png",
+    "?? docs/implementation-20261102/source-after-restart.json",
+    "?? docs/implementation-20261102/source-probe-1.json",
+    "?? docs/implementation-20261102/source-probe-2.json",
+    "?? docs/layout-audit-20261029/RESULT.md",
+    "?? docs/layout-audit-20261029/REVERTED.md",
+    "?? docs/layout-audit-20261029/audit-integrations.cjs",
+    "?? docs/layout-audit-20261029/audit-plan.cjs",
+    "?? docs/layout-audit-20261029/audit.cjs",
+    "?? docs/layout-audit-20261029/changes.patch",
+    "?? docs/layout-audit-20261029/chromium-orders.png",
+    "?? docs/layout-audit-20261029/chromium-planreport.png",
+    "?? docs/layout-audit-20261029/integration-results.json",
+    "?? docs/layout-audit-20261029/main.js.before",
+    "?? docs/layout-audit-20261029/plan-results.json",
+    "?? docs/layout-audit-20261029/results.json",
+    "?? docs/layout-audit-20261029/source-sha256.json",
+    "?? docs/layout-audit-20261029/style.css.before",
+    "?? docs/layout-audit-20261029/ui.js.before",
+    "?? docs/layout-audit-20261029/webkit-orders.png",
+    "?? docs/layout-audit-20261029/workspace.js.before",
+    "?? docs/layout-right-20261029/REVERTED.md",
+    "?? docs/layout-right-20261029/audit.cjs",
+    "?? docs/layout-right-20261029/changes.patch",
+    "?? docs/layout-right-20261029/chromium-downtime.png",
+    "?? docs/layout-right-20261029/chromium-orders.png",
+    "?? docs/layout-right-20261029/results.json",
+    "?? docs/layout-right-20261029/style.css.before",
+    "?? docs/layout-right-20261029/webkit-downtime.png",
+    "?? docs/layout-right-20261029/webkit-orders.png",
+    "?? docs/server-autonomy-20261030/ALERTS.md",
+    "?? docs/server-autonomy-20261030/DEPLOYMENT.md",
+    "?? docs/server-autonomy-20261030/RESULT.md",
+    "?? docs/server-autonomy-20261030/browser-check.json",
+    "?? docs/server-autonomy-20261030/chromium-1440.png",
+    "?? docs/server-autonomy-20261030/chromium-390.png",
+    "?? docs/server-autonomy-20261030/data-verification.json",
+    "?? docs/server-autonomy-20261030/live-cycles.json",
+    "?? docs/server-autonomy-20261030/live-restart.json",
+    "?? docs/server-autonomy-20261030/webkit-1440.png",
+    "?? docs/server-autonomy-20261030/webkit-390.png",
+    "?? docs/transtrade-investigation-20261029/REPORT.md",
+    "?? docs/transtrade-investigation-20261029/SUPPORT-REQUEST.md",
+    "?? docs/transtrade-investigation-20261029/evidence.json",
+    "?? docs/transtrade-sync-20261030/RESULT.md",
+    "?? docs/transtrade-sync-20261030/SUPPORT-FOLLOWUP.md",
+    "?? docs/transtrade-sync-20261030/check-ui.cjs",
+    "?? docs/transtrade-sync-20261030/evidence.json",
+    "?? docs/transtrade-sync-20261030/final-verification.json",
+    "?? docs/transtrade-sync-20261030/history-chromium-1440.png",
+    "?? docs/transtrade-sync-20261030/history-chromium-390.png",
+    "?? docs/transtrade-sync-20261030/history-webkit-1440.png",
+    "?? docs/transtrade-sync-20261030/history-webkit-390.png",
+    "?? docs/transtrade-sync-20261030/repeat.json",
+    "?? docs/transtrade-sync-20261030/ui-results.json",
+    "?? docs/ui-followup-20261029/REQUIREMENTS.md",
+    "?? docs/ui-followup-20261029/RESULT.md",
+    "?? docs/ui-followup-20261029/coverage-evidence.json",
+    "?? docs/ui-followup-20261029/directories-1440.jpg",
+    "?? docs/ui-followup-20261029/economics-help.jpg",
+    "?? docs/ui-followup-20261029/excel-verification.json",
+    "?? docs/ui-followup-20261029/guide-320.jpg",
+    "?? docs/ui-followup-20261029/interaction-checks.json",
+    "?? docs/ui-followup-20261029/refresh-expanded.jpg",
+    "?? docs/ui-followup-20261029/responsive-checks.json"
+  ],
+  "files": [
+    {
+      "path": ".gitignore",
+      "size": 162,
+      "sha256": "9c438f709e2e573c13f26d837a59f0574e46cca05b9c9c748902a7fcf9e52043"
+    },
+    {
+      "path": "README.md",
+      "size": 19465,
+      "sha256": "7b3cc4d095d6078572c394574a48ef03fbbdd22f341ae1e39112cfdf70ea960a"
+    },
+    {
+      "path": "app/__init__.py",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "app/alerts.py",
+      "size": 19228,
+      "sha256": "096b1dce2a891e596d681b44066d716e6a24c22f5edb36bc4ee66ad14a23be20"
+    },
+    {
+      "path": "app/alertwatch.py",
+      "size": 2166,
+      "sha256": "a86eacee475169d52645f556bd94ea3310a4147028b9f3af1ed4366db866a498"
+    },
+    {
+      "path": "app/analytics.py",
+      "size": 10277,
+      "sha256": "828ab0c712ed112b7a657c20d17097c39ee41c8fa3f3aca03bddfd234986dddd"
+    },
+    {
+      "path": "app/autosync.py",
+      "size": 19833,
+      "sha256": "6e54703bf67d844e076bfd12cca4e3cf85957d6a019c6bd8caf2d6ebd6def720"
+    },
+    {
+      "path": "app/catchup.py",
+      "size": 17194,
+      "sha256": "2479361e9d963c3b10a723ec428792521e3f9c4aef705f4105a046935a3dc803"
+    },
+    {
+      "path": "app/connections.py",
+      "size": 8733,
+      "sha256": "5ac61c5b5cd2052d0a558cbe13d409abaebfda9042a9d76bd4f8a629fad3286e"
+    },
+    {
+      "path": "app/coverage.py",
+      "size": 3426,
+      "sha256": "39246da5cf32af109faa1cf59909118827274e64183eef0fa762849c2dcce89e"
+    },
+    {
+      "path": "app/evidence_routes.py",
+      "size": 2613,
+      "sha256": "8482b692662debc329bbe08502a6ee37d9fb0075a154b4a07e94582a43f45b8f"
+    },
+    {
+      "path": "app/fuel_history.py",
+      "size": 5876,
+      "sha256": "25508d9caa735d1798a45dc22153973a14693922e147d521e9175f66d8155189"
+    },
+    {
+      "path": "app/health.py",
+      "size": 2600,
+      "sha256": "7776a9c3682b5d034e4d2d1fd8f7dac4ef2f7a86da69c4c518dc18454df075d4"
+    },
+    {
+      "path": "app/importer.py",
+      "size": 10322,
+      "sha256": "919370b80bf304b4beb1ef22aeb13199015533730122d8113de3dae73e5cd89b"
+    },
+    {
+      "path": "app/locks.py",
+      "size": 1077,
+      "sha256": "6037b2f7a2b271bd039e7f43cd4e42220f7fa461895c18065418c122d2c87fc8"
+    },
+    {
+      "path": "app/mileage.py",
+      "size": 9743,
+      "sha256": "f27a44248be92b888a67872bd5d89eaa0a8403709361f7badf086b60cadd448b"
+    },
+    {
+      "path": "app/monitoring.py",
+      "size": 7639,
+      "sha256": "20a53a8720ed57e4ab9ebd9dac0da03313a105b4422355c538b4a8b17cb58e02"
+    },
+    {
+      "path": "app/monitoring_history.py",
+      "size": 14751,
+      "sha256": "d60407c20dda0393057de96aaa62ef7bfb362071bf23673242e09d36831d3508"
+    },
+    {
+      "path": "app/neftm.py",
+      "size": 5223,
+      "sha256": "3f7be035c10e986ffc9779a20f8220b6ec2c140d700195874adc7491be96a48a"
+    },
+    {
+      "path": "app/refresh.py",
+      "size": 16133,
+      "sha256": "6d0debd2d88f88377fe3a54c85dfbebc50c535a9a552cbbad3b5c70e8040eb6c"
+    },
+    {
+      "path": "app/reports.py",
+      "size": 10249,
+      "sha256": "fc299be80ac188dcee3dd15891819ff261528acb41f3933b3f1314221100e233"
+    },
+    {
+      "path": "app/rosneft.py",
+      "size": 7490,
+      "sha256": "93fbd3fca03609780cabacd1da4e98f5e5fb9d85e3687054c63f003272bb61dd"
+    },
+    {
+      "path": "app/server.py",
+      "size": 21893,
+      "sha256": "a2d38634e45924e7206086a6397dfc8b11b96e794569872e38a381bb1b633463"
+    },
+    {
+      "path": "app/shifts.py",
+      "size": 7598,
+      "sha256": "20548dadbe3ea98f2c83734dede5c616ade41f220a86a665c87c86ee6d403b45"
+    },
+    {
+      "path": "app/source_errors.py",
+      "size": 2756,
+      "sha256": "bfd29f2b5135be73374f0ebcee7811730e1ca97633489ec6ea6be853543c9d6b"
+    },
+    {
+      "path": "app/static/evidence.js",
+      "size": 10859,
+      "sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763"
+    },
+    {
+      "path": "app/static/index.html",
+      "size": 729,
+      "sha256": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63"
+    },
+    {
+      "path": "app/static/main.js",
+      "size": 93131,
+      "sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b"
+    },
+    {
+      "path": "app/static/motion.js",
+      "size": 6405,
+      "sha256": "abe432fa35af362376ea8451b78aa123d7db8b73fa20480296918b175d306986"
+    },
+    {
+      "path": "app/static/planviews.js",
+      "size": 2281,
+      "sha256": "e2aaa369a150c93b2fde3f28ccff1352e08567649c992ce82b71d2c32ca8a973"
+    },
+    {
+      "path": "app/static/refresh.js",
+      "size": 11339,
+      "sha256": "bb1463756bc6e921e3cb7dbc237ab29ae0ee7ec7d90b5d13c84db70d5becf7cf"
+    },
+    {
+      "path": "app/static/style.css",
+      "size": 36754,
+      "sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee"
+    },
+    {
+      "path": "app/static/ui.js",
+      "size": 75850,
+      "sha256": "7c19416432f63d193a1e7d4155e9b7550a423f69b23ad3010ee1076d7185cc6c"
+    },
+    {
+      "path": "app/static/workspace.js",
+      "size": 43043,
+      "sha256": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc"
+    },
+    {
+      "path": "app/transtrade.py",
+      "size": 28043,
+      "sha256": "efc8a77bd5229e7b28efc87f88069af70a43a38cffb7223285b57c2708286e6f"
+    },
+    {
+      "path": "app/worker.py",
+      "size": 3240,
+      "sha256": "918e00c76a65d7a691333d0e9cbf622310fc527fae0d33bdb1374a807fa82f0b"
+    },
+    {
+      "path": "app/workspace.py",
+      "size": 34294,
+      "sha256": "913e92516dd06c032081d44e703dc7cde7801c7caa2c49d44a44f31d5ab4e6c4"
+    },
+    {
+      "path": "deploy/backup.py",
+      "size": 1912,
+      "sha256": "885ae52c9726a737bcc37600b1847e427aed95ed4d2ef62ae0da0297d6aa8664"
+    },
+    {
+      "path": "deploy/environment.example",
+      "size": 621,
+      "sha256": "78b61594eafd1230f237f012865bd6eeeb77eeb3e97ccedfced67cd664fe51e6"
+    },
+    {
+      "path": "deploy/fleet-alerts.service",
+      "size": 652,
+      "sha256": "b6bd300f089f1e981220f0c1f937e3640c83b5cc12f1da0d95bfca72542a1ee2"
+    },
+    {
+      "path": "deploy/fleet-alerts.timer",
+      "size": 194,
+      "sha256": "0ccd35ccbe6babbe271404df139458e71b5a73e01f90999a2875ceaef7f3646e"
+    },
+    {
+      "path": "deploy/fleet-backup.service",
+      "size": 716,
+      "sha256": "e9f6c946e55de2796418a7b296e76d132936e0b2acac1e5316da323f0ef8d16a"
+    },
+    {
+      "path": "deploy/fleet-backup.timer",
+      "size": 307,
+      "sha256": "d895fc38c2ddb852bbc05c2b31525f3ea56042bb7b73a18119645f0f6e9f365f"
+    },
+    {
+      "path": "deploy/fleet-web.service",
+      "size": 864,
+      "sha256": "7709da98ed03eb76c96f7b1b8dd0d024a7abf463ba956495e33e53857b9e2da8"
+    },
+    {
+      "path": "deploy/fleet-worker.service",
+      "size": 894,
+      "sha256": "a81d36b9f824c322709f91859fce9a376e36f1a0040c19d2f4b52af42c810cc6"
+    },
+    {
+      "path": "deploy/full_backup.py",
+      "size": 11789,
+      "sha256": "15bc8ee2869943441e17d9af4c200d5c087c5f09d32474acbb831792b5c3b5b1"
+    },
+    {
+      "path": "deploy/nginx.example.conf",
+      "size": 1005,
+      "sha256": "56710bbe812f1cdb55d9fe878039cbb87918ecaa30b51103a5d5a797cea2b0cb"
+    },
+    {
+      "path": "deploy/preflight.py",
+      "size": 4143,
+      "sha256": "1387f37a827077c2075a715e459cfbbfbc7c44cd51551931167dd0e24145cef6"
+    },
+    {
+      "path": "docs/Excel-карта.md",
+      "size": 8917,
+      "sha256": "0a2c60deb1d2b0a05e55cc7df6c76640c1da0a33e0109935c43b9f8ebe8722f1"
+    },
+    {
+      "path": "docs/compact-tables-20261029/check.cjs",
+      "size": 2621,
+      "sha256": "1193f359765142fd25d88dcac40bc8bc571bdad938e2f977ec666392f21ca0d7"
+    },
+    {
+      "path": "docs/compact-tables-20261029/comparison-1440.png",
+      "size": 154339,
+      "sha256": "f51cb1d528d64b77fd18344309ffd8588dadc70b9caae2db6e90b4903ae4ffec"
+    },
+    {
+      "path": "docs/compact-tables-20261029/comparison-390.png",
+      "size": 63547,
+      "sha256": "9bf5133b256ab19e9a1e9322430487628b6ca96ae2dec9ffc328074122b85018"
+    },
+    {
+      "path": "docs/compact-tables-20261029/comparison-header.png",
+      "size": 7852,
+      "sha256": "9d020f9f48b0078d49f927f8a70eebce5b3df8f618779b681c23e9914848ab18"
+    },
+    {
+      "path": "docs/compact-tables-20261029/filter-placeholders.png",
+      "size": 17169,
+      "sha256": "ffb9553f13ddb823146bb125c23917d15a99ab08db4242de192abc31e4642982"
+    },
+    {
+      "path": "docs/compact-tables-20261029/fuel-inline-dates.png",
+      "size": 209288,
+      "sha256": "23f2145f2f80f2c5a219a6001ae4cc52de40ef2e744889246a52dc8da5a81853"
+    },
+    {
+      "path": "docs/compact-tables-20261029/months-mobile.png",
+      "size": 7549,
+      "sha256": "1256316665c894c7ffaa1937cdf5ae6081411e64ea8717baab49019cf3a4c49e"
+    },
+    {
+      "path": "docs/compact-tables-20261029/results.json",
+      "size": 14551,
+      "sha256": "825f4655c2fb6b1d2e6f774d1a1988a036680286652ef4e3d51661d66587dbce"
+    },
+    {
+      "path": "docs/compact-tables-20261029/statistics-1440.png",
+      "size": 167549,
+      "sha256": "05c0bfc09be2fa57bd967486f0873fb521e17d824ea387307078bedf4351131e"
+    },
+    {
+      "path": "docs/compact-tables-20261029/statistics-390.png",
+      "size": 64572,
+      "sha256": "bc7b51d287f8770ff70e34033cdefa6e81a59e6c9072586f175f27eda1752c89"
+    },
+    {
+      "path": "docs/deploy-20261102/DEPLOYMENT.md",
+      "size": 11709,
+      "sha256": "e0e5f4d082bb6b1b13261aef83c1313fe50762c0b6cfa17f81b189ad61a38dd4"
+    },
+    {
+      "path": "docs/deploy-20261102/LOGIN-REFRESH.md",
+      "size": 2267,
+      "sha256": "a8a71202bbb808036ee0d663bd50aee558faf4cb4a0c68a5950a4a527c7b9fff"
+    },
+    {
+      "path": "docs/deploy-20261102/charterstats.nginx.conf",
+      "size": 1462,
+      "sha256": "6bdf83b050c6c8e27bdd26400aa03e3e4892c86f99b2ef8b6bd69205930978af"
+    },
+    {
+      "path": "docs/deploy-20261102/fleet-certbot-renew.service",
+      "size": 352,
+      "sha256": "9809b97fd977e6463373a3802f9879494576db78590db999266c58a0b372662c"
+    },
+    {
+      "path": "docs/deploy-20261102/fleet-certbot-renew.timer",
+      "size": 222,
+      "sha256": "d6eef2f6d9c3c1da2f0c584a9b74fb84c9a36b1c85c3c46c26a927b8369122e9"
+    },
+    {
+      "path": "docs/deploy-20261102/fleet-nginx.sh",
+      "size": 160,
+      "sha256": "a1e05bf6581d8ce634f94684e56578406ad3c207de449bce69e5c716eaaf0184"
+    },
+    {
+      "path": "docs/downtime-control-20261029/changes.patch",
+      "size": 5508,
+      "sha256": "1e7ceafee0f05488e1860edda06cf6e7093c320b4042a12e0a594b21c7466737"
+    },
+    {
+      "path": "docs/downtime-control-20261029/check.cjs",
+      "size": 2431,
+      "sha256": "2d5296dd7792f906b2c63dae4d15effd828cd284ac56696916c45ce0aa2ec4c0"
+    },
+    {
+      "path": "docs/downtime-control-20261029/chromium.png",
+      "size": 144638,
+      "sha256": "f8a87454d6d1f5b9d207f51f254c9412e371d4271b2dc3f62630ad2fafc34cf0"
+    },
+    {
+      "path": "docs/downtime-control-20261029/results.json",
+      "size": 922,
+      "sha256": "8868e13080c79d1359f5a57d4f9f0ff170f05d196eba8e6aa7dd75c003e3e489"
+    },
+    {
+      "path": "docs/downtime-control-20261029/webkit.png",
+      "size": 185953,
+      "sha256": "8c2c2eb8e8dc179adff70fb3f683b3ff0df022f31de7ddb2e144c14d2c4ce574"
+    },
+    {
+      "path": "docs/downtime-control-20261029/workspace.js.before",
+      "size": 35692,
+      "sha256": "86eb2ed817f1a8c379e96705a86556358ebe22d1a1959bdb8b76780fa80a0dc5"
+    },
+    {
+      "path": "docs/excel-audit-20261028/IMPLEMENTATION.md",
+      "size": 14877,
+      "sha256": "f3a9bad6a45d6c4a6976188b93d4663200dfe895d9eea666dd2e4bd14a08a317"
+    },
+    {
+      "path": "docs/excel-audit-20261028/README.md",
+      "size": 36700,
+      "sha256": "f18ee6ac87b0d21f421017b1d21f6b2af3edf4ec8933e405d7a9211d0625a250"
+    },
+    {
+      "path": "docs/excel-audit-20261028/comparison-fixed.png",
+      "size": 55350,
+      "sha256": "46199d89f90f2bfe027dab5463e7470190ca9a095249dc38911e8c1f9d972073"
+    },
+    {
+      "path": "docs/excel-audit-20261028/implementation-check.json",
+      "size": 1005,
+      "sha256": "3e521c7a03116020f6e8ac923fd30d0ac8e03102b046837d27461b51d9759ecc"
+    },
+    {
+      "path": "docs/excel-audit-20261028/mismatched-periods.png",
+      "size": 72821,
+      "sha256": "a29e81679923b21957a322255ac20f494b8d14aa66cabe31bc16355f6704e581"
+    },
+    {
+      "path": "docs/excel-audit-20261028/no-route-plans.png",
+      "size": 85624,
+      "sha256": "3f826318c99420714fd158c12fe88c9da812541834c020b32a33e13939a536c1"
+    },
+    {
+      "path": "docs/fixed-header-20261027/README.md",
+      "size": 3616,
+      "sha256": "be4d2356b246dc5c6e8d06d54931c2933a170004d429cbd38d4e3fd85468faae"
+    },
+    {
+      "path": "docs/fixed-header-20261027/result.png",
+      "size": 75095,
+      "sha256": "6535ee7e805c316b39e1bd179e938821c2d2b79e8f6e28916c871029dc02018d"
+    },
+    {
+      "path": "docs/gap-audit-20261102/00-COORDINATION.md",
+      "size": 3786,
+      "sha256": "46a209a00a74846ba880e5626c096baf69b2955a2d8913c76c17d337618ced67"
+    },
+    {
+      "path": "docs/gap-audit-20261102/00-baseline.json",
+      "size": 24815,
+      "sha256": "35086530e15ad422934d0e55b481cc5c4deab7c02f198844f219614bd6d9a207"
+    },
+    {
+      "path": "docs/gap-audit-20261102/00-final-manifest.json",
+      "size": 4123,
+      "sha256": "59e8ecb1592279d2a216110e1275102e0201c25fdd3f171b5bbe5fe63da9f81e"
+    },
+    {
+      "path": "docs/gap-audit-20261102/00-preservation-check.json",
+      "size": 916,
+      "sha256": "a8f1371997994839a633227ceef609c46bbde060bf5c6450bcabeb1c343fd7ad"
+    },
+    {
+      "path": "docs/gap-audit-20261102/00-sources.json",
+      "size": 1839,
+      "sha256": "ca98d87a81a3445ced65283a3173b00ce2a9b758fbf5c460e3557e7e81fc69a2"
+    },
+    {
+      "path": "docs/gap-audit-20261102/01-history-coverage.json",
+      "size": 39150,
+      "sha256": "3f309add26a6d37292491fce8d90fbc5dd4a5077a72b9011d2d4d59512496b8e"
+    },
+    {
+      "path": "docs/gap-audit-20261102/01-history.md",
+      "size": 35369,
+      "sha256": "89e21f1b4002f006bc5e26015c3ef7e7a48c554d438edae7b21bb9d1ae8701fe"
+    },
+    {
+      "path": "docs/gap-audit-20261102/02-input-summary.json",
+      "size": 1377,
+      "sha256": "2b8469319d565a2ce1719e62bcc822746795b1f0fd045983e06bd69e877d2153"
+    },
+    {
+      "path": "docs/gap-audit-20261102/02-planner-powerquery.txt",
+      "size": 2842,
+      "sha256": "269361ba530f59d7d4db68e3cd99c7c354fa0c4289aee79a7842562daddf4f9f"
+    },
+    {
+      "path": "docs/gap-audit-20261102/02-requirements.md",
+      "size": 42245,
+      "sha256": "285c793b18fd42c2f00678c1625c7b8a2dd41f2b6d0f795ce5eddbca57883780"
+    },
+    {
+      "path": "docs/gap-audit-20261102/02-stats-powerquery.txt",
+      "size": 29958,
+      "sha256": "6637e3414018cf34e72c4510510b6006e72ebe4818e424649c7be8f2e0b907eb"
+    },
+    {
+      "path": "docs/gap-audit-20261102/02-workbook-structure.json",
+      "size": 85836,
+      "sha256": "db5b4c59ae463a5eb46c084f90f16c795a3f0dc0b2ee61b602ceb8faeb1e56bd"
+    },
+    {
+      "path": "docs/gap-audit-20261102/03-current-evidence.json",
+      "size": 4205,
+      "sha256": "3c272c9a9ad572fb007753a0305486f9735e09d85e58db4dc024276ceaa2b274"
+    },
+    {
+      "path": "docs/gap-audit-20261102/03-functionality.md",
+      "size": 41380,
+      "sha256": "993c198d0effaeb5ed0d8cdb767472bb52808eb638489a7db3edef3b260d4641"
+    },
+    {
+      "path": "docs/gap-audit-20261102/03-probes.json",
+      "size": 1620,
+      "sha256": "476ad32a3b671f6afb3d72d1bc49643f4ad4ca2c6f1f3475d1e23dc695fd0937"
+    },
+    {
+      "path": "docs/gap-audit-20261102/03-refresh-evidence.json",
+      "size": 3514,
+      "sha256": "df011e13a4fccc90a148f04101df0af82472c0bb3cdff5c0df2a81b40e26bbe6"
+    },
+    {
+      "path": "docs/gap-audit-20261102/03-test-evidence.json",
+      "size": 1153,
+      "sha256": "1ed055a7bf85200006c99eaba62c325c0394696eeb9bc4a6cff6e2240b1e4fca"
+    },
+    {
+      "path": "docs/gap-audit-20261102/04-gaps.md",
+      "size": 44616,
+      "sha256": "a3a8cb86dea8a4d37d0d2e935d18296521c4b26cb5905b6b3c540162aab69b3e"
+    },
+    {
+      "path": "docs/gap-audit-20261102/04-independent-probes.json",
+      "size": 1773,
+      "sha256": "9dfe4f8f3778f6a14ce9603d46b4ad75d52f94b4d96f7344e63217f583f46583"
+    },
+    {
+      "path": "docs/gap-audit-20261102/05-report-fields.png",
+      "size": 11188,
+      "sha256": "1562e66f66a8abb8845e51e9512dd15733bc3ea3d08f785d7f77592c96af2d65"
+    },
+    {
+      "path": "docs/gap-audit-20261102/05-solution-coverage.json",
+      "size": 2956,
+      "sha256": "603e4e2597e5f1e3813d3b76e2789108645d4a2734b05d08854ca74c4f24ce17"
+    },
+    {
+      "path": "docs/gap-audit-20261102/05-solutions.md",
+      "size": 63300,
+      "sha256": "ef2e7377d3879590ab414453534f20f198fdae3235be6a9fe15c733a288635f4"
+    },
+    {
+      "path": "docs/gap-audit-20261102/05-tt-mileage-research.md",
+      "size": 18500,
+      "sha256": "48ae7f6c783df4526d4878438909985a38a1c870ef908df9ee24ac2bdbe06719"
+    },
+    {
+      "path": "docs/gap-audit-20261102/HANDOFF.md",
+      "size": 17292,
+      "sha256": "6a7210d9007196e10d97681dd5e7b526bbce7d98446a87f01a1bb048f3b9acc4"
+    },
+    {
+      "path": "docs/gap-audit-20261102/assets/planner_relationships.jpg",
+      "size": 64493,
+      "sha256": "3b7f58c09128448d1435cb461fce33913beac11eebc6a235743d5668cc6eebd7"
+    },
+    {
+      "path": "docs/gap-audit-20261102/assets/statistics_relationships.jpg",
+      "size": 118541,
+      "sha256": "63da31ca3ad9df20aacc848ac6bdb8edecf46d78dbf2217c534f70e79a0e76ac"
+    },
+    {
+      "path": "docs/implementation-20261102/RESULTS.md",
+      "size": 18415,
+      "sha256": "1b6ad7a3cbceab0b9d02962e15e7cf42eb5320fdace13cac2b8e9529757d561b"
+    },
+    {
+      "path": "docs/implementation-20261102/TT-MILEAGE-NEXT-STEP.md",
+      "size": 10737,
+      "sha256": "7d970179b8592cd0535a3cac92e35a61895a2ff9b07b8e79c7992401a8ab9af1"
+    },
+    {
+      "path": "docs/implementation-20261102/acceptance-matrix.md",
+      "size": 37460,
+      "sha256": "02fdad4a49eea013446b9547a5c877cfa6deeec6bfe7ee481b4a57c10ec835b5"
+    },
+    {
+      "path": "docs/implementation-20261102/browser-geometry.json",
+      "size": 7295,
+      "sha256": "9c33e2f664636284e8bba639851c36980c5c7e0c014c7995a2daed50419683d2"
+    },
+    {
+      "path": "docs/implementation-20261102/browser-roles.json",
+      "size": 6998,
+      "sha256": "ed5b1fc33e487496560440c0ba55051b1631e8a51356323e6a8a0669301295d3"
+    },
+    {
+      "path": "docs/implementation-20261102/browser-sidebar.json",
+      "size": 329,
+      "sha256": "a36ec45facdf10876cdc7f9f10e580f518791f38d131cda646c80ebac0e286bf"
+    },
+    {
+      "path": "docs/implementation-20261102/comparison-390.png",
+      "size": 56951,
+      "sha256": "39971bb2076b755d0ecf47a4685ad3fa2645c9b20d6b166e929d4aeb87dbabf9"
+    },
+    {
+      "path": "docs/implementation-20261102/comparison-desktop.png",
+      "size": 163837,
+      "sha256": "a62b8af4e7028f3d38bb45d5f3e1fb404b97f85132b489f758215b6198e699ec"
+    },
+    {
+      "path": "docs/implementation-20261102/comparison-mobile.png",
+      "size": 90462,
+      "sha256": "38648bb333b30e8799ecfc9f9c531e935fe7f07a2677e0d35b624cad275e2d8c"
+    },
+    {
+      "path": "docs/implementation-20261102/data-and-deployment.md",
+      "size": 8287,
+      "sha256": "a59fa22ad36d30a44c05719c704c42f8765f8df588fc28afbcf989751c78325a"
+    },
+    {
+      "path": "docs/implementation-20261102/delete-conflict.png",
+      "size": 109198,
+      "sha256": "b7d394ce4d3aafa35ac5887f45c33a3d8d4b4afbd99a69355d12e1c057145420"
+    },
+    {
+      "path": "docs/implementation-20261102/diff-audit.md",
+      "size": 13784,
+      "sha256": "e986a97bbbda597b0a5d399a44ab365d7295c08ca09957692879fd581fcbda78"
+    },
+    {
+      "path": "docs/implementation-20261102/evidence-desktop.png",
+      "size": 122594,
+      "sha256": "cab2d458726676221b560c28467fbb084f0c12c750253d8f4d9d1db12d06a597"
+    },
+    {
+      "path": "docs/implementation-20261102/evidence.md",
+      "size": 14920,
+      "sha256": "e3dea0a6cbe28a75ad00749c1a864df8d9cef23ebeb81d138a8b1553c412e4a9"
+    },
+    {
+      "path": "docs/implementation-20261102/integrity.md",
+      "size": 4701,
+      "sha256": "c485769a87a337d95fae9b96b05bdb50668031f763371b6a6febad6e4d94ef57"
+    },
+    {
+      "path": "docs/implementation-20261102/migration-preservation.json",
+      "size": 2126,
+      "sha256": "41dc8204cd54503adb0db481e8afd405d9152ca586d515d91b040942b74067c3"
+    },
+    {
+      "path": "docs/implementation-20261102/mileage-source-probe.json",
+      "size": 1060,
+      "sha256": "127720e9b40caa4accb12e8c632b328bbb845c494133309c65452d34c319a9d3"
+    },
+    {
+      "path": "docs/implementation-20261102/mileage-template.csv",
+      "size": 35,
+      "sha256": "dbc9706e206b6ed0e5cbbb5185755e67396c90d4b80cfe8d1aab1564eb2a30db"
+    },
+    {
+      "path": "docs/implementation-20261102/reporting.md",
+      "size": 8198,
+      "sha256": "67962e45f9eaa81ee4c831dba59bb637e0ec5c05c7cc8e20e45e14c469ced8ed"
+    },
+    {
+      "path": "docs/implementation-20261102/shift-form-320.png",
+      "size": 49099,
+      "sha256": "d9535714b91ed0bba3e0e1270c61fb66e6e82e9f460fcc395bde1d4826de2f80"
+    },
+    {
+      "path": "docs/implementation-20261102/source-after-restart.json",
+      "size": 2837,
+      "sha256": "ed7b2bced8449fac4a913d43b757aa90dd958b3a28d292ff73a49619c9d620e1"
+    },
+    {
+      "path": "docs/implementation-20261102/source-probe-1.json",
+      "size": 602,
+      "sha256": "d82556102b3a2182eb93c44e905f0faeab66097bf3c733b88f2607526c30f656"
+    },
+    {
+      "path": "docs/implementation-20261102/source-probe-2.json",
+      "size": 3314,
+      "sha256": "f28cf15f4f823a2f3c5b23d7bb1b52de4f7fd55169530dfdff8ba5c72fd28980"
+    },
+    {
+      "path": "docs/layout-audit-20261029/RESULT.md",
+      "size": 3897,
+      "sha256": "3f1a646856a11dc5baaae01483eaec7c12057448485a83e17a6e7f5c9aabb0d7"
+    },
+    {
+      "path": "docs/layout-audit-20261029/REVERTED.md",
+      "size": 639,
+      "sha256": "ce75ccaa1a18b3f60356d34b3995755bfffe4d200cb0eac7107e0aaeafa31ac7"
+    },
+    {
+      "path": "docs/layout-audit-20261029/audit-integrations.cjs",
+      "size": 2646,
+      "sha256": "340532111684c42470d2dd70c87b82a2ff8c774ace528c4cf95e0f0d710404c5"
+    },
+    {
+      "path": "docs/layout-audit-20261029/audit-plan.cjs",
+      "size": 2584,
+      "sha256": "62aeff6a57e5274e83644ceef5d0cf7cf6b7a0c3d58625160105bfca4a544630"
+    },
+    {
+      "path": "docs/layout-audit-20261029/audit.cjs",
+      "size": 2607,
+      "sha256": "707510a25664c5904d832cf7f4d043d4cb28e1443004d9005d91cfb7a219ec65"
+    },
+    {
+      "path": "docs/layout-audit-20261029/changes.patch",
+      "size": 87008,
+      "sha256": "208d5bc899e72bf9559189f463f78c792c5a4bb0f29521b50078e990093e6c8f"
+    },
+    {
+      "path": "docs/layout-audit-20261029/chromium-orders.png",
+      "size": 139819,
+      "sha256": "71b3a40259710fa0d00402f77567e02a44d6d1401791b245e5a6ef06da0ce876"
+    },
+    {
+      "path": "docs/layout-audit-20261029/chromium-planreport.png",
+      "size": 123402,
+      "sha256": "a9617506340684f245c8e270f8fff510b0da723441659855d9e2b0026d23d5df"
+    },
+    {
+      "path": "docs/layout-audit-20261029/integration-results.json",
+      "size": 6250,
+      "sha256": "56d37e359bde8ce5f75c8d612aaf102c1a96d63eeb4ec8dc7df919e837534bfb"
+    },
+    {
+      "path": "docs/layout-audit-20261029/main.js.before",
+      "size": 83916,
+      "sha256": "9bba410c02a49e631d9aab5e3f2b00ce966dbd95afa4f478db7ca2779c5a8cfe"
+    },
+    {
+      "path": "docs/layout-audit-20261029/plan-results.json",
+      "size": 260,
+      "sha256": "2136312ffb5fc45160b9ee2f464d5d4d67dd0bd087cae1cd88c2bb39a107e1e8"
+    },
+    {
+      "path": "docs/layout-audit-20261029/results.json",
+      "size": 35358,
+      "sha256": "d8f1b500ccf9464c0d9a7c45fffb8e154140ff4d0519aee8bfcb90bfe1b7c6f0"
+    },
+    {
+      "path": "docs/layout-audit-20261029/source-sha256.json",
+      "size": 331,
+      "sha256": "3f1c5fd417644ec9165eea87497bc3ba2743a9e6136d4946498b6b3587d33721"
+    },
+    {
+      "path": "docs/layout-audit-20261029/style.css.before",
+      "size": 30558,
+      "sha256": "1707358e3841b62134cb43623140bfe97f58792c77aad60a4d8373e29a7dcb97"
+    },
+    {
+      "path": "docs/layout-audit-20261029/ui.js.before",
+      "size": 73758,
+      "sha256": "b367e1f3e409d4b67dc0846d54208ebafda75ddb2a7b9f3ad8ffccce4ceb6a6c"
+    },
+    {
+      "path": "docs/layout-audit-20261029/webkit-orders.png",
+      "size": 175628,
+      "sha256": "2996d98d110ce8d5fb0f504df396831438979e1596ba12c661210b92fa3b3ea2"
+    },
+    {
+      "path": "docs/layout-audit-20261029/workspace.js.before",
+      "size": 35692,
+      "sha256": "86eb2ed817f1a8c379e96705a86556358ebe22d1a1959bdb8b76780fa80a0dc5"
+    },
+    {
+      "path": "docs/layout-right-20261029/REVERTED.md",
+      "size": 373,
+      "sha256": "ddde1ae43950e0beca8e28d24467c8644b59d9b2cf2db75512ef663906af2abb"
+    },
+    {
+      "path": "docs/layout-right-20261029/audit.cjs",
+      "size": 2697,
+      "sha256": "6b8090c4ca4efc1b9e0d63cf82444389418f171f6fc35b0fb9f9d99936d55f1a"
+    },
+    {
+      "path": "docs/layout-right-20261029/changes.patch",
+      "size": 15900,
+      "sha256": "9cb4dcc3f6bb43a146db705c804f862b9f1ff604dd6d4af2c4851c77902a8922"
+    },
+    {
+      "path": "docs/layout-right-20261029/chromium-downtime.png",
+      "size": 127321,
+      "sha256": "14ba2004f4c37f4351ec209eabad3d23ce3da8c2fb1f89f8ec26509514751bcf"
+    },
+    {
+      "path": "docs/layout-right-20261029/chromium-orders.png",
+      "size": 125272,
+      "sha256": "144822610f24712b50dd08eee21cfd115c1eae79a1c4c887e4256869cd59b3df"
+    },
+    {
+      "path": "docs/layout-right-20261029/results.json",
+      "size": 28569,
+      "sha256": "b506ae41e90a84f0acdf0d8908a2f2ef91f01dac6efcf9f1eff65f8f6f9cff47"
+    },
+    {
+      "path": "docs/layout-right-20261029/style.css.before",
+      "size": 30562,
+      "sha256": "057c53af0a5bf5ba58b7d4fef3e4e92b42962751a0e516cfe12cf31ca26c7f78"
+    },
+    {
+      "path": "docs/layout-right-20261029/webkit-downtime.png",
+      "size": 164870,
+      "sha256": "47fecc341f92c3fa34c6a221f4cacf93553547bdd2908ad3d8017cf6c466e903"
+    },
+    {
+      "path": "docs/layout-right-20261029/webkit-orders.png",
+      "size": 163184,
+      "sha256": "095ac3cbebb4280ba7afef6d583d991c64e63904d99c3facc133c0fff31e6cea"
+    },
+    {
+      "path": "docs/monitoring-20261027/README.md",
+      "size": 1040,
+      "sha256": "022631d0e7cd431ae3781649cf45ffda00d8af8ebfae7a66b6c72525b8002412"
+    },
+    {
+      "path": "docs/monitoring-20261027/connected.png",
+      "size": 151147,
+      "sha256": "c298bfef794044b64ba1544841e5339c3c621e5f5a399f535b2944a252972c94"
+    },
+    {
+      "path": "docs/monitoring-20261027/history-complete.png",
+      "size": 274305,
+      "sha256": "c66e0689398a2aef0105da726799815bbea4a325f374fe36e4099f2212bc31f8"
+    },
+    {
+      "path": "docs/monitoring-20261027/history-reconcile.png",
+      "size": 100422,
+      "sha256": "3b831204c2cf6a7355684f1ca23ccad6561ece60a2ee23df5c3a6ab51ce89cfe"
+    },
+    {
+      "path": "docs/monitoring-api-20261027.md",
+      "size": 6976,
+      "sha256": "fdc25996a00bb4c8b0ccfff06feafafe0aa80d5f7f563c9d83adf2012296d17e"
+    },
+    {
+      "path": "docs/monitoring-history-20261027.md",
+      "size": 12016,
+      "sha256": "e028ccb263c6e1a76361dbfbd586e29e9243f5f34f91457baff8d01243a6bd09"
+    },
+    {
+      "path": "docs/neftm-api-20261027.md",
+      "size": 4313,
+      "sha256": "44bd46964edd024e88b921ccff9d20a38cf57fb023d4272954000eade7afd74d"
+    },
+    {
+      "path": "docs/requirements-20261029/MATRIX.md",
+      "size": 19021,
+      "sha256": "e7b9877f752049c7c69e11fd8038002ded0ddc3e6edcbd6b20901cbffd00a2a8"
+    },
+    {
+      "path": "docs/requirements-20261029/TRANSTRADE-RETRY.md",
+      "size": 6840,
+      "sha256": "aa0a7e3f930d54ebac72b0bad57a79ec26d02c3de9cce270e00f64f6178a9ecc"
+    },
+    {
+      "path": "docs/requirements-20261029/VERIFICATION.md",
+      "size": 5023,
+      "sha256": "ca9ccf3209e7b15f7c6439a4dc1b19ddddda2790b76e52f1cc16e74aa5b7aa97"
+    },
+    {
+      "path": "docs/requirements-20261029/transtrade-retry.png",
+      "size": 94538,
+      "sha256": "dfdd243366ce88ca4dc618424db14d88b9451b2a19c9b055f570df63a32533f0"
+    },
+    {
+      "path": "docs/requirements-20261029/transtrade.png",
+      "size": 116850,
+      "sha256": "9fca89eed1587f8a4a55cf6abcd74c2e30a8121abd442557608b57dd7bcd2aa6"
+    },
+    {
+      "path": "docs/rosneft-access-20261028.md",
+      "size": 5684,
+      "sha256": "5f157532304eb12146c916c9a1d3c7d115ec7e152d2e99121cd8e517915f4cf2"
+    },
+    {
+      "path": "docs/rosneft-api-20261028.md",
+      "size": 6332,
+      "sha256": "66b04ccc5876f6489337373237420c4fcd49e9132541c0190d712f3630fadef4"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/ALERTS.md",
+      "size": 10998,
+      "sha256": "801db45c3024849419051090b2bee5b670cf554dacc63341b4311315e099380c"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/DEPLOYMENT.md",
+      "size": 14466,
+      "sha256": "207fa92f2cddd0aaec3059ed8e98560a6ec941c1df79774052349f9b0bace194"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/RESULT.md",
+      "size": 11039,
+      "sha256": "4f77b690be0308a586505d83ab433e531b58a90c914472f5be8223dabd1aaebe"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/browser-check.json",
+      "size": 599,
+      "sha256": "fb98128bf05b521a1282bc45376cde58412afce15851fc143bc5f4cf83b9563e"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/chromium-1440.png",
+      "size": 137235,
+      "sha256": "c05d2f7a95a2e038e798b8450538dc80c29e688dd885aab10fcb8e6f52e9214d"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/chromium-390.png",
+      "size": 45574,
+      "sha256": "64bdd4bccc4788d0be5462abad22f89987214b1a87cf41e828d0604ef0eac793"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/data-verification.json",
+      "size": 412,
+      "sha256": "1884e12541fce07464a4a13975b0d4e5392a3e9edfb3ed4b3167dc14f1e699c0"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/live-cycles.json",
+      "size": 2281,
+      "sha256": "7d2f2bca416ede4fef190f101c160603f2aa33d3c1a07c7e2b4db196ecdffc7b"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/live-restart.json",
+      "size": 220,
+      "sha256": "6be539f6f3a43808d4973c5f77ecc7be908b5ccf493806199b1665cf13741820"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/webkit-1440.png",
+      "size": 161154,
+      "sha256": "b3186f766b5725a1b44db04dd36c51a23130d231e6781215b2e70a5096d11114"
+    },
+    {
+      "path": "docs/server-autonomy-20261030/webkit-390.png",
+      "size": 57266,
+      "sha256": "cd279dad23b0010ffbec7134029d8b23356b00835e5fcc3ede7b933944f00344"
+    },
+    {
+      "path": "docs/sticky-scroll-20261027/scrolled.png",
+      "size": 71614,
+      "sha256": "e9ab0cfe539e2438afcac814597effc8bbfe93cbd771c328efce2c4b342ff003"
+    },
+    {
+      "path": "docs/transtrade-access-20261027.md",
+      "size": 4315,
+      "sha256": "79ce019da7115c344024a2c74ef2991006f35297dc430e674d395f3de03a01cc"
+    },
+    {
+      "path": "docs/transtrade-investigation-20261029/REPORT.md",
+      "size": 15228,
+      "sha256": "e1d3a3ad74fd90ad6f097f7733b0c5d5b0e3c0f0883d2476860fbcc183b4a211"
+    },
+    {
+      "path": "docs/transtrade-investigation-20261029/SUPPORT-REQUEST.md",
+      "size": 10432,
+      "sha256": "3056daf1664b6adb3e51abe020f78f82d0fcab4bf5e7b49d5e06732be9e50a50"
+    },
+    {
+      "path": "docs/transtrade-investigation-20261029/evidence.json",
+      "size": 10045,
+      "sha256": "ba39d99af7fa00600f18c58c7998384923ccd2112b0f6c6d8aa19bae1663f247"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/RESULT.md",
+      "size": 12077,
+      "sha256": "ad74be9ee1921a16f839f8c5f7efc296265e72f7318e8ce58e8456f0f57d7d48"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/SUPPORT-FOLLOWUP.md",
+      "size": 1709,
+      "sha256": "3d9b784c8c6e4174581b61eac50272176387524cfc9407e993c109892479661b"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/check-ui.cjs",
+      "size": 3054,
+      "sha256": "9d80f9b2ee552f2baab3f4751416783e2d6c6eeb482cc2e57fcc2173117c7e00"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/evidence.json",
+      "size": 13219,
+      "sha256": "b44761efaaa5044260662fbbcf8a9505e94fa1603cef9e7ce05350b6076fde66"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/final-verification.json",
+      "size": 549,
+      "sha256": "0af0731eb66351ec9cb0210e65191b9222d26693686a83767980d91e1c7debcf"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/history-chromium-1440.png",
+      "size": 40780,
+      "sha256": "e56f6ce9cf7823a17f9971ee5dd648bdc0da4a7ef60cf3cfa6fe23f7f8b4ea9e"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/history-chromium-390.png",
+      "size": 41916,
+      "sha256": "996a20bf8e88a56222f89064e0a57bc887e6d57b5695120a7242d9eb055002f2"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/history-webkit-1440.png",
+      "size": 48420,
+      "sha256": "600206c8bf9bb50f6c9212aa9d6ce71117586874e30684ff458fe55d1b33e19c"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/history-webkit-390.png",
+      "size": 48987,
+      "sha256": "1267a1d0d2a956d1e63640448305233f35c599bd77a1839facca17f738cead7f"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/repeat.json",
+      "size": 2803,
+      "sha256": "b8ba0c585263b28f9a91205f4c9cbe3c58cc51c48a5f4d6bbd5b766ae75f7bd4"
+    },
+    {
+      "path": "docs/transtrade-sync-20261030/ui-results.json",
+      "size": 3892,
+      "sha256": "f039ae09658096353e35cadf8937bc7deff8b0eab38d94c6690b712c5c3e1a18"
+    },
+    {
+      "path": "docs/ui-20261026/README.md",
+      "size": 4103,
+      "sha256": "808cb1f8566f680efe777389481d0af1193024013d6f803e8b36d43ad7acb41b"
+    },
+    {
+      "path": "docs/ui-20261026/routedesk-style.png",
+      "size": 223078,
+      "sha256": "66ef4c94527f4473360a6e783b75b99c550a455e12d14f09a86f05bffc1f8fea"
+    },
+    {
+      "path": "docs/ui-20261026/sidebar-dashboard.png",
+      "size": 196628,
+      "sha256": "c9db22b6ef1ea89da001e69667d3c9fea968b6c40b8b3f870217fd3b19721457"
+    },
+    {
+      "path": "docs/ui-20261026/statistics.png",
+      "size": 402411,
+      "sha256": "03285d51aa068750a49c208d98f786d88a730183959beb519a69b6e22c50e994"
+    },
+    {
+      "path": "docs/ui-20261027/README.md",
+      "size": 3071,
+      "sha256": "455e30cfc09667e4234dec740c9d2bb1a0267a7178f15f2374d433040e22b295"
+    },
+    {
+      "path": "docs/ui-20261027/modal.png",
+      "size": 116479,
+      "sha256": "7639cf82c30fcbcfe18d329f7395e81cdf2365985936e3a1d09342a99ee90af4"
+    },
+    {
+      "path": "docs/ui-20261027/statistics.png",
+      "size": 141078,
+      "sha256": "5cd9bbf9250630ab3f76dea8933f764c16f42f48022284d5e95e8cd3998a9b01"
+    },
+    {
+      "path": "docs/ui-20261027/users.png",
+      "size": 110057,
+      "sha256": "ca7c1ed3f3a0f5cf9172e57d7731339925818c5fa5761b46119b70b0195430b8"
+    },
+    {
+      "path": "docs/ui-audit-20261027/README.md",
+      "size": 5375,
+      "sha256": "733adad56dc8222f4b48f8c80bad094b694ce3349d4f60a31d8acfc8a0abac61"
+    },
+    {
+      "path": "docs/ui-audit-20261027/drawer.png",
+      "size": 40462,
+      "sha256": "6b0f99ab5103cf8729a2039e11bf69c3daa1d8786df728d5e0da4edd8c840000"
+    },
+    {
+      "path": "docs/ui-audit-20261027/statistics.png",
+      "size": 83587,
+      "sha256": "680aea4bcb0a23226805bb29974031952bde01941fb48f609a22fcc1df14ef68"
+    },
+    {
+      "path": "docs/ui-audit-20261027/users-dropdown.png",
+      "size": 70563,
+      "sha256": "567d98fee794573ec99980afd3983f2d4d532021c7a45d557b6ebcda51cc1b99"
+    },
+    {
+      "path": "docs/ui-followup-20261029/REQUIREMENTS.md",
+      "size": 34205,
+      "sha256": "6409c7be3a30db7da73b00774ae11ebfa359b67b0084b90ccf1e4078a016da9a"
+    },
+    {
+      "path": "docs/ui-followup-20261029/RESULT.md",
+      "size": 8911,
+      "sha256": "82c1c89174b9b9a0a86796930ce52abe6b1bbed4acb99c7cf1bb0732d2360e73"
+    },
+    {
+      "path": "docs/ui-followup-20261029/coverage-evidence.json",
+      "size": 843,
+      "sha256": "e0de695a3c496fe2d0ad1daa76eae49584cbf3c1c75ccec5fd6081065844ea2b"
+    },
+    {
+      "path": "docs/ui-followup-20261029/directories-1440.jpg",
+      "size": 103145,
+      "sha256": "24f74ede43df6d7389cfba0f480c50b0c08992b31ae5d7c7a7334c3c75c6fe91"
+    },
+    {
+      "path": "docs/ui-followup-20261029/economics-help.jpg",
+      "size": 87825,
+      "sha256": "24f56bfdbc4975ba3b3908bef81b1afc280ab5c959fc9ad4b9cae99fca5b0f9d"
+    },
+    {
+      "path": "docs/ui-followup-20261029/excel-verification.json",
+      "size": 14625,
+      "sha256": "ada38b5d33484083bbcdd7128f7497c632f5af992ed68b778ed373bd0fccd096"
+    },
+    {
+      "path": "docs/ui-followup-20261029/guide-320.jpg",
+      "size": 3177,
+      "sha256": "612e90ad8b0051be51a535c778eea8e7535e0e41beac5787246115f35bbc338a"
+    },
+    {
+      "path": "docs/ui-followup-20261029/interaction-checks.json",
+      "size": 832,
+      "sha256": "8b1d8d9fef1a3039ea1b65787002a82427e72636742329d8df53adba5c066acf"
+    },
+    {
+      "path": "docs/ui-followup-20261029/refresh-expanded.jpg",
+      "size": 78884,
+      "sha256": "852992bd0793995d1914c536b03e470f6d7c4de886cc858978d0c9aa1691cf68"
+    },
+    {
+      "path": "docs/ui-followup-20261029/responsive-checks.json",
+      "size": 16108,
+      "sha256": "dd9871877766f16b83cbd06bf5db7d4fea5c2c4ea87e949aa1f6404d11971441"
+    },
+    {
+      "path": "docs/ui-ux-20261029/EXCEL-REQUIREMENTS.md",
+      "size": 29621,
+      "sha256": "a4b8fbc080c8525d2e6dc059fc483cb65e934a550d0865086f9ce0a991c6f395"
+    },
+    {
+      "path": "docs/ui-ux-20261029/RESPONSIVE.md",
+      "size": 9264,
+      "sha256": "43ce9aee8f57fd35bdfb2d383c22cb55289018ec443ae44254651d645f323a7d"
+    },
+    {
+      "path": "docs/ui-ux-20261029/RESULT.md",
+      "size": 7281,
+      "sha256": "db150612a8d869946c30925c948064b180da51d19659b508ac0107f0717fbf55"
+    },
+    {
+      "path": "docs/ui-ux-20261029/audit_excel.py",
+      "size": 6738,
+      "sha256": "6cf2e866f282fd00f05b49fa3ea7ccf1c7233ad3e05a71fe1f0934a99c0d09bb"
+    },
+    {
+      "path": "docs/ui-ux-20261029/connections-1440.jpg",
+      "size": 129816,
+      "sha256": "ca5b8508bdcd091e0a333c0ac1105602248a740dea55058e2baf568e46af541f"
+    },
+    {
+      "path": "docs/ui-ux-20261029/excel-verification.json",
+      "size": 14625,
+      "sha256": "3a9f1c22fd7295817fbf4e0d1522eb1eb55d16d1e6209e5429336de058fdca3e"
+    },
+    {
+      "path": "docs/ui-ux-20261029/fuelcard-form-320.jpg",
+      "size": 28194,
+      "sha256": "f228f36cfc522d6e7bec82c9e07ece2891aca770d9ac957797c267bfc6743da6"
+    },
+    {
+      "path": "docs/ui-ux-20261029/fuelcards-320.jpg",
+      "size": 41922,
+      "sha256": "65efa7a53cd169f5c5e575bba4544d1c4e38ee332428472a05fe1a89b73362b0"
+    },
+    {
+      "path": "docs/ui-ux-20261029/interaction-checks.json",
+      "size": 1956,
+      "sha256": "e39b53e76b3774beb045c47e8b5a0be6d46d4bea473ee90a30511484bf886090"
+    },
+    {
+      "path": "docs/ui-ux-20261029/live-refresh-verification.json",
+      "size": 2078,
+      "sha256": "765306419ab343a58482ae7922d49d8b0e7c470fecb2b77fa581567f14eefd06"
+    },
+    {
+      "path": "docs/ui-ux-20261029/quality-320.jpg",
+      "size": 175040,
+      "sha256": "e764d4045be2db9956a4fa3113042ab425ec9f9b6a73c5d05b3e868099bb0a0b"
+    },
+    {
+      "path": "docs/ui-ux-20261029/responsive-checks.json",
+      "size": 23780,
+      "sha256": "21dac01c1af67f9401223ec752caebdfea5af571c5f72ba2053d0f791bf06fc2"
+    },
+    {
+      "path": "docs/ui-ux-20261029/rosneft-1440.jpg",
+      "size": 174507,
+      "sha256": "c4b2a2dcea7609a194730067400d7e4cf2d3ea74395a21bc2de9e21a667f80d2"
+    },
+    {
+      "path": "docs/ui-ux-20261029/server-verification.json",
+      "size": 1850,
+      "sha256": "9c826977715ce72fb55b329808dcfddc726417b43cd348df60a2302b1c1c126b"
+    },
+    {
+      "path": "docs/ui-ux-20261029/statistics-320.jpg",
+      "size": 138204,
+      "sha256": "e13eb49047aad9cadcca3e15b1606fa1f23c34690c4f69f954996d0631a56bd7"
+    },
+    {
+      "path": "docs/Задание.md",
+      "size": 11729,
+      "sha256": "684cf34063ec59e60025bc603e53453eb386590d6f8ad2cfa2c51a4b1775ae43"
+    },
+    {
+      "path": "docs/Подключения.md",
+      "size": 10383,
+      "sha256": "209aaaa1afc503846028b3232dea30856e137da3a80f9b5cf341a7725a808e56"
+    },
+    {
+      "path": "docs/Проверка.md",
+      "size": 6191,
+      "sha256": "3ae16c42eda530ce2a2f0f3732aaed6f5a8d126fdb41af4440531d6fd7f6f421"
+    },
+    {
+      "path": "docs/Разговор.txt",
+      "size": 82859,
+      "sha256": "db91ada3419af321fe296e3cbebf4985bd9b9a3009c79f0ab0d957eaadc38d6f"
+    },
+    {
+      "path": "docs/Руководство-заказчика.md",
+      "size": 29451,
+      "sha256": "7842c11f1a569630364b5f3258ac892fcfdb1731b004830646d97c1b1f70b4ee"
+    },
+    {
+      "path": "requirements-lock.txt",
+      "size": 392,
+      "sha256": "52d500dac7b40170a1495c3bf173702fe0f0b304075c76d7153f91e3c7453205"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 102,
+      "sha256": "43c6ba440acecdb396963f9b9a10813cdd3267cd4f1161658212ee8785155940"
+    },
+    {
+      "path": "start.sh",
+      "size": 77,
+      "sha256": "b48fd562af9d45977c38ed8ea66b3615481206a1af26d900e9c98377607c8834"
+    },
+    {
+      "path": "tests/excel_fixture.py",
+      "size": 3675,
+      "sha256": "fecf86b784b62083e384dc3de97a9be6aa75b006e80df7e6a9423ba25600d1ed"
+    },
+    {
+      "path": "tests/test_alerts.py",
+      "size": 13939,
+      "sha256": "7ec3e3c20fa73437ecaaed10a7fba16b13b3ae993dc0c6eae4aef7b4cb5170ab"
+    },
+    {
+      "path": "tests/test_alertwatch.py",
+      "size": 3042,
+      "sha256": "4968aa88d9adf237b3e6eea188dcf7320c8b484ffbb6632c283e584373a28690"
+    },
+    {
+      "path": "tests/test_app.py",
+      "size": 11584,
+      "sha256": "47e93b2ab4985ec4c3b2304857572011f8db35c2435c6c5ef60f73dcf2c915f6"
+    },
+    {
+      "path": "tests/test_autosync.py",
+      "size": 7640,
+      "sha256": "09def98513d493ee277604efa909b548438a93d9ba35ebcad7252ee047df89bb"
+    },
+    {
+      "path": "tests/test_autosync_alerts.py",
+      "size": 3667,
+      "sha256": "5b6f0cc50427c452d16cbb21d32394e31af0eaae0da8f896d7cb0863103cc49c"
+    },
+    {
+      "path": "tests/test_autosync_catchup.py",
+      "size": 7974,
+      "sha256": "3388ccbef02f44429f8f05f6c1422fa145ddcd9f4f426ed1747bad2a22b4e934"
+    },
+    {
+      "path": "tests/test_autosync_process.py",
+      "size": 3437,
+      "sha256": "ce66fd57a769c979ebfd3051a76a0f4bf60be187808bd5cba311940c82818ee4"
+    },
+    {
+      "path": "tests/test_autosync_storage.py",
+      "size": 3335,
+      "sha256": "030b4613d2c5d3b34912d15dec8d474efc616a054c11f063e56b8a134df615d6"
+    },
+    {
+      "path": "tests/test_catchup.py",
+      "size": 14687,
+      "sha256": "29333129e4c955864c1869c7235ba9a26aa477b07e2b4592ec084a990a64cc75"
+    },
+    {
+      "path": "tests/test_connections.py",
+      "size": 2534,
+      "sha256": "31b4eb71948124a333f233591eaaa817f91c0a3b3ce0e68b057e01ccdc1efb85"
+    },
+    {
+      "path": "tests/test_deployment_proxy.py",
+      "size": 10162,
+      "sha256": "d6bd978ac395e46d76b24c25561bacc5d1bde84a4609142ea4beaeea0668ecae"
+    },
+    {
+      "path": "tests/test_evidence.py",
+      "size": 13208,
+      "sha256": "fcab770ce5d462ed206c8403ba17cd1aa8e664385576524e061c55cf69ea177c"
+    },
+    {
+      "path": "tests/test_evidence_ui.cjs",
+      "size": 8795,
+      "sha256": "7b4dd90e520d8acdae06b5694f244195fd02a0842154cef37b58fc0e4f9f04e1"
+    },
+    {
+      "path": "tests/test_excel_acceptance.py",
+      "size": 2721,
+      "sha256": "447c15936928a60cea05cca664664db939bf9353203cc688c3f1c287b1283958"
+    },
+    {
+      "path": "tests/test_fuel_history_view.py",
+      "size": 5580,
+      "sha256": "79596acfe0114a9ebdaf467708d154338371e219b62a23434f3c3b6dd12f9655"
+    },
+    {
+      "path": "tests/test_full_backup.py",
+      "size": 8838,
+      "sha256": "03250a9c23fdc37177422c67c3618f36573d55a6ff3a541895775ef62b28f91f"
+    },
+    {
+      "path": "tests/test_importer_portable.py",
+      "size": 2833,
+      "sha256": "538114c6024aff5e51e36f3f3a6b6b67c434f6e8140d44b11b2b61e4a4cba9eb"
+    },
+    {
+      "path": "tests/test_integrity_gaps.py",
+      "size": 10279,
+      "sha256": "b52b0f68d572d89c3b1bdc2e143a58d7f58404ecee8e9f4ad7bca0678fc3d5b2"
+    },
+    {
+      "path": "tests/test_monitoring.py",
+      "size": 4441,
+      "sha256": "3fb5120c8b8262700fb6d4081dea0a2981499218162da9555c84ce0c6474d035"
+    },
+    {
+      "path": "tests/test_monitoring_history.py",
+      "size": 9672,
+      "sha256": "4b6b285e25e6d35b10795d22cf06e8d0805f264b29db5c28f63af21846fedd42"
+    },
+    {
+      "path": "tests/test_motion.cjs",
+      "size": 10768,
+      "sha256": "29a910cb813a1f19d27bd0bfa909d4a1561217f0f52f5face985b4494759a03d"
+    },
+    {
+      "path": "tests/test_navigation.cjs",
+      "size": 2145,
+      "sha256": "3600702e67d008c207b5c49fe1337eb77c5e4eb50b1d272285deb4bc04e22529"
+    },
+    {
+      "path": "tests/test_neftm.py",
+      "size": 3505,
+      "sha256": "838817ab75ee44edebdd82de2f5c6809fef51b879431c628cc79ba132938ab73"
+    },
+    {
+      "path": "tests/test_planviews.cjs",
+      "size": 3764,
+      "sha256": "778219ea7f1a61a6da25d89ab2d2b60afa4e1dfc7166f8bfff311c680beaaf21"
+    },
+    {
+      "path": "tests/test_refresh.py",
+      "size": 16246,
+      "sha256": "bc277b24b3af08df08901b69c1402e4a3b7b56fc90e916c5da826b95f153a4b5"
+    },
+    {
+      "path": "tests/test_refresh_ui.cjs",
+      "size": 10120,
+      "sha256": "93ebf2cfd1002b7257b080cd33ee993fcf6ee9b87f81861416f264657b268939"
+    },
+    {
+      "path": "tests/test_reporting_gaps.py",
+      "size": 6075,
+      "sha256": "41c212b03ab2664108c54230fab050757b148576c128d6940fd7854d0af68fdb"
+    },
+    {
+      "path": "tests/test_reporting_ui.cjs",
+      "size": 5246,
+      "sha256": "38cb42bdb65879fc7f132c7758c3a02c4228f14b080e2e036000b12854bb014b"
+    },
+    {
+      "path": "tests/test_rosneft.py",
+      "size": 5539,
+      "sha256": "29dac2f9a878838cf2529d651d50b53103f1fc1784b654545f263f55b73b0005"
+    },
+    {
+      "path": "tests/test_runtime_integration.py",
+      "size": 8061,
+      "sha256": "0d9360ac9e8244601b91f5d047d2b2bb484bce77599d9bb1a075456383168f1b"
+    },
+    {
+      "path": "tests/test_sidebar_scroll.cjs",
+      "size": 2115,
+      "sha256": "65b34efe2f683a0684b0032f684b89b530ff2b8377ab299ee49bc3471324d33e"
+    },
+    {
+      "path": "tests/test_source_errors.py",
+      "size": 1338,
+      "sha256": "a07bd8989a3b4553797c9f66af994808ad329d48d9d11dc5e76128beb48f6ea3"
+    },
+    {
+      "path": "tests/test_transtrade.py",
+      "size": 11053,
+      "sha256": "e1cec23f4830dfaaf2f81279acaee908e8769ca8f919a3f356c6446b6d81a7fd"
+    },
+    {
+      "path": "tests/test_transtrade_reconciliation.py",
+      "size": 16622,
+      "sha256": "307e917ac93df151557fdc0fc78646fa39ea013ba93728cd40a0a4246caa6d2c"
+    },
+    {
+      "path": "tests/test_ui_information.cjs",
+      "size": 3026,
+      "sha256": "d3b33dc8298556dc0160c7f27d91d8a638267b3e70dc78f907b1332fcef590dc"
+    },
+    {
+      "path": "tests/test_worker.py",
+      "size": 8226,
+      "sha256": "bd76ddf78766b0e48c4b0e6dd2abdfb4e23117c00888fd5ee20077afe2016193"
+    },
+    {
+      "path": "tests/test_workspace.py",
+      "size": 10230,
+      "sha256": "47d82a08aec130191bdd2bd05ced9c4d07293f5786d950e4ed45a3a2fd80eb21"
+    }
+  ],
+  "purpose": "Second-cycle research baseline. Hashes only, not backup. Active background data changes are not audited by these hashes."
+}

@@ -1,0 +1,12 @@
+{
+  "server_scheduler": true,
+  "automatic_scope": "Текущий месяц по МСК; история ТТ проверяется раз в сутки, с ограничением числа запросов по ID; история спутника — последние завершённые сутки.",
+  "history_status": "success",
+  "history_processed": 2971,
+  "history_complete_claim": false,
+  "next_history_attempt": "2026-10-31T10:04:36.539901+03:00",
+  "trips": 2971,
+  "duplicates": 0,
+  "km_unknown": 2971,
+  "integrity": "ok"
+}

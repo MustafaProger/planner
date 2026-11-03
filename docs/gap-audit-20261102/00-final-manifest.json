@@ -1,0 +1,134 @@
+{
+  "completed_at": "2026-11-02T07:53:20.103471+00:00",
+  "research_roles_completed": 5,
+  "files": [
+    {
+      "path": "00-COORDINATION.md",
+      "bytes": 3786,
+      "sha256": "46a209a00a74846ba880e5626c096baf69b2955a2d8913c76c17d337618ced67"
+    },
+    {
+      "path": "00-baseline.json",
+      "bytes": 24815,
+      "sha256": "35086530e15ad422934d0e55b481cc5c4deab7c02f198844f219614bd6d9a207"
+    },
+    {
+      "path": "00-preservation-check.json",
+      "bytes": 916,
+      "sha256": "a8f1371997994839a633227ceef609c46bbde060bf5c6450bcabeb1c343fd7ad"
+    },
+    {
+      "path": "00-sources.json",
+      "bytes": 1839,
+      "sha256": "ca98d87a81a3445ced65283a3173b00ce2a9b758fbf5c460e3557e7e81fc69a2"
+    },
+    {
+      "path": "01-history-coverage.json",
+      "bytes": 39150,
+      "sha256": "3f309add26a6d37292491fce8d90fbc5dd4a5077a72b9011d2d4d59512496b8e"
+    },
+    {
+      "path": "01-history.md",
+      "bytes": 35369,
+      "sha256": "89e21f1b4002f006bc5e26015c3ef7e7a48c554d438edae7b21bb9d1ae8701fe"
+    },
+    {
+      "path": "02-input-summary.json",
+      "bytes": 1377,
+      "sha256": "2b8469319d565a2ce1719e62bcc822746795b1f0fd045983e06bd69e877d2153"
+    },
+    {
+      "path": "02-planner-powerquery.txt",
+      "bytes": 2842,
+      "sha256": "269361ba530f59d7d4db68e3cd99c7c354fa0c4289aee79a7842562daddf4f9f"
+    },
+    {
+      "path": "02-requirements.md",
+      "bytes": 42245,
+      "sha256": "285c793b18fd42c2f00678c1625c7b8a2dd41f2b6d0f795ce5eddbca57883780"
+    },
+    {
+      "path": "02-stats-powerquery.txt",
+      "bytes": 29958,
+      "sha256": "6637e3414018cf34e72c4510510b6006e72ebe4818e424649c7be8f2e0b907eb"
+    },
+    {
+      "path": "02-workbook-structure.json",
+      "bytes": 85836,
+      "sha256": "db5b4c59ae463a5eb46c084f90f16c795a3f0dc0b2ee61b602ceb8faeb1e56bd"
+    },
+    {
+      "path": "03-current-evidence.json",
+      "bytes": 4205,
+      "sha256": "3c272c9a9ad572fb007753a0305486f9735e09d85e58db4dc024276ceaa2b274"
+    },
+    {
+      "path": "03-functionality.md",
+      "bytes": 41380,
+      "sha256": "993c198d0effaeb5ed0d8cdb767472bb52808eb638489a7db3edef3b260d4641"
+    },
+    {
+      "path": "03-probes.json",
+      "bytes": 1620,
+      "sha256": "476ad32a3b671f6afb3d72d1bc49643f4ad4ca2c6f1f3475d1e23dc695fd0937"
+    },
+    {
+      "path": "03-refresh-evidence.json",
+      "bytes": 3514,
+      "sha256": "df011e13a4fccc90a148f04101df0af82472c0bb3cdff5c0df2a81b40e26bbe6"
+    },
+    {
+      "path": "03-test-evidence.json",
+      "bytes": 1153,
+      "sha256": "1ed055a7bf85200006c99eaba62c325c0394696eeb9bc4a6cff6e2240b1e4fca"
+    },
+    {
+      "path": "04-gaps.md",
+      "bytes": 44616,
+      "sha256": "a3a8cb86dea8a4d37d0d2e935d18296521c4b26cb5905b6b3c540162aab69b3e"
+    },
+    {
+      "path": "04-independent-probes.json",
+      "bytes": 1773,
+      "sha256": "9dfe4f8f3778f6a14ce9603d46b4ad75d52f94b4d96f7344e63217f583f46583"
+    },
+    {
+      "path": "05-report-fields.png",
+      "bytes": 11188,
+      "sha256": "1562e66f66a8abb8845e51e9512dd15733bc3ea3d08f785d7f77592c96af2d65"
+    },
+    {
+      "path": "05-solution-coverage.json",
+      "bytes": 2956,
+      "sha256": "603e4e2597e5f1e3813d3b76e2789108645d4a2734b05d08854ca74c4f24ce17"
+    },
+    {
+      "path": "05-solutions.md",
+      "bytes": 63300,
+      "sha256": "ef2e7377d3879590ab414453534f20f198fdae3235be6a9fe15c733a288635f4"
+    },
+    {
+      "path": "05-tt-mileage-research.md",
+      "bytes": 18500,
+      "sha256": "48ae7f6c783df4526d4878438909985a38a1c870ef908df9ee24ac2bdbe06719"
+    },
+    {
+      "path": "HANDOFF.md",
+      "bytes": 17292,
+      "sha256": "6a7210d9007196e10d97681dd5e7b526bbce7d98446a87f01a1bb048f3b9acc4"
+    },
+    {
+      "path": "assets/planner_relationships.jpg",
+      "bytes": 64493,
+      "sha256": "3b7f58c09128448d1435cb461fce33913beac11eebc6a235743d5668cc6eebd7"
+    },
+    {
+      "path": "assets/statistics_relationships.jpg",
+      "bytes": 118541,
+      "sha256": "63da31ca3ad9df20aacc848ac6bdb8edecf46d78dbf2217c534f70e79a0e76ac"
+    }
+  ],
+  "application_file_changes_since_baseline": 0,
+  "commit_created": false,
+  "push_performed": false
+}

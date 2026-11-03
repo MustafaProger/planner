@@ -1,0 +1,55 @@
+{
+  "at": "2026-11-02T10:51:04.147509+00:00",
+  "mode": "unauthenticated public GET only; no provider requests",
+  "results": [
+    {
+      "path": "/healthz",
+      "status": 200,
+      "url": "https://charterstats.ru/healthz",
+      "sha256": "3007680046df773cc308984bf45412c705338ab359a130825ec5e7d7b546a4b2",
+      "body": {
+        "status": "ok",
+        "updates": "ok",
+        "web": "ok"
+      }
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "url": "https://charterstats.ru/",
+      "sha256": "7574552dd520bd84adfe8efc3d75d8d6596f20edf8a60b375b409ee61d030f63"
+    },
+    {
+      "path": "/static/main.js",
+      "status": 200,
+      "url": "https://charterstats.ru/static/main.js",
+      "sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+      "local_sha256": "3f66b01f12ee6b385d5a836fc9669f6c892717bbe69d13e48d3cf52485df412b",
+      "matches_local": true
+    },
+    {
+      "path": "/static/workspace.js",
+      "status": 200,
+      "url": "https://charterstats.ru/static/workspace.js",
+      "sha256": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc",
+      "local_sha256": "fc77c67ef9b1cb84e013c20368e95e3ec7f614d8ff90c042ca812a3d57089efc",
+      "matches_local": true
+    },
+    {
+      "path": "/static/evidence.js",
+      "status": 200,
+      "url": "https://charterstats.ru/static/evidence.js",
+      "sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+      "local_sha256": "87e8cb1a6d9c50ff15dc21248fc8d9d1401adcd2b4cb02a3bf75d2a9143fd763",
+      "matches_local": true
+    },
+    {
+      "path": "/static/style.css",
+      "status": 200,
+      "url": "https://charterstats.ru/static/style.css",
+      "sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+      "local_sha256": "0ec9bc4f2ee98e1b8d1f719a065ad367ebfacb555d4c0a17f351adcf6b1cf2ee",
+      "matches_local": true
+    }
+  ]
+}

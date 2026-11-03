@@ -1,0 +1,103 @@
+{
+  "prepared_at": "2026-11-02T07:51:48.609978+00:00",
+  "mode": "research_only_no_implementation",
+  "source_gap_report": "04-gaps.md",
+  "coverage": [
+    {
+      "id": "G01",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G02",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G03",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G04",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G05",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G06",
+      "section_found": true,
+      "solution_class": "autonomous_code_fix",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G07",
+      "section_found": true,
+      "solution_class": "code_plus_unverified_live_source",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G08",
+      "section_found": true,
+      "solution_class": "code_plus_confirmed_intervals_and_telemetry",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G09",
+      "section_found": true,
+      "solution_class": "existing_forms_plus_real_business_data",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G10",
+      "section_found": true,
+      "solution_class": "diagnostic_path_plus_live_provider_verification",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G11",
+      "section_found": true,
+      "solution_class": "existing_deployment_plus_target_configuration",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "G12",
+      "section_found": true,
+      "solution_class": "existing_transport_plus_recipient_configuration",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    },
+    {
+      "id": "V01",
+      "section_found": true,
+      "solution_class": "acceptance_gate",
+      "acceptance_defined": true,
+      "closed_in_real_system": false
+    }
+  ],
+  "notes": [
+    "Code fixes are implementable; this research stage changed no application code or working data.",
+    "R02 remains partial for TT mileage until unattended source acquisition is actually verified; manual export is interim only.",
+    "No source credentials were read by the solution researcher or mileage delegate."
+  ]
+}

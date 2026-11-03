@@ -1,0 +1,87 @@
+{
+  "checked_at": "2026-11-02T08:48:32.825291+00:00",
+  "heartbeat": {
+    "at": "2026-11-02T11:48:32.720660+03:00",
+    "pid": 17685,
+    "status": "running"
+  },
+  "heartbeat_age_seconds": 0.104631,
+  "running": [],
+  "tasks": {
+    "transtrade:current": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:28.306014+03:00",
+      "last_success_at": "2026-11-02T11:47:28.671112+03:00",
+      "next_run_at": "2026-11-02T11:52:28.306014+03:00",
+      "pending_days": null,
+      "from": null,
+      "to": null
+    },
+    "transtrade:history": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:44.414029+03:00",
+      "last_success_at": "2026-11-02T11:47:44.504985+03:00",
+      "next_run_at": "2026-11-02T11:52:44.414029+03:00",
+      "pending_days": 0,
+      "from": null,
+      "to": null
+    },
+    "neftm:current": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:28.309413+03:00",
+      "last_success_at": "2026-11-02T11:47:29.472156+03:00",
+      "next_run_at": "2026-11-02T11:52:28.309413+03:00",
+      "pending_days": null,
+      "from": null,
+      "to": null
+    },
+    "neftm:history": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:42.401966+03:00",
+      "last_success_at": "2026-11-02T11:47:42.599446+03:00",
+      "next_run_at": "2026-11-02T11:52:42.401966+03:00",
+      "pending_days": 0,
+      "from": null,
+      "to": null
+    },
+    "rosneft:current": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:28.312923+03:00",
+      "last_success_at": "2026-11-02T11:47:29.317655+03:00",
+      "next_run_at": "2026-11-02T11:52:28.312923+03:00",
+      "pending_days": null,
+      "from": null,
+      "to": null
+    },
+    "rosneft:history": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:52.467824+03:00",
+      "last_success_at": "2026-11-02T11:47:52.556674+03:00",
+      "next_run_at": "2026-11-02T11:52:52.467824+03:00",
+      "pending_days": 0,
+      "from": null,
+      "to": null
+    },
+    "monitoring:current": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:28.315319+03:00",
+      "last_success_at": "2026-11-02T11:47:30.553831+03:00",
+      "next_run_at": "2026-11-02T11:52:28.315319+03:00",
+      "pending_days": null,
+      "from": null,
+      "to": null
+    },
+    "monitoring:history": {
+      "status": "success",
+      "last_attempt_at": "2026-11-02T11:47:42.403560+03:00",
+      "last_success_at": "2026-11-02T11:47:46.254019+03:00",
+      "next_run_at": "2026-11-02T11:52:42.403560+03:00",
+      "pending_days": 15,
+      "from": "2026-09-19",
+      "to": "2026-09-19"
+    }
+  },
+  "next_due_seconds": 235.480723,
+  "idle_snapshot": true,
+  "evidence": "Local process after additive migration; retry state, not a claim of complete source data"
+}

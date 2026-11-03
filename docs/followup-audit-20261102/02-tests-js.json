@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-02T10:53:53.892989+00:00",
+  "command": "node --test tests/test_evidence_ui.cjs tests/test_reporting_ui.cjs tests/test_refresh_ui.cjs tests/test_planviews.cjs tests/test_ui_information.cjs tests/test_navigation.cjs tests/test_motion.cjs",
+  "passed": 45,
+  "failed": 0,
+  "exit_code": 0,
+  "scope": "Node test runner with isolated VM/mocks; not a fresh authenticated browser walkthrough",
+  "git_diff_check_exit": 0,
+  "head": "677636891dcfc13109d0467f9b3448af3a709daa"
+}

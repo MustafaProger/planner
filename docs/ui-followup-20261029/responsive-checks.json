@@ -1,0 +1,625 @@
+[
+  {
+    "content": "Сопоставлено0 / 804Машино-дней с данными обоих источниковРасхождение пробега— кмТТ − ",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/dashboard",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Выручка по заявкам14 206 070,82 ₽Исходные суммы ТрансТрейдаИсполнителям6 698 206,97 ₽",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/statistics",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Полнота выбранного периода: план — не подтверждён или есть спорные назначения, факт —",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/comparison",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Сверка по машине и дате начала заявки; спутник охватывает полные сутки МСК. Разница =",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/reconcile",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Исключено записей: 1. Работа без назначения: 0. Разница = выручка − выплаты; прочие р",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/planreport",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "День с несколькими причинами считается один раз в общем итоге. Пересечение работы и с",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/downtime",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Без привязки к машине: 316 операций. Не определён вид расхода: 9. Остаток учитывает т",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/analytics/economics",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "МесяцСтрокиАвтомобилиВодители+ Статус / простойРабота и простои · 2026-08Зелёный — ре",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/planning/calendar",
+    "rowHeight": 100.5,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "МесяцПредставлениеСписок назначенийКалендарь назначений+ Назначить маршрутРейсы в пла",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/planning/planner",
+    "rowHeight": 36,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "1034 записей · фактические заявкиСкачать CSV+ Ввести заявкуПодключение ТрансТрейдаПои",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/orders",
+    "rowHeight": 37,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Состояние подключения · Сверить с заявкамиОбъекты мониторинга · 19Обновить из монитор",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/monitoringdata",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Исходные интервалы Excel, включая машины без заявок. Суточные данные API, источники п",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/telemetry",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Состояние подключения · Связать карты с автомобилямиНефтьмагистраль · операцииСкачать",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/neftmdata",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Состояние подключения · Связать карты с автомобилямиРоснефть · операцииСкачать CSVСПо",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/rosneftdata",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "СправочникАвтомобили и ресурсыВодителиМаршрутыКомпанииКлиентыИсполнителиТипы транспор",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/data/directories",
+    "rowHeight": 37,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Как читать эту страницу«Требует проверки» — действие с конкретной записью. «Ограничен",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/control/quality",
+    "rowHeight": 37,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Подтверждайте полноту только после проверки всех машин за весь период. Подтверждение ",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/control/coverage",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Карта связывается с автомобилем на конкретные даты. Пересекающиеся интервалы запрещен",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/control/fuelcards",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Вводите подтверждённые расходы. Покупки по подключённым топливным картам уже учитываю",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/control/expenses",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Источники данныхПроверить доступность серверовЗдесь показано состояние подключения. Т",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/settings/connections",
+    "rowHeight": null,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Исходный снимокПовторить импорт исходных книгПоследний импорт: 26.10.2026, 18:08:12 М",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/settings/excel",
+    "rowHeight": 35.5,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "Предложенная матрица: руководитель управляет импортом и доступами; логист смотрит отч",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/settings/users",
+    "rowHeight": 34,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "content": "С чего начатьОткройте «Данные → Заявки ТрансТрейд» и выберите нужный период.Для будущ",
+    "explanationSections": 3,
+    "headerRight": 1416,
+    "help": true,
+    "helpRight": 1416,
+    "path": "/help/guide",
+    "rowHeight": 35,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/dashboard",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/statistics",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/comparison",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/reconcile",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/planreport",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/downtime",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/analytics/economics",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 44,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/planning/calendar",
+    "rowHeight": 100.5,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 44,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/planning/planner",
+    "rowHeight": 48,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 44,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/orders",
+    "rowHeight": 49,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/monitoringdata",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/telemetry",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/neftmdata",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/rosneftdata",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 44,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/data/directories",
+    "rowHeight": 49,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 44,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/control/quality",
+    "rowHeight": 49,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/control/coverage",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/control/fuelcards",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/control/expenses",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/settings/connections",
+    "rowHeight": null,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/settings/excel",
+    "rowHeight": 35.5,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/settings/users",
+    "rowHeight": 34,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "actionMin": 999,
+    "explanationSections": 3,
+    "help": "true",
+    "helpPanelRight": 308,
+    "path": "/help/guide",
+    "rowHeight": 35,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/transtrade",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/monitoring",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/rosneft",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/neftm",
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/transtrade",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/monitoring",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/rosneft",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/integrations/neftm",
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/analytics/statistics",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/analytics/economics",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/planning/planner",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/data/rosneftdata",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/data/directories",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/help/guide",
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/analytics/statistics",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/analytics/economics",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/planning/planner",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/data/rosneftdata",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/data/directories",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "explanationSections": 3,
+    "help": "true",
+    "path": "/help/guide",
+    "scrollWidth": 768,
+    "width": 768
+  }
+]

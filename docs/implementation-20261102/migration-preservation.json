@@ -1,0 +1,91 @@
+{
+  "all_prior_rows_unchanged": true,
+  "tables": {
+    "audit": {
+      "same_existing_columns": true,
+      "before_count": 77,
+      "after_count": 77,
+      "added_columns": []
+    },
+    "card_bindings": {
+      "same_existing_columns": true,
+      "before_count": 0,
+      "after_count": 0,
+      "added_columns": []
+    },
+    "catalog": {
+      "same_existing_columns": true,
+      "before_count": 459,
+      "after_count": 459,
+      "added_columns": []
+    },
+    "coverage": {
+      "same_existing_columns": true,
+      "before_count": 0,
+      "after_count": 0,
+      "added_columns": [
+        "deleted"
+      ]
+    },
+    "expenses": {
+      "same_existing_columns": true,
+      "before_count": 0,
+      "after_count": 0,
+      "added_columns": []
+    },
+    "manual": {
+      "same_existing_columns": true,
+      "before_count": 0,
+      "after_count": 0,
+      "added_columns": []
+    },
+    "records": {
+      "same_existing_columns": true,
+      "before_count": 4939,
+      "after_count": 4939,
+      "added_columns": []
+    },
+    "snapshot": {
+      "same_existing_columns": true,
+      "before_count": 1,
+      "after_count": 1,
+      "added_columns": []
+    },
+    "tariffs": {
+      "same_existing_columns": true,
+      "before_count": 114,
+      "after_count": 114,
+      "added_columns": []
+    },
+    "transtrade_history": {
+      "same_existing_columns": true,
+      "before_count": 4292,
+      "after_count": 4292,
+      "added_columns": []
+    },
+    "transtrade_orders": {
+      "same_existing_columns": true,
+      "before_count": 2986,
+      "after_count": 2986,
+      "added_columns": []
+    },
+    "users": {
+      "same_existing_columns": true,
+      "before_count": 1,
+      "after_count": 1,
+      "added_columns": []
+    },
+    "workspace_meta": {
+      "same_existing_columns": true,
+      "before_count": 5,
+      "after_count": 5,
+      "added_columns": []
+    }
+  },
+  "added_tables": {
+    "actual_shift_history": 0,
+    "actual_shifts": 0,
+    "mileage_observations": 0
+  },
+  "note": "Changes after restart may be background updates; do not restore older data to force equality."
+}

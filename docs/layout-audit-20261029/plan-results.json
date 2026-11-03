@@ -1,0 +1,14 @@
+[
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "key": "planreport",
+    "path": "/analytics/planreport",
+    "download": [],
+    "badAlign": [],
+    "overflow": false,
+    "heading": "Сводка плана",
+    "content": 281,
+    "errors": []
+  }
+]

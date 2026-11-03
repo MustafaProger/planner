@@ -1,0 +1,61 @@
+{
+  "prepared_at": "2026-11-02T11:18:56.443320+00:00",
+  "mode": "research_only",
+  "inputs": [
+    {
+      "path": "01-completed.md",
+      "sha256": "d255903cf7f557c419812db738dcfb83d723944271f3111aca6a0dc104528a3d",
+      "read_in_full": true
+    },
+    {
+      "path": "02-remaining.md",
+      "sha256": "f6616519c43d025856c04e3de1da0c1965e6890c5464c35f155673243568b732",
+      "read_in_full": true
+    }
+  ],
+  "solutions": [
+    {
+      "id": "F01",
+      "section_present": true,
+      "action_and_acceptance_defined": true,
+      "implemented_in_this_stage": false
+    },
+    {
+      "id": "F02",
+      "section_present": true,
+      "action_and_acceptance_defined": true,
+      "implemented_in_this_stage": false
+    },
+    {
+      "id": "F03",
+      "section_present": true,
+      "action_and_acceptance_defined": true,
+      "implemented_in_this_stage": false
+    },
+    {
+      "id": "F04",
+      "section_present": true,
+      "action_and_acceptance_defined": true,
+      "implemented_in_this_stage": false
+    }
+  ],
+  "scope_guards": {
+    "G01_G06_remain_closed": true,
+    "automatic_mileage_deferred_by_user": true,
+    "real_data_not_invented": true,
+    "production_no_mutations": true,
+    "local_commit_push_not_blocked_by_every_external_unknown": true
+  },
+  "primary_references": [
+    {
+      "url": "https://playwright.dev/docs/library",
+      "purpose": "Local Playwright library and browser installation commands; verified 2026-11-02"
+    },
+    {
+      "url": "https://playwright.dev/docs/browsers",
+      "purpose": "Browser binary compatibility and explicit browser channels; verified 2026-11-02"
+    }
+  ],
+  "application_changed": false,
+  "working_data_changed": false
+}

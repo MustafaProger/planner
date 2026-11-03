@@ -1,0 +1,73 @@
+{
+  "method": "Synthetic SQLite :memory: seeded only with tests/test_workspace.py source fixture; no app.server import, no working DB/network mutations",
+  "probes": {
+    "group_brand": {
+      "requested": "brand",
+      "returned_names": [
+        "А123АА777"
+      ],
+      "vehicle_brand": "Газель",
+      "vehicle_company": "Чартер ООО"
+    },
+    "group_company": {
+      "requested": "company",
+      "returned_names": [
+        "А123АА777"
+      ],
+      "vehicle_brand": "Газель",
+      "vehicle_company": "Чартер ООО"
+    },
+    "average_metrics": {
+      "returned_fields": [
+        "average_hours",
+        "balance",
+        "days",
+        "delta_km",
+        "drivers",
+        "engine_days",
+        "engine_source",
+        "fuel_days",
+        "fuel_l_per_100_km",
+        "fuel_liters",
+        "fuel_ratio_days",
+        "fuel_source",
+        "hours",
+        "km",
+        "km_source",
+        "known_sums",
+        "missing",
+        "missing_trip_days",
+        "name",
+        "payout",
+        "payout_percent",
+        "period_days",
+        "records",
+        "revenue",
+        "rub_hour",
+        "rub_km",
+        "sat_days",
+        "sat_engine_hours",
+        "sat_hours",
+        "sat_km",
+        "trips"
+      ],
+      "average_hours": 4.0,
+      "average_check_field_present": false
+    },
+    "comparison_deltas_api": {
+      "delta_trips": 0,
+      "delta_days": 0,
+      "delta_revenue": -100,
+      "delta_payout": 0,
+      "delta_km": -10,
+      "delta_hours": 0
+    },
+    "stale_delete": {
+      "seen_revision": 1,
+      "current_revision_before_delete": 2,
+      "stale_edit_rejected": true,
+      "stale_delete_accepted": true,
+      "note_before_delete": "Changed by user B"
+    }
+  }
+}

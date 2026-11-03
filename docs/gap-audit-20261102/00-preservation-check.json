@@ -1,0 +1,30 @@
+{
+  "checked_at": "2026-11-02T07:53:20.103182+00:00",
+  "original_changed_files_checked": 127,
+  "original_file_changes_since_baseline": [],
+  "head_unchanged": true,
+  "branch": "codex/logistics-analytics",
+  "source_files": [
+    {
+      "role": "customer_transcript",
+      "unchanged": true
+    },
+    {
+      "role": "planner_workbook",
+      "unchanged": true
+    },
+    {
+      "role": "statistics_workbook",
+      "unchanged": true
+    },
+    {
+      "role": "planner_relationships",
+      "unchanged": true
+    },
+    {
+      "role": "statistics_relationships",
+      "unchanged": true
+    }
+  ],
+  "scope": "Checks original changed/untracked files and supplied non-secret sources. Audit added only research artifacts. This does not assert unchanged working database: the existing background worker remains active. No application changes, commits, pushes or provider writes performed by this audit team."
+}

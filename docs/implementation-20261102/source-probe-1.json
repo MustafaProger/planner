@@ -1,0 +1,26 @@
+[
+  {
+    "provider": "neftm",
+    "at": "2026-11-02T08:02:02.136941+00:00",
+    "status": "success",
+    "rows": 0,
+    "as_of": "2026-11-02T08:02:03.115196+00:00",
+    "elapsed_seconds": 0.99
+  },
+  {
+    "provider": "rosneft",
+    "at": "2026-11-02T08:02:03.128705+00:00",
+    "status": "success",
+    "rows": 4,
+    "as_of": "2026-11-02T08:02:05.150823+00:00",
+    "elapsed_seconds": 2.05
+  },
+  {
+    "provider": "monitoring",
+    "at": "2026-11-02T08:02:05.176287+00:00",
+    "status": "success",
+    "rows": 19,
+    "as_of": "2026-11-02T08:02:08.002956+00:00",
+    "elapsed_seconds": 2.83
+  }
+]

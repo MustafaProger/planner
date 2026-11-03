@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-30T08:09:55.107Z",
+  "results": [
+    {
+      "engine": "chromium",
+      "width": 1440,
+      "overflow": false,
+      "detailsOpen": true,
+      "sourceCount": 4
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "overflow": false,
+      "detailsOpen": true,
+      "sourceCount": 4
+    },
+    {
+      "engine": "webkit",
+      "width": 1440,
+      "overflow": false,
+      "detailsOpen": true,
+      "sourceCount": 4
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "overflow": false,
+      "detailsOpen": true,
+      "sourceCount": 4
+    }
+  ]
+}

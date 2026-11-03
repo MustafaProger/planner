@@ -1,0 +1,56 @@
+[
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "width": 768,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  },
+  {
+    "engine": "chromium",
+    "width": 320,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 1440,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 768,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  },
+  {
+    "engine": "webkit",
+    "width": 320,
+    "download": false,
+    "gap": 0,
+    "overflow": false,
+    "driver": "driver",
+    "errors": []
+  }
+]

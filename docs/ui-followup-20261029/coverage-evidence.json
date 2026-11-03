@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-10-29T10:50:09.406240+03:00",
+  "monitoring": {
+    "api_rows": 608,
+    "known": {
+      "km": 344,
+      "hours": 0,
+      "engine_hours": 348,
+      "fuel_liters": 134
+    },
+    "periods": {
+      "2026-08": 589,
+      "2026-10": 19
+    },
+    "fuel_status": {
+      "no_signal": 453,
+      "ok": 134,
+      "suspect_zero": 21
+    },
+    "matched_vehicles": 19
+  },
+  "fuel": {
+    "operations": {
+      "neftm": 228,
+      "rosneft": 465
+    },
+    "unknown_amount": 40,
+    "bound_cards": 0
+  },
+  "plan_missing_metrics": {
+    "revenue": 0,
+    "payout": 0,
+    "km": 0,
+    "hours": 0
+  },
+  "access_workbook": {
+    "service_labels_only": [
+      "ГЛОНАССсофт",
+      "Нефтьмагистраль",
+      "Роснефть"
+    ],
+    "unchanged": true,
+    "secret_values_exported": false
+  }
+}

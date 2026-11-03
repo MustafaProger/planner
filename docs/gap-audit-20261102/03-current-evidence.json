@@ -1,0 +1,192 @@
+{
+  "at": "2026-11-02T07:25:07.429837+00:00",
+  "method": "SQLite mode=ro + PRAGMA query_only; no app.server import; no provider calls",
+  "counts": {
+    "trips": 2986,
+    "plans": 1437,
+    "statuses": 181,
+    "coverage": 0,
+    "card_bindings": 0,
+    "expenses": 0,
+    "tariffs": 114
+  },
+  "catalogs": {
+    "vehicles": 142,
+    "drivers": 115,
+    "routes": 114,
+    "companies": 4,
+    "clients": 10,
+    "carriers": 48,
+    "transport_types": 11,
+    "payment_methods": 6,
+    "reasons": 9
+  },
+  "plan_states": {
+    "scheduled": 1190,
+    "no_route": 158,
+    "unassigned": 88,
+    "review": 1
+  },
+  "plan_duplicate_rows": 2,
+  "trip_origins": {
+    "transtrade": 2986
+  },
+  "trip_categories": {
+    "Рейс": 2493,
+    "Доплата": 19,
+    "Удержание": 209,
+    "Сервис": 42,
+    "Погрузка": 223
+  },
+  "null_trip_metrics": {
+    "km": 2986,
+    "hours": 0,
+    "revenue": 0,
+    "payout": 0
+  },
+  "trip_flags": {
+    "api_missing": 0,
+    "api_list_omitted": 3,
+    "api_conflict": 0,
+    "cancelled": 0
+  },
+  "periods": {
+    "trips": {
+      "2026-08": 1035,
+      "2026-10": 862,
+      "2026-09": 1089
+    },
+    "plans": {
+      "2026-07": 715,
+      "2026-09": 721,
+      "2026-08": 1
+    },
+    "statuses": {
+      "2026-08": 181
+    }
+  },
+  "satellite": {
+    "raw_excel": 335,
+    "api_days": 1254,
+    "merged_days": 1254,
+    "mapping_total": 19,
+    "mapping_matched": 19,
+    "api_metric_known": {
+      "km": 715,
+      "engine_hours": 720,
+      "fuel_liters": 277
+    },
+    "api_fuel_status": {
+      "no_signal": 932,
+      "ok": 277,
+      "suspect_zero": 45
+    }
+  },
+  "fuel_operations": {
+    "neftm": 333,
+    "rosneft": 704
+  },
+  "health": {
+    "healthy": true,
+    "reason": "Обновление сервера работает.",
+    "heartbeat_at": "2026-11-02T10:25:06.987845+03:00",
+    "age_seconds": 0.4,
+    "running": false
+  },
+  "reports": {
+    "2026-08": {
+      "comparison_groups": 50,
+      "plan_complete": false,
+      "fact_complete": false,
+      "delta_revenue_known": 0,
+      "reconcile_rows": 804,
+      "reconcile_states": {
+        "Нет пробега ТТ": 712,
+        "Нет заявок": 92
+      },
+      "delta_km_known": 0,
+      "unassigned_fuel_operations": 316,
+      "unknown_fuel_operation_types": 9,
+      "fuel_coverage": {
+        "neftm": true,
+        "rosneft": true
+      }
+    },
+    "2026-09": {
+      "comparison_groups": 58,
+      "plan_complete": false,
+      "fact_complete": false,
+      "delta_revenue_known": 0,
+      "reconcile_rows": 805,
+      "reconcile_states": {
+        "Нет пробега ТТ": 789,
+        "Нет заявок": 16
+      },
+      "delta_km_known": 0,
+      "unassigned_fuel_operations": 313,
+      "unknown_fuel_operation_types": 23,
+      "fuel_coverage": {
+        "neftm": true,
+        "rosneft": true
+      }
+    },
+    "2026-10": {
+      "comparison_groups": 47,
+      "plan_complete": false,
+      "fact_complete": false,
+      "delta_revenue_known": 0,
+      "reconcile_rows": 770,
+      "reconcile_states": {
+        "Нет пробега ТТ": 710,
+        "Нет заявок": 60
+      },
+      "delta_km_known": 0,
+      "unassigned_fuel_operations": 403,
+      "unknown_fuel_operation_types": 34,
+      "fuel_coverage": {
+        "neftm": true,
+        "rosneft": true
+      }
+    },
+    "2026-11": {
+      "comparison_groups": 0,
+      "plan_complete": false,
+      "fact_complete": false,
+      "delta_revenue_known": 0,
+      "reconcile_rows": 10,
+      "reconcile_states": {
+        "Нет заявок": 10
+      },
+      "delta_km_known": 0,
+      "unassigned_fuel_operations": 5,
+      "unknown_fuel_operation_types": 0,
+      "fuel_coverage": {
+        "neftm": false,
+        "rosneft": false
+      }
+    }
+  },
+  "served_static": {
+    "index.html": {
+      "matches_disk": true
+    },
+    "main.js": {
+      "matches_disk": true
+    },
+    "workspace.js": {
+      "matches_disk": true
+    },
+    "ui.js": {
+      "matches_disk": true
+    },
+    "planviews.js": {
+      "matches_disk": true
+    },
+    "refresh.js": {
+      "matches_disk": true
+    },
+    "motion.js": {
+      "matches_disk": true
+    }
+  }
+}

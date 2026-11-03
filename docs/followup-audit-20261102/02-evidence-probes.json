@@ -1,0 +1,63 @@
+{
+  "checked_at": "2026-11-02T10:52:00.406414+00:00",
+  "review_scope": [
+    "app/mileage.py",
+    "app/shifts.py",
+    "app/evidence_routes.py",
+    "app/static/evidence.js",
+    "tests/test_evidence.py",
+    "tests/test_evidence_ui.cjs"
+  ],
+  "head": "677636891dcfc13109d0467f9b3448af3a709daa",
+  "mode": "read_only_code_review_and_isolated_existing_tests",
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_evidence.py",
+      "passed": 21,
+      "failed": 0,
+      "isolation": "in-memory fixtures; server subprocess has temporary FLEET_DATA and disabled scheduler"
+    },
+    {
+      "command": "node --test tests/test_evidence_ui.cjs",
+      "passed": 11,
+      "failed": 0,
+      "isolation": "VM stubs, no live requests"
+    }
+  ],
+  "verified_paths": [
+    "ID/number/date/vehicle mileage matching",
+    "content/token revalidation during confirm transaction",
+    "newer/older/same-timestamp conflict and idempotency",
+    "provider identity changes invalidate current mileage read model",
+    "shift revisions/history and overlapping responsibility conflicts",
+    "no proportional allocation of daily telemetry across partial shifts",
+    "late UI responses cannot apply to reopened mileage form"
+  ],
+  "confirmed_limitations": [
+    {
+      "id": "G07",
+      "evidence": [
+        "app/evidence_routes.py:19",
+        "app/static/evidence.js:14"
+      ],
+      "finding": "Automatic mileage acquisition remains explicitly false; only manually supplied confirmed export is supported."
+    },
+    {
+      "id": "G08",
+      "evidence": [
+        "app/shifts.py:75",
+        "app/shifts.py:88",
+        "app/static/evidence.js:14"
+      ],
+      "finding": "Production evidence route consumes daily measurements only; shifts that do not uniquely cover a whole measurement leave it unassigned. No precise sub-day telemetry retrieval is implemented."
+    }
+  ],
+  "new_material_reproducible_defects_found": [],
+  "caveats": [
+    "Passing synthetic tests does not prove a real TT mileage source or real confirmed driver shifts exist.",
+    "No current production/browser runtime acceptance was performed by this scoped reviewer."
+  ],
+  "application_edits": false,
+  "working_database_writes": false,
+  "provider_calls": false
+}
