@@ -2481,6 +2481,9 @@ button:not(:disabled):active,
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.drawer-inner > * {
+  flex-shrink: 0;
+}
 .drawer header {
   position: sticky;
   top: -30px;
