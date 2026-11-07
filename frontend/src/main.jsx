@@ -47,6 +47,7 @@ import {
   LogOut,
   ExternalLink,
   Plus,
+  Check,
   AlertTriangle,
   ClipboardList,
   Database,
@@ -376,6 +377,57 @@ function Multi({ id, label, items, value, onChange, open, onToggle }) {
             </React.Fragment>
           ))}
           {!list.length && <p>Ничего не найдено</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLabel, required = false, disabled = false, placeholder = "Выберите" }) {
+  const controlled = value !== undefined;
+  const [localValue, setLocalValue] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const root = useRef(null);
+  const searchRef = useRef(null);
+  const current = controlled ? value : localValue;
+  const normalized = options.map((option) => typeof option === "string" ? { value: option, label: option } : option);
+  const selected = normalized.find((option) => option.value === current);
+  const visible = normalized.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()));
+  useEffect(() => {
+    if (!open) return;
+    const close = (event) => {
+      if (!root.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    requestAnimationFrame(() => searchRef.current?.focus());
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  const choose = (next) => {
+    if (!controlled) setLocalValue(next);
+    onChange?.({ target: { value: next } });
+    setOpen(false);
+    setSearch("");
+  };
+  return (
+    <div ref={root} className="select-menu" data-open={open ? "true" : "false"} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+      {name && <input className="select-menu-input" tabIndex={-1} aria-hidden="true" name={name} value={current} required={required} onChange={() => {}} />}
+      <button type="button" className="select-menu-trigger" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((state) => !state)}>
+        <span className={selected ? "" : "placeholder"}>{selected?.label || placeholder}</span>
+        <ChevronDown size={14} />
+      </button>
+      <div className="select-menu-pop" aria-hidden={!open} inert={open ? undefined : ""}>
+        <div className="search-input">
+          <Search size={15} />
+          <input ref={searchRef} aria-label={`Поиск: ${ariaLabel || placeholder}`} placeholder="Поиск…" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </div>
+        <div className="select-menu-list" role="listbox" aria-label={ariaLabel}>
+          {visible.map((option) => (
+            <button type="button" role="option" aria-selected={option.value === current} key={option.value} onClick={() => choose(option.value)}>
+              <span>{option.label}</span>
+              {option.value === current && <Check size={15} />}
+            </button>
+          ))}
+          {!visible.length && <p>Ничего не найдено</p>}
         </div>
       </div>
     </div>
@@ -715,10 +767,34 @@ function Drawer({ title, children, onClose, size = "wide" }) {
   };
   useEffect(() => {
     const el = ref.current;
+    const body = document.body;
+    const root = document.documentElement;
+    const scrollY = window.scrollY;
+    const scrollbarWidth = window.innerWidth - root.clientWidth;
+    const previousBodyStyles = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      paddingRight: body.style.paddingRight,
+    };
+    root.classList.add("drawer-open");
+    body.classList.add("drawer-open");
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
     el.showModal();
     requestAnimationFrame(() => setOpened(true));
     return () => {
       if (el.open) el.close();
+      root.classList.remove("drawer-open");
+      body.classList.remove("drawer-open");
+      Object.assign(body.style, previousBodyStyles);
+      window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
     };
   }, []);
   return (
@@ -1676,16 +1752,12 @@ function App() {
                   }
                   subtitle="Нажмите строку для проверки исходных заявок"
                   action={
-                    <select
-                      aria-label="Показатель рейтинга"
-                      value={rankMetric}
-                      onChange={(e) => setRankMetric(e.target.value)}
-                    >
-                      <option value="revenue">По выручке</option>
-                      <option value="balance">По результату</option>
-                      <option value="days">По рабочим дням</option>
-                      <option value="average">По среднему чеку</option>
-                    </select>
+                    <SelectMenu ariaLabel="Показатель рейтинга" value={rankMetric} onChange={(e) => setRankMetric(e.target.value)} options={[
+                      { value: "revenue", label: "По выручке" },
+                      { value: "balance", label: "По результату" },
+                      { value: "days", label: "По рабочим дням" },
+                      { value: "average", label: "По среднему чеку" },
+                    ]} />
                   }
                 >
                   <div className="ranking">
@@ -1766,17 +1838,13 @@ function App() {
                   value={compareMode}
                   onChange={setCompareMode}
                 />
-                <select
-                  aria-label="Группировка сравнения"
-                  value={compareBy}
-                  onChange={(e) => setCompareBy(e.target.value)}
-                >
-                  <option value="vehicle">Автомобили</option>
-                  <option value="driver">Водители</option>
-                  <option value="carrier">Исполнители</option>
-                  <option value="client">Клиенты</option>
-                  <option value="type">Типы транспорта</option>
-                </select>
+                <SelectMenu ariaLabel="Группировка сравнения" value={compareBy} onChange={(e) => setCompareBy(e.target.value)} options={[
+                  { value: "vehicle", label: "Автомобили" },
+                  { value: "driver", label: "Водители" },
+                  { value: "carrier", label: "Исполнители" },
+                  { value: "client", label: "Клиенты" },
+                  { value: "type", label: "Типы транспорта" },
+                ]} />
               </div>
               <Section
                 title={
@@ -2392,13 +2460,9 @@ function DayDetail({ day, user, reasons, onSave }) {
           <h3>Добавить статус</h3>
           <label>
             Причина
-            <select
-              required
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            >
-              <option value="">Выберите причину</option>
-              {reasons
+            <SelectMenu required ariaLabel="Причина" value={reason} onChange={(e) => setReason(e.target.value)} options={[
+              { value: "", label: "Выберите причину" },
+              ...reasons
                 .filter(
                   (r, i, all) =>
                     !r.archived &&
@@ -2408,12 +2472,8 @@ function DayDetail({ day, user, reasons, onSave }) {
                         M.statusName(x.name) === M.statusName(r.name),
                     ) === i,
                 )
-                .map((r) => (
-                  <option key={r.id} value={r.name}>
-                    {M.statusName(r.name)}
-                  </option>
-                ))}
-            </select>
+                .map((r) => ({ value: r.name, label: M.statusName(r.name) })),
+            ]} />
           </label>
           <label>
             Комментарий
@@ -2515,15 +2575,7 @@ function Review({ issue, value, user, onSave }) {
       >
         <label>
           Результат проверки
-          <select
-            disabled={!can}
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            {M.REVIEW_STATES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+          <SelectMenu disabled={!can} ariaLabel="Результат проверки" value={status} onChange={(e) => setStatus(e.target.value)} options={M.REVIEW_STATES} />
         </label>
         <label>
           Комментарий ответственного
@@ -2726,19 +2778,10 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
         >
           <label>
             Автомобиль
-            <select
-              required
-              value={car}
-              onChange={(e) => {
+            <SelectMenu required ariaLabel="Автомобиль" value={car} onChange={(e) => {
                 setCar(e.target.value);
                 setNorm(settings.fuel_norms[e.target.value] || "");
-              }}
-            >
-              <option value="">Выберите</option>
-              {p.vehicles.map((v) => (
-                <option key={v.name}>{v.name}</option>
-              ))}
-            </select>
+              }} options={[{ value: "", label: "Выберите" }, ...p.vehicles.map((v) => ({ value: v.name, label: v.name }))]} />
           </label>
           <label>
             Литров на 100 км
@@ -2804,30 +2847,14 @@ function RoutesPage({ p }) {
           title="Маршрут А"
           subtitle="В базовом сценарии — собственный автомобиль"
         >
-          <select
-            aria-label="Маршрут А"
-            value={first}
-            onChange={(e) => setFirst(e.target.value)}
-          >
-            {routes.map((r) => (
-              <option key={r.id}>{r.id}</option>
-            ))}
-          </select>
+          <SelectMenu ariaLabel="Маршрут А" value={first} onChange={(e) => setFirst(e.target.value)} options={routes.map((r) => ({ value: r.id, label: r.name || r.id }))} />
           {a && <RouteFacts route={a} />}
         </Section>
         <Section
           title="Маршрут Б"
           subtitle="В базовом сценарии — привлечённый исполнитель"
         >
-          <select
-            aria-label="Маршрут Б"
-            value={second}
-            onChange={(e) => setSecond(e.target.value)}
-          >
-            {routes.map((r) => (
-              <option key={r.id}>{r.id}</option>
-            ))}
-          </select>
+          <SelectMenu ariaLabel="Маршрут Б" value={second} onChange={(e) => setSecond(e.target.value)} options={routes.map((r) => ({ value: r.id, label: r.name || r.id }))} />
           {b && <RouteFacts route={b} />}
         </Section>
       </div>
@@ -3054,7 +3081,12 @@ function PlannerPage({ p, period, filters, user, onOpen }) {
           в плановые итоги. Тариф фиксируется на дату назначения.
         </InfoNote>
         {user.role !== "viewer" && (
-          <B variant="primary" icon={<Plus size={15} />} onClick={() => onOpen()}>
+          <B
+            className="planner-primary-action"
+            variant="primary"
+            icon={<Plus size={15} />}
+            onClick={() => onOpen()}
+          >
             Назначить маршрут
           </B>
         )}
@@ -3114,6 +3146,9 @@ function PlanForm({ p, row, onSaved }) {
   const today = new Date().toLocaleDateString("sv-SE");
   const [dateValue, setDateValue] = useState(row?.date || today);
   const [routeId, setRouteId] = useState(row?.route_id || "");
+  const [state, setState] = useState(row?.state || "scheduled");
+  const [vehicleId, setVehicleId] = useState(row?.vehicle_id || "");
+  const [driverId, setDriverId] = useState(row?.driver_id || "");
   const [quote, setQuote] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -3186,40 +3221,34 @@ function PlanForm({ p, row, onSaved }) {
       )}
       <label>
         Состояние
-        <select name="state" defaultValue={row?.state || "scheduled"}>
-          <option value="scheduled">Назначен</option>
-          <option value="unassigned">Не назначен ресурс / водитель</option>
-          <option value="no_route">Нет маршрута</option>
-          <option value="cancelled">Отменён</option>
-          <option value="review">Требует проверки</option>
-        </select>
+        <SelectMenu name="state" ariaLabel="Состояние" value={state} onChange={(event) => setState(event.target.value)} options={[
+          { value: "scheduled", label: "Назначен" },
+          { value: "unassigned", label: "Не назначен ресурс / водитель" },
+          { value: "no_route", label: "Нет маршрута" },
+          { value: "cancelled", label: "Отменён" },
+          { value: "review", label: "Требует проверки" },
+        ]} />
       </label>
       <label>
         Автомобиль / ресурс
-        <select name="vehicle_id" defaultValue={row?.vehicle_id || ""}>
-          <option value="">Не выбран</option>
-          {active("vehicles").map((item) => (
-            <option value={item.id} key={item.id}>{item.name}</option>
-          ))}
-        </select>
+        <SelectMenu name="vehicle_id" ariaLabel="Автомобиль / ресурс" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} options={[
+          { value: "", label: "Не выбран" },
+          ...active("vehicles").map((item) => ({ value: item.id, label: item.name })),
+        ]} />
       </label>
       <label>
         Водитель
-        <select name="driver_id" defaultValue={row?.driver_id || ""}>
-          <option value="">Не выбран</option>
-          {active("drivers").map((item) => (
-            <option value={item.id} key={item.id}>{item.name}</option>
-          ))}
-        </select>
+        <SelectMenu name="driver_id" ariaLabel="Водитель" value={driverId} onChange={(event) => setDriverId(event.target.value)} options={[
+          { value: "", label: "Не выбран" },
+          ...active("drivers").map((item) => ({ value: item.id, label: item.name })),
+        ]} />
       </label>
       <label>
         Маршрут
-        <select name="route_id" value={routeId} onChange={(e) => setRouteId(e.target.value)}>
-          <option value="">Не выбран</option>
-          {active("routes").map((item) => (
-            <option value={item.id} key={item.id}>{item.name}</option>
-          ))}
-        </select>
+        <SelectMenu name="route_id" ariaLabel="Маршрут" value={routeId} onChange={(event) => setRouteId(event.target.value)} options={[
+          { value: "", label: "Не выбран" },
+          ...active("routes").map((item) => ({ value: item.id, label: item.name })),
+        ]} />
       </label>
       <label>
         Номер смены / рейса
@@ -3268,9 +3297,9 @@ function PlanForm({ p, row, onSaved }) {
             Убрать назначение
           </B>
         )}
-        <B variant="primary" type="submit" disabled={busy}>
+        <button className="plan-submit" type="submit" disabled={busy}>
           {editing ? "Сохранить" : "Создать назначения"}
-        </B>
+        </button>
       </div>
     </form>
   );
@@ -3511,6 +3540,9 @@ function UsersPage({ p }) {
   const [users, setUsers] = useState([]);
   const [audit, setAudit] = useState([]);
   const [message, setMessage] = useState("");
+  const [newRole, setNewRole] = useState("logist");
+  const [userVehicles, setUserVehicles] = useState([]);
+  const [userVehicleMenu, setUserVehicleMenu] = useState(false);
   const load = () =>
     Promise.all([api("users"), api("audit")])
       .then(([userRows, auditRows]) => {
@@ -3549,12 +3581,12 @@ function UsersPage({ p }) {
             event.preventDefault();
             const form = event.currentTarget;
             const body = Object.fromEntries(new FormData(form));
-            body.vehicles = [...form.elements.vehicles.selectedOptions].map(
-              (option) => option.value,
-            );
+            body.vehicles = userVehicles;
             try {
               await api("users", { method: "POST", body: JSON.stringify(body) });
               form.reset();
+              setNewRole("logist");
+              setUserVehicles([]);
               setMessage("Пользователь добавлен");
               await load();
             } catch (e) {
@@ -3566,19 +3598,15 @@ function UsersPage({ p }) {
           <label>Пароль<input name="password" type="password" minLength={12} required autoComplete="new-password" /></label>
           <label>
             Роль
-            <select name="role">
-              <option value="logist">Логист</option>
-              <option value="viewer">Наблюдатель</option>
-              <option value="admin">Руководитель</option>
-            </select>
+            <SelectMenu name="role" ariaLabel="Роль" value={newRole} onChange={(e) => setNewRole(e.target.value)} options={[
+              { value: "logist", label: "Логист" },
+              { value: "viewer", label: "Наблюдатель" },
+              { value: "admin", label: "Руководитель" },
+            ]} />
           </label>
           <label>
             Автомобили
-            <select name="vehicles" multiple>
-              {p.vehicles.map((vehicle) => (
-                <option key={vehicle.name}>{vehicle.name}</option>
-              ))}
-            </select>
+            <Multi id="user-vehicles" label="Выберите автомобили" items={p.vehicles.map((vehicle) => vehicle.name)} value={userVehicles} onChange={setUserVehicles} open={userVehicleMenu} onToggle={(_, next) => setUserVehicleMenu(next)} />
           </label>
           <B variant="primary" type="submit">Добавить пользователя</B>
         </form>
@@ -4000,68 +4028,43 @@ function AssignmentEditor({ p, refresh }) {
       >
         <label>
           Справочник
-          <select
-            value={kind}
-            onChange={(e) => {
+          <SelectMenu ariaLabel="Справочник" value={kind} onChange={(e) => {
               setKind(e.target.value);
               setId("");
               setCarrier("");
               setType("");
-            }}
-          >
-            <option value="vehicles">Автомобили</option>
-            <option value="drivers">Водители</option>
-          </select>
+            }} options={[{ value: "vehicles", label: "Автомобили" }, { value: "drivers", label: "Водители" }]} />
         </label>
         <label>
           Запись
-          <select
-            required
-            value={id}
-            onChange={(e) => {
+          <SelectMenu required ariaLabel="Запись" value={id} onChange={(e) => {
               const r = rows.find((r) => r.id === e.target.value);
               setId(e.target.value);
               setCarrier(r?.carrier_id || "");
               setType(r?.transport_type_id || "");
-            }}
-          >
-            <option value="">Выберите</option>
-            {rows.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            }} options={[{ value: "", label: "Выберите" }, ...rows.map((r) => ({ value: r.id, label: r.name }))]} />
         </label>
         <label>
           Исполнитель
-          <select value={carrier} onChange={(e) => setCarrier(e.target.value)}>
-            <option value="">Связь с исполнителем ТТ не установлена</option>
-            {(p.directories.carriers || [])
+          <SelectMenu ariaLabel="Исполнитель" value={carrier} onChange={(e) => setCarrier(e.target.value)} options={[
+            { value: "", label: "Связь с исполнителем ТТ не установлена" },
+            ...(p.directories.carriers || [])
               .filter((r) => !r.archived)
-              .map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-          </select>
+              .map((r) => ({ value: r.id, label: r.name })),
+          ]} />
         </label>
         {kind === "vehicles" && (
           <label>
             Тип транспорта
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">Не установлен</option>
-              {(p.directories.transport_types || [])
+            <SelectMenu ariaLabel="Тип транспорта" value={type} onChange={(e) => setType(e.target.value)} options={[
+              { value: "", label: "Не установлен" },
+              ...(p.directories.transport_types || [])
                 .filter(
                   (r) =>
                     !r.archived && M.category({ type: r.name }) === "Вождение",
                 )
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
+                .map((r) => ({ value: r.id, label: r.name })),
+            ]} />
           </label>
         )}
         <B type="submit" variant="primary" disabled={!id || busy}>
