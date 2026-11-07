@@ -16,7 +16,7 @@ from itertools import islice, zip_longest
 from pathlib import Path
 import requests
 from app import workspace as ws
-from app.importer import vehicle
+from app.normalization import vehicle
 
 URL = 'https://tt-ok.ru/data/api'
 MUTEX = threading.Lock()

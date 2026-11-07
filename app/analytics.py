@@ -9,7 +9,7 @@ def complete_sum(rows,field):
     return measured_sum(rows,field) if rows and all(r.get(field) is not None for r in rows) else None
 
 def metric_source(rows,field):
-    return ' + '.join(sorted({r.get('sources',{}).get(field,'Excel') for r in rows if r.get(field) is not None})) or 'Нет данных'
+    return ' + '.join(sorted({r.get('sources',{}).get(field,r.get('source','Нет данных')) for r in rows if r.get(field) is not None})) or 'Нет данных'
 ATTRIBUTE_KEYS=('vehicle_brand','vehicle_company','driver_company','resource_type')
 GROUPS=('vehicle','driver','pair','client','type','carrier','date','category','payment','payout_method','month','quarter','year','week','logist',*ATTRIBUTE_KEYS)
 AVERAGES={

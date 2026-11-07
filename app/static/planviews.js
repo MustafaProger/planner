@@ -1,4 +1,4 @@
-/* Both Excel planning matrices use the same assignments and stable actions. */
+/* Both planning matrices use the same assignments and stable actions. */
 let planRows = 'route';
 const plannerWithoutRowChoice = planner;
 

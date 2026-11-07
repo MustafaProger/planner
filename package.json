@@ -8,7 +8,12 @@
     "test": "node --test tests/test_evidence_ui.cjs tests/test_reporting_ui.cjs tests/test_refresh_ui.cjs tests/test_planviews.cjs tests/test_ui_information.cjs tests/test_navigation.cjs tests/test_motion.cjs tests/test_report_drilldown_ui.cjs",
     "test:browser": "playwright test --config=playwright.config.cjs",
     "test:browser:failure-probe": "node tests/sidebar_failure_probe.cjs",
-    "browser:install": "playwright install chromium"
+    "browser:install": "playwright install chromium",
+    "build:ui": "npm run build --prefix frontend",
+    "test:charter": "npm test --prefix frontend",
+    "preview:charter": ".venv/bin/python scripts/preview_charter.py",
+    "demo:seed": ".venv/bin/python scripts/seed_charter_demo.py",
+    "preview:demo": ".venv/bin/python scripts/preview_charter.py --demo"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1"

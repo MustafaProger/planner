@@ -6,7 +6,7 @@ import io
 import json
 import math
 import zipfile
-from app.importer import vehicle
+from app.normalization import vehicle
 
 class Conflict(ValueError):
     pass

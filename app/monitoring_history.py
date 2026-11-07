@@ -11,7 +11,7 @@ import os
 
 import requests
 
-from app.importer import vehicle
+from app.normalization import vehicle
 from app.monitoring import Client, LOCK, snapshot, AuthenticationError, RateLimitError
 from app.neftm import write_json
 

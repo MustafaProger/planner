@@ -91,3 +91,39 @@ test('sidebar keeps scroll across navigation, rerender, Back and Forward',async(
  for(const endpoint of Object.keys(apiFixtures))assert.ok(requests.includes('GET '+endpoint),`fixture reached ${endpoint}`);
  console.log(JSON.stringify({scenario:'sidebar',viewport:testInfo.project.name,browser:browser.version(),positions,unexpectedRequests:unexpected.length,pageErrors:pageErrors.length,requests}));
 });
+
+test('month selection keeps horizontal scroll after rerender',async({page,context})=>{
+ const errors=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ await context.route('**/*',async route=>{
+  const url=new URL(route.request().url());
+  if(url.origin!==origin)return route.abort();
+  if(Object.hasOwn(apiFixtures,url.pathname))return route.fulfill({json:apiFixtures[url.pathname]});
+  if(url.pathname==='/help/guide')return route.fulfill({path:path.join(root,'app/static/index.html'),contentType:'text/html'});
+  const name=url.pathname.replace('/static/','');
+  if(staticFiles.has(name))return route.fulfill({path:path.join(root,'app/static',name),contentType:name.endsWith('.js')?'application/javascript':'text/css'});
+  return route.abort();
+ });
+ await page.goto(origin+'/help/guide');
+ await expect(page.locator('#main h1')).toHaveText('Как пользоваться');
+ await page.evaluate(()=>{
+  // Isolate the real shell and month handlers from report API requests.
+  D.plans=Array.from({length:24},(_,i)=>({date:`${2025+Math.floor(i/12)}-${String(i%12+1).padStart(2,'0')}-01`}));
+  statistics=async()=>{};
+  tab='statistics';from='2026-07-01';to='2026-07-31';render();
+ });
+ const months=page.locator('.months');
+ for(const month of ['2026-10','2026-09','2026-07']){
+  const button=page.locator(`[data-month="${month}"]`);
+  await button.scrollIntoViewIfNeeded();
+  const before=await months.evaluate(el=>el.scrollLeft);
+  expect(before).toBeGreaterThan(0);
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('#from')).toHaveValue(month+'-01');
+  await expect.poll(()=>months.evaluate(el=>el.scrollLeft)).toBe(before);
+  await page.evaluate(()=>render());
+  await expect.poll(()=>months.evaluate(el=>el.scrollLeft)).toBe(before);
+ }
+ expect(errors).toEqual([]);
+});

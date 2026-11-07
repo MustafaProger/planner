@@ -216,6 +216,8 @@ def dataset(c):
              drivers={r['name']:r.get('company','') for r in cats['drivers'] if not r.get('merged_into')},routes=[],meta=json.loads(c.execute("select body from workspace_meta where key='last_import'").fetchone()[0]))
     for row in c.execute('select * from records where deleted=0'):
         r=resolve_row(json.loads(row['body']),cats);r.update(record_id=row['id'],revision=row['revision'])
+        if r.get('origin')=='excel':continue
+        r.pop('legacy_snapshot',None)
         if row['kind']!='trips':r['id']=row['id']
         if row['kind']=='plans':r=normalize_plan(r)
         d[row['kind']].append(r)
@@ -251,8 +253,8 @@ def dataset(c):
         for trip in d['trips']:
             if trip.get('origin')=='manual' and trip['id'] in raw:
                 trip['api_conflict']=normalize(raw[trip['id']])
-    from app import mileage
-    mileage.enrich(c,d['trips'])
+    # File observations are retained in storage, but never used in API-only reports.
+    d['meta']=dict(files=[],issues=[],source='API',counts={})
     from app.coverage import evaluate
     d['coverage']=[evaluate(d,r) for r in d['coverage']]
     d['meta']['counts']={k:len(d[k]) for k in ('trips','plans','statuses','satellite','routes')}
@@ -279,12 +281,18 @@ def save_catalog(c,kind,b,ident=None):
         result.update(brand=str(b.get('brand','')).strip(),company=str(b.get('company','')).strip(),resource_type=b.get('resource_type','vehicle'))
         if result['resource_type'] not in ('vehicle','partner','placeholder','service'):raise ValueError('Укажите тип ресурса.')
         if result['resource_type']=='vehicle':
-            from app.importer import vehicle
+            from app.normalization import vehicle
             normalized=vehicle(name)
             if not re.fullmatch(r'[А-Я]\d{3}[А-Я]{2}\d{2,3}',normalized):raise ValueError('Укажите полный госномер автомобиля.')
             result['name']=normalized
             if any(other['id']!=ident and normalized in [other['name'],*other.get('aliases',[])] for other in cats[kind]):raise ValueError('Госномер уже существует.')
     if kind=='drivers':result.update(company=str(b.get('company','')).strip(),partner=bool(b.get('partner',False)),placeholder=name.casefold() in PLACEHOLDERS)
+    # Explicit relationships only: never infer ownership from an order.
+    if kind in ('vehicles','drivers'):
+        for field,refkind in [('carrier_id','carriers'), *([('transport_type_id','transport_types')] if kind=='vehicles' else [])]:
+            value=b.get(field,old.get(field,'') if old else '')
+            if value and not lookup(cats,refkind,value,True):raise ValueError('Выберите существующую запись: '+refkind)
+            result[field]=value
     if kind=='routes':result.update(group=str(b.get('group','')).strip(),inactive_route=bool(b.get('inactive_route',False)))
     for field in ('company',):
         if result.get(field) and not lookup(cats,'companies',result[field],True):raise ValueError('Сначала добавьте компанию в справочник.')

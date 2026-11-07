@@ -13,33 +13,10 @@ def register(app,db,dataset,auth,audit,lock):
         data=dataset()
         with db() as c:
             intervals=shifts.rows(c)
-            observations=list(mileage.current(c).values())
+            observations=[]
         start=request.args.get('from','');end=request.args.get('to','9999-12-31')
         measurements=[m for m in shifts.daily_measurements(data) if start<=m['date']<=end]
         return jsonify(shifts=intervals,mileage=observations,allocation=shifts.allocate(intervals,measurements),automatic_mileage=False)
-
-    def upload():
-        f=request.files.get('file')
-        if not f:raise ValueError('Выберите отчет ТТ CSV или XLSX.')
-        content=f.read(8*1024*1024+1)
-        return content,f.filename or '',request.form.get('source_as_of'),request.form.get('source_ref')
-
-    @bp.post('/api/evidence/mileage/preview')
-    @auth(['admin'])
-    def preview():
-        args=upload()
-        with db() as c:return jsonify(mileage.preview(c,*args))
-
-    @bp.post('/api/evidence/mileage/confirm')
-    @auth(['admin'])
-    def confirm():
-        args=upload()
-        if request.form.get('confirmed')!='true':raise ValueError('Подтвердите, что это сохраненный километраж ТТ из указанного источника.')
-        with lock,db() as c:
-            c.execute('BEGIN IMMEDIATE')
-            result=mileage.apply(c,*args,request.form.get('token'),session.get('uid'))
-            audit(c,'mileage',str(result['applied']))
-        return jsonify(result)
 
     @bp.post('/api/evidence/shifts')
     @bp.put('/api/evidence/shifts/<ident>')

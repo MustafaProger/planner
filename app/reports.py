@@ -110,7 +110,7 @@ SATELLITE_DETAIL_FIELDS=('vehicle','date','start','end','km','hours','engine_hou
                          'synced_at','mileage_status','fuel_status')
 
 def reconcile_details(d,q):
-    """Show the measurements actually used, alongside non-additive Excel evidence."""
+    """Show measurements received from the API."""
     car,day=q.get('vehicle'),q.get('date')
     if not car or not day:raise ValueError('Укажите автомобиль и дату сверки.')
     if dt.date.fromisoformat(day).isoformat()!=day:raise ValueError('Укажите дату в формате ГГГГ-ММ-ДД.')
@@ -119,27 +119,16 @@ def reconcile_details(d,q):
     if summary is None:return None
     facts=filtered(d['trips'],scope)
     effective=filtered(d['satellite'],scope)
-    raw=filtered(d.get('satellite_raw',d['satellite']),scope)
-    usage={}
-    for field in SATELLITE_METRICS:
-        sources={r.get('sources',{}).get(field,'Excel') for r in effective if r.get(field) is not None}
-        has_excel=any(r.get(field) is not None for r in raw)
-        role=('used' if 'Excel' in sources else 'replaced_by_api' if 'ГЛОНАССсофт API' in sources else 'unavailable') if has_excel else 'unavailable'
-        usage[field]=dict(value=measured_sum(effective,field),source=metric_source(effective,field),excel_role=role)
+    usage={field:dict(value=measured_sum(effective,field),source=metric_source(effective,field)) for field in SATELLITE_METRICS}
     rows=[]
     for r in effective:
         x={k:r[k] for k in SATELLITE_DETAIL_FIELDS if k in r}
         for label,field in (('km','km'),('engine','engine_hours'),('fuel','fuel_liters'),('hours','hours')):
             x[label+'_source']=metric_source([r],field)
         rows.append(x)
-    originals=[]
-    for r in raw:
-        x={k:r[k] for k in SATELLITE_DETAIL_FIELDS if k in r}
-        x['metric_usage']={f:usage[f]['excel_role'] if r.get(f) is not None else 'unavailable' for f in SATELLITE_METRICS}
-        originals.append(x)
     return dict(vehicle=car,date=day,summary=summary,trips=[r for r in facts if r.get('category')=='Рейс'],
                 other_trips=[dict(record=r,reason='Начисление не участвует в сверке рейсов со спутником') for r in facts if r.get('category')!='Рейс'],
-                satellite=rows,satellite_raw=originals,metric_usage=usage)
+                satellite=rows,satellite_raw=[],metric_usage=usage)
 
 def downtime(d,q):
     kind=q.get('entity','vehicle');kind=kind if kind in ('vehicle','driver') else 'vehicle'

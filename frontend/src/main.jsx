@@ -1,0 +1,4074 @@
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { createRoot } from "react-dom/client";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import {
+  LayoutDashboard,
+  Truck,
+  Users,
+  Building2,
+  ChartNoAxesCombined,
+  CalendarDays,
+  ShieldCheck,
+  Fuel,
+  Route,
+  BookOpen,
+  Settings2,
+  ArrowUpRight,
+  ArrowRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  SlidersHorizontal,
+  Download,
+  RefreshCw,
+  X,
+  Info,
+  Menu,
+  LogOut,
+  ExternalLink,
+  Plus,
+  AlertTriangle,
+  ClipboardList,
+  Database,
+  PlugZap,
+  UserCog,
+} from "lucide-react";
+import { Button } from "./vendor/stageshow/controls/button";
+import { Card } from "./vendor/stageshow/parts/card";
+import { Badge } from "./vendor/stageshow/controls/badge";
+import * as M from "./model";
+import "./style.css";
+const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
+  money = (n) => (n == null ? "—" : N.format(n) + " ₽"),
+  fmt = (n) => (n == null ? "—" : N.format(n)),
+  pct = (n) => (n == null ? "—" : fmt(n) + "%"),
+  short = (n) =>
+    n == null
+      ? "—"
+      : Math.abs(n) >= 1e6
+        ? fmt(n / 1e6) + " млн"
+        : Math.abs(n) >= 1000
+          ? fmt(n / 1000) + " тыс."
+          : fmt(n);
+const date = (s) =>
+  s && M.validDay(s)
+    ? new Date(s + "T12:00:00Z").toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "short",
+      })
+    : s || "—";
+const stamp = (s) =>
+  s
+    ? new Date(s).toLocaleString("ru-RU", {
+        timeZone: "Europe/Moscow",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Дата не известна";
+const nav = [
+  ["overview", "Обзор", LayoutDashboard],
+  ["fleet", "Автопарк", Truck],
+  ["drivers", "Водители", Users],
+  ["clients", "Клиенты", Building2],
+  ["compare", "Сравнение", ChartNoAxesCombined],
+  ["calendar", "Календарь", CalendarDays],
+  ["planner", "Планировщик", ClipboardList],
+  ["control", "Отклонения", ShieldCheck],
+  ["fuel", "ГСМ", Fuel],
+  ["routes", "Экономика маршрутов", Route],
+  ["data", "Исходные данные", Database],
+  ["directories", "Справочники", BookOpen],
+  ["connections", "Подключения", PlugZap],
+  ["settings", "Настройки", Settings2],
+  ["users", "Пользователи", UserCog],
+];
+const hints = {
+  overview: "Работа автопарка, деньги и то, что требует внимания",
+  fleet: "Автомобили, загрузка и результаты перевозок",
+  drivers: "Рабочие дни, заявки и структура начислений",
+  clients: "Клиенты и экономика выполненных заказов",
+  compare: "Сопоставляйте автомобили и отслеживайте изменения",
+  calendar: "Каждый день на виду: работа, статусы и дополнительные события",
+  planner: "Назначения водитель → автомобиль → маршрут с тарифом на дату",
+  control: "Сигналы для проверки — с объяснением и историей решений",
+  fuel: "Заправки по картам и нормативный расход отдельно от фактического",
+  routes: "Сравнение совокупного результата двух назначений",
+  data: "Заявки, назначения, статусы, спутник и топливные операции в одном месте",
+  directories: "Исполнитель → тип транспорта → автомобили и водители",
+  connections: "Состояние API и управляемое обновление внешних источников",
+  settings: "Пороги контроля и правила интерпретации данных",
+  users: "Роли, доступные автомобили и журнал действий",
+};
+let csrf = "";
+const VehicleMapContext = createContext(new Map());
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() =>
+    typeof matchMedia === "function" &&
+    matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const query = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, []);
+  return reduced;
+}
+
+function SlidingTabs({ items, value, onChange, className = "" }) {
+  const index = Math.max(0, items.findIndex(([id]) => id === value));
+  return (
+    <div
+      className={`sliding-tabs ${className}`}
+      style={{ "--tab-count": items.length, "--tab-index": index }}
+    >
+      <i className="sliding-tabs__indicator" aria-hidden="true" />
+      {items.map(([id, label]) => (
+        <button
+          type="button"
+          key={id}
+          className={id === value ? "active" : ""}
+          aria-pressed={id === value}
+          onClick={() => onChange(id)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AnimatedNumber({ value, format = fmt }) {
+  const reduced = useReducedMotion();
+  const previous = useRef(value);
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    if (value == null || previous.current == null || reduced) {
+      previous.current = value;
+      setShown(value);
+      return;
+    }
+    const from = Number(previous.current);
+    const to = Number(value);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) {
+      previous.current = value;
+      setShown(value);
+      return;
+    }
+    let frame;
+    const start = performance.now();
+    const duration = 280;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const next = from + (to - from) * eased;
+      previous.current = next;
+      setShown(next);
+      if (t < 1) frame = requestAnimationFrame(tick);
+      else previous.current = value;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, reduced]);
+  return <span className="animated-number">{format(shown)}</span>;
+}
+
+function VehicleCell({ name }) {
+  const vehicles = useContext(VehicleMapContext),
+    vehicle = name ? vehicles.get(name) : null;
+  return (
+    <span className="vehicle-cell">
+      <strong>{name || "Без привязки"}</strong>
+      <small>
+        {vehicle?.carrier && vehicle.carrier !== M.UNKNOWN
+          ? vehicle.carrier
+          : "Принадлежность не установлена"}
+      </small>
+    </span>
+  );
+}
+
+async function api(path, opt = {}) {
+  const r = await fetch("/api/" + path, {
+    ...opt,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrf,
+      ...opt.headers,
+    },
+  });
+  const b = await r.json();
+  if (!r.ok) throw Error(b.error || "Не удалось получить данные");
+  return b;
+}
+const B = ({ children, ...props }) => (
+  <Button size="large" {...props}>
+    {children}
+  </Button>
+);
+const InfoNote = ({ children, tone = "" }) => (
+  <div className={"info-note " + tone}>
+    <Info size={16} />
+    <span>{children}</span>
+  </div>
+);
+function Empty({ children = "За выбранный период данных нет" }) {
+  return (
+    <div className="empty">
+      <ChartNoAxesCombined size={26} />
+      <strong>{children}</strong>
+      <span>Измените период или выбранные фильтры.</span>
+    </div>
+  );
+}
+function Section({ title, subtitle, action, children, className = "" }) {
+  return (
+    <Card pad="large" className={"section " + className}>
+      <div className="section-head">
+        <div>
+          <h2>{title}</h2>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
+}
+function PeriodPicker({ period, onChange }) {
+  const root = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [part, setPart] = useState(0);
+  const [month, setMonth] = useState(period[0].slice(0, 7));
+  const [draft, setDraft] = useState(period.map(v => v.split('-').reverse().join('.')));
+  useEffect(() => setDraft(period.map(v => v.split('-').reverse().join('.'))), [period]);
+  useEffect(() => {
+    const close = e => { if (!root.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, []);
+  function commit(i) {
+    const value = draft[i].split('.').reverse().join('-');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value) && M.validDay(value)) onChange(i, value);
+    else setDraft(period.map(v => v.split('-').reverse().join('.')));
+  }
+  const first = new Date(month + '-01T12:00:00');
+  const offset = (first.getDay() + 6) % 7;
+  const days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  function shift(n) {
+    const d = new Date(first.getFullYear(), first.getMonth() + n, 1, 12);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return <div className="period-picker" ref={root} onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}>
+    <button type="button" aria-label="Открыть календарь" aria-expanded={open} onClick={() => { setMonth(period[part].slice(0,7)); setOpen(!open); }}><CalendarDays size={16}/></button>
+    {[0,1].map(i => <React.Fragment key={i}>{i === 1 && <span>—</span>}<input type="text" inputMode="numeric" aria-label={i ? 'Конец периода' : 'Начало периода'} value={draft[i]} maxLength={10} onFocus={() => setPart(i)} onChange={e => setDraft(d => d.map((v,j) => j === i ? e.target.value : v))} onBlur={() => commit(i)} onKeyDown={e => { if (e.key === 'Enter') { commit(i); if (!i) root.current.querySelectorAll('input')[1].focus(); } }}/></React.Fragment>)}
+    {open && <div className="range-calendar" role="dialog" aria-label="Выбор периода">
+      <div className="range-parts">{['Начало','Конец'].map((label,i) => <button key={label} className={part === i ? 'selected' : ''} onClick={() => { setPart(i); setMonth(period[i].slice(0,7)); }}>{label}<small>{period[i].split('-').reverse().join('.')}</small></button>)}</div>
+      <div className="range-month"><button aria-label="Предыдущий месяц" onClick={() => shift(-1)}><ChevronLeft size={16}/></button><span>{first.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})}</span><button aria-label="Следующий месяц" onClick={() => shift(1)}><ChevronRight size={16}/></button></div>
+      <div className="range-days">{['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => <small key={d}>{d}</small>)}{Array.from({length:offset},(_,i) => <span key={'blank'+i}/>)}{Array.from({length:days},(_,i) => { const value = `${month}-${String(i+1).padStart(2,'0')}`; return <button key={value} className={period.includes(value) ? 'selected' : value > period[0] && value < period[1] ? 'in-range' : ''} aria-label={value} onClick={() => { onChange(part,value); if (part === 0) setPart(1); else setOpen(false); }}>{i+1}</button>; })}</div>
+      <p>{part === 0 ? 'Выберите начало периода' : 'Выберите конец периода'}</p>
+    </div>}
+  </div>;
+}
+function Multi({ id, label, items, value, onChange, open, onToggle }) {
+  const [search, setSearch] = useState("");
+  const searchRef = useRef(null);
+  useEffect(() => {
+    if (open) requestAnimationFrame(() => searchRef.current?.focus());
+  }, [open]);
+  const list = items
+    .map((i) => (typeof i === "string" ? { value: i, label: i } : i))
+    .filter((i) => i.label.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div
+      className={"multi " + (value.length ? "is-active" : "")}
+      data-open={open ? "true" : "false"}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          onToggle?.(id, false);
+          e.currentTarget.querySelector(".multi-trigger")?.focus();
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="multi-trigger"
+        aria-expanded={open}
+        onClick={() => onToggle?.(id, !open)}
+      >
+        {label}
+        {value.length > 0 && <span className="count">{value.length}</span>}
+        <ChevronDown size={14} />
+      </button>
+      <div
+        className="multi-pop"
+        aria-hidden={!open}
+        inert={open ? undefined : ""}
+      >
+        <div className="search-input">
+          <Search size={15} />
+          <input
+            ref={searchRef}
+            aria-label={"Поиск: " + label}
+            placeholder="Поиск…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="multi-actions">
+          <button
+            onClick={() =>
+              onChange([...new Set([...value, ...list.map((i) => i.value)])])
+            }
+          >
+            Выбрать все
+          </button>
+          <button onClick={() => onChange([])}>Очистить</button>
+        </div>
+        <div className="multi-list">
+          {list.map((i, index) => (
+            <React.Fragment key={i.value}>
+              {i.group && i.group !== list[index - 1]?.group && (
+                <div className="multi-group">{i.group}</div>
+              )}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={value.includes(i.value)}
+                  onChange={(e) =>
+                    onChange(
+                      e.target.checked
+                        ? [...value, i.value]
+                        : value.filter((v) => v !== i.value),
+                    )
+                  }
+                />
+                <span>
+                  {i.label}
+                  {i.note && <small>{i.note}</small>}
+                </span>
+              </label>
+            </React.Fragment>
+          ))}
+          {!list.length && <p>Ничего не найдено</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15 }) {
+  const [search, setSearch] = useState(""),
+    [sort, setSort] = useState(null),
+    [page, setPage] = useState(0),
+    vehicles = useContext(VehicleMapContext);
+  useEffect(() => setPage(0), [rows, search]);
+  let filtered = rows.filter((r) =>
+    columns.some((c) => {
+      const source = c.vehicle ? vehicles.get(r[c.key])?.carrier : "";
+      return String(`${r[c.key] ?? ""} ${source || ""}`)
+        .toLowerCase()
+        .includes(search.toLowerCase());
+    }),
+  );
+  if (sort) {
+    const { key, dir } = sort;
+    filtered = [...filtered].sort((a, b) => {
+      const av = a[key],
+        bv = b[key];
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return (
+        dir *
+        (typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv), "ru"))
+      );
+    });
+  }
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize)),
+    safePage = Math.min(page, pages - 1);
+  return (
+    <div className="data-table">
+      <div className="table-tools">
+        <div className="search-input">
+          <Search size={16} />
+          <input
+            aria-label={"Поиск в таблице " + title}
+            placeholder="Поиск в таблице"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <span className="muted">{fmt(filtered.length)} записей</span>
+      </div>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <th
+                  key={c.key}
+                  aria-sort={
+                    sort?.key === c.key
+                      ? sort.dir === 1
+                        ? "ascending"
+                        : "descending"
+                      : "none"
+                  }
+                >
+                  <button
+                    onClick={() =>
+                      setSort({
+                        key: c.key,
+                        dir: sort?.key === c.key ? -sort.dir : 1,
+                      })
+                    }
+                  >
+                    {c.label}
+                    <span>
+                      {sort?.key === c.key
+                        ? sort.dir === 1
+                          ? " ↑"
+                          : " ↓"
+                        : " ↕"}
+                    </span>
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered
+              .slice(safePage * pageSize, (safePage + 1) * pageSize)
+              .map((r, i) => (
+                <tr
+                  key={`${r.id || r.name || "row"}-${i}`}
+                  onClick={() => onRow?.(r)}
+                  onKeyDown={(e) => {
+                    if (onRow && e.key === "Enter") onRow(r);
+                  }}
+                  tabIndex={onRow ? 0 : undefined}
+                  className={onRow ? "clickable" : ""}
+                >
+                  {columns.map((c) => (
+                    <td key={c.key} className={c.numeric ? "number" : ""}>
+                      {c.vehicle ? (
+                        <VehicleCell name={r[c.key]} />
+                      ) : c.render ? (
+                        c.render(r)
+                      ) : (
+                        (r[c.key] ?? "—")
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      {!filtered.length && <Empty />}
+      <div className="pagination">
+        <span>
+          {safePage + 1} / {pages}
+        </span>
+        <B
+          aria-label="Предыдущая страница"
+          disabled={safePage === 0}
+          onClick={() => setPage(safePage - 1)}
+          icon={<ChevronLeft size={16} />}
+        />
+        <B
+          aria-label="Следующая страница"
+          disabled={safePage + 1 >= pages}
+          onClick={() => setPage(safePage + 1)}
+          icon={<ChevronRight size={16} />}
+        />
+      </div>
+    </div>
+  );
+}
+const col = (key, label, format = fmt) => ({
+  key,
+  label,
+  numeric: true,
+  render: (r) => format(r[key]),
+});
+const tripCols = [
+  { key: "id", label: "Заявка" },
+  { key: "date", label: "Дата" },
+  { key: "vehicle", label: "Автомобиль", vehicle: true },
+  { key: "driver", label: "Водитель" },
+  { key: "client", label: "Клиент" },
+  { key: "category", label: "Категория" },
+  col("revenue", "Выручка", money),
+  col("payout", "Выплата", money),
+  col("km", "ТТ, км"),
+  col("hours", "ТТ, ч"),
+];
+const groupCols = (vehicle = false) => [
+  { key: "name", label: vehicle ? "Автомобиль" : "Наименование", vehicle },
+  col("revenue", "Выручка", money),
+  col("payout", "Выплаты", money),
+  col("balance", "Марж. результат", money),
+  col("margin", "Доля результата", pct),
+  col("trips", "Заявки"),
+  col("days", "Рабочие дни"),
+  col("average", "Средний чек", money),
+  col("km", "ТТ, км"),
+  col("hours", "ТТ, ч"),
+];
+function MoneyChart({ data, bar = false, onSelect }) {
+  const reduced = useReducedMotion();
+  if (!data.length) return <Empty />;
+  const C = bar ? BarChart : AreaChart;
+  return (
+    <div className="chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <C
+          data={data}
+          margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
+          onClick={(e) => {
+            const row =
+              e?.activePayload?.[0]?.payload ??
+              data[Number(e?.activeTooltipIndex)];
+            if (row) onSelect?.(row);
+          }}
+          accessibilityLayer
+        >
+          <defs>
+            <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#4377c3" stopOpacity={0.18} />
+              <stop offset="100%" stopColor="#4377c3" stopOpacity={0.015} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            vertical={false}
+            stroke="#e9edf1"
+            strokeDasharray="3 4"
+          />
+          <XAxis
+            dataKey="name"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: "#77818e", fontSize: 11 }}
+            tickFormatter={(v) =>
+              /^\d{4}-/.test(v)
+                ? v.length === 7
+                  ? new Date(v + "-15").toLocaleDateString("ru-RU", {
+                      month: "short",
+                    })
+                  : date(v)
+                : v
+            }
+            minTickGap={28}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            width={65}
+            tick={{ fill: "#77818e", fontSize: 11 }}
+            tickFormatter={short}
+          />
+          <Tooltip
+            formatter={(v, name) => [money(v), name]}
+            contentStyle={{
+              borderRadius: 10,
+              border: "1px solid #e6e9ef",
+              fontSize: 13,
+            }}
+            labelFormatter={(v) => v}
+          />
+          {bar ? (
+            <>
+              <Bar
+                dataKey="revenue"
+                name="Выручка"
+                fill="#477dc6"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={42}
+                isAnimationActive={!reduced}
+                animationDuration={280}
+                animationEasing="ease-in-out"
+              />
+              <Bar
+                dataKey="payout"
+                name="Выплаты"
+                fill="#89b9a7"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={42}
+                isAnimationActive={!reduced}
+                animationDuration={280}
+                animationEasing="ease-in-out"
+              />
+            </>
+          ) : (
+            <>
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                name="Выручка"
+                stroke="#4178c7"
+                strokeWidth={2.5}
+                fill="url(#revenue-fill)"
+                connectNulls={false}
+                isAnimationActive={!reduced}
+                animationDuration={280}
+                animationEasing="ease-in-out"
+              />
+              <Area
+                type="monotone"
+                dataKey="payout"
+                name="Выплаты"
+                stroke="#83af9f"
+                strokeWidth={2}
+                fill="transparent"
+                connectNulls={false}
+                isAnimationActive={!reduced}
+                animationDuration={280}
+                animationEasing="ease-in-out"
+              />
+            </>
+          )}
+        </C>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+function LegendRow() {
+  return (
+    <div className="legend">
+      <span>
+        <i style={{ background: "#477dc6" }} />
+        Выручка
+      </span>
+      <span>
+        <i style={{ background: "#89b9a7" }} />
+        Выплаты
+      </span>
+    </div>
+  );
+}
+function KPI({ label, value, raw, format, sub, change, onClick, primary = false, tip }) {
+  return (
+    <Card pad="large" className={"kpi " + (primary ? "primary-kpi" : "")}>
+      <div className="kpi-label">
+        {label}
+        <span title={tip || sub}>
+          <Info size={13} />
+        </span>
+      </div>
+      <button className="kpi-value" onClick={onClick}>
+        {raw !== undefined ? <AnimatedNumber value={raw} format={format} /> : value}
+        <ArrowUpRight size={19} />
+      </button>
+      <div className="kpi-bottom">
+        {change !== undefined && change !== null && (
+          <span className={"delta " + (change >= 0 ? "positive" : "negative")}>
+            {change > 0 ? "+" : ""}
+            {pct(change)}
+          </span>
+        )}
+        <span>{sub}</span>
+      </div>
+    </Card>
+  );
+}
+function Drawer({ title, children, onClose, size = "wide" }) {
+  const ref = useRef();
+  const opener = useRef(document.activeElement);
+  const [opened, setOpened] = useState(false);
+  const closing = useRef(false);
+  const reduced = useReducedMotion();
+  const requestClose = () => {
+    if (closing.current) return;
+    closing.current = true;
+    setOpened(false);
+    window.setTimeout(() => {
+      onClose();
+      opener.current?.focus?.({ preventScroll: true });
+    }, reduced ? 100 : 280);
+  };
+  useEffect(() => {
+    const el = ref.current;
+    el.showModal();
+    requestAnimationFrame(() => setOpened(true));
+    return () => {
+      if (el.open) el.close();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={`drawer drawer-${size} ${opened ? "is-open" : "is-closing"}`}
+      onCancel={(e) => {
+        e.preventDefault();
+        requestClose();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) requestClose();
+      }}
+    >
+      <div className="drawer-inner">
+        <header>
+          <div>
+            <span className="eyebrow">Детализация</span>
+            <h2>{title}</h2>
+          </div>
+          <B
+            aria-label="Закрыть детализацию"
+            icon={<X size={18} />}
+            onClick={requestClose}
+          />
+        </header>
+        {children}
+      </div>
+    </dialog>
+  );
+}
+function App() {
+  const navRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const scrollPositions = useRef(new Map());
+  const [navCapsule, setNavCapsule] = useState({ y: 0, height: 40, visible: false });
+  const [session, setSession] = useState(null),
+    [payload, setPayload] = useState(null),
+    [error, setError] = useState(""),
+    [page, setPage] = useState(
+      location.pathname.split("/").pop() || "overview",
+    ),
+    [adaptive, setAdaptive] = useState(() =>
+      typeof matchMedia === "function"
+        ? matchMedia("(max-width: 1023px)").matches
+        : false,
+    ),
+    [mobile, setMobile] = useState(false),
+    [busy, setBusy] = useState(false),
+    [drawer, setDrawer] = useState(null);
+  const saved = useMemo(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("charter-filters") || "null");
+    } catch {
+      return null;
+    }
+  }, []);
+  const [filters, setFilters] = useState({
+      ...M.emptyFilters(),
+      ...saved?.filters,
+    }),
+    [period, setPeriod] = useState(saved?.period || null);
+  const [showMore, setShowMore] = useState(false),
+    [openMulti, setOpenMulti] = useState(null),
+    [unit, setUnit] = useState("day"),
+    [compareMode, setCompareMode] = useState("objects"),
+    [compareBy, setCompareBy] = useState("vehicle"),
+    [calMode, setCalMode] = useState("vehicle"),
+    [controlTab, setControlTab] = useState("signals"),
+    [reviewFilter, setReviewFilter] = useState([]),
+    [rankMetric, setRankMetric] = useState("revenue");
+  useEffect(() => {
+    const close = (event) => {
+      if (!event.target.closest(".multi")) setOpenMulti(null);
+      if (!event.target.closest(".filters")) setShowMore(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, []);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const query = matchMedia("(max-width: 1023px)");
+    const update = () => {
+      setAdaptive(query.matches);
+      if (!query.matches) setMobile(false);
+    };
+    update();
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, []);
+  useEffect(() => {
+    if (!mobile) return;
+    const close = (event) => {
+      if (event.key === "Escape") {
+        setMobile(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [mobile]);
+  useEffect(() => {
+    if (!adaptive || !mobile) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [adaptive, mobile]);
+  const multiProps = (id) => ({
+    id,
+    open: openMulti === id,
+    onToggle: (key, nextOpen) => setOpenMulti(nextOpen ? key : null),
+  });
+  async function refresh() {
+    setBusy(true);
+    try {
+      const result = await api("charter");
+      setPayload(result);
+      if (
+        !period ||
+        (!payload && saved?.dataset !== (result.demo?.version || "snapshot"))
+      ) {
+        const last =
+          result.data.trips
+            .map((r) => r.date)
+            .filter(M.validDay)
+            .sort()
+            .at(-1) || "2026-11-07";
+        setFilters(M.emptyFilters());
+        setPeriod(result.demo?.period || M.periodFor(last, "month"));
+      }
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    api("session")
+      .then((s) => {
+        csrf = s.csrf;
+        setSession(s);
+        if (s.user) refresh();
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
+    const pop = () => {
+      scrollPositions.current.set(page, window.scrollY);
+      const next = location.pathname.split("/").pop();
+      setPage(next);
+      setMobile(false);
+      setDrawer(null);
+      requestAnimationFrame(() => window.scrollTo(0, scrollPositions.current.get(next) || 0));
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, [page]);
+  useEffect(() => {
+    if (period && payload)
+      sessionStorage.setItem(
+        "charter-filters",
+        JSON.stringify({
+          filters,
+          period,
+          dataset: payload.demo?.version || "snapshot",
+        }),
+      );
+  }, [filters, period, payload?.demo?.version]);
+  function go(next) {
+    if (next === page) {
+      setMobile(false);
+      return;
+    }
+    scrollPositions.current.set(page, window.scrollY);
+    history.pushState({}, "", `/charter/${next}`);
+    setPage(next);
+    setOpenMulti(null);
+    setMobile(false);
+    setDrawer(null);
+    requestAnimationFrame(() => window.scrollTo(0, scrollPositions.current.get(next) || 0));
+  }
+  const p = useMemo(
+    () => (payload ? M.prepare(payload.data) : null),
+    [payload],
+  );
+  const a = useMemo(
+    () =>
+      p && period
+        ? M.analyze(p, filters, ...period, payload.state.settings, payload.fuel)
+        : null,
+    [p, filters, period, payload],
+  );
+  const prev = useMemo(
+    () =>
+      p && period
+        ? M.analyze(
+            p,
+            filters,
+            ...M.previousPeriod(...period),
+            payload.state.settings,
+            [],
+          )
+        : null,
+    [p, filters, period, payload],
+  );
+  const issues = useMemo(
+    () => (p && a ? M.deviations(p, a, payload.state.settings) : []),
+    [p, a, payload],
+  );
+  const q = useMemo(() => (p ? M.quality(p) : []), [p]);
+  function filter(key, value) {
+    setFilters((f) => ({
+      ...f,
+      [key]: value,
+      ...(key === "carriers" || key === "ownership"
+        ? { vehicles: [], drivers: [] }
+        : {}),
+    }));
+  }
+  function updatePeriod(index, value) {
+    if (!M.validDay(value)) return;
+    const next = [...period];
+    next[index] = value;
+    if (next[0] > next[1]) next[1 - index] = value;
+    if (M.daysBetween(...next).length > 730)
+      next[1 - index] = M.addDays(value, index === 0 ? 729 : -729);
+    setPeriod(next);
+  }
+  async function save(body) {
+    const state = await api("charter/state", {
+      method: "PUT",
+      body: JSON.stringify({ ...body, revision: payload.state.revision }),
+    });
+    setPayload((old) => ({ ...old, state }));
+    return state;
+  }
+  function details(title, rows) {
+    setDrawer({ type: "trips", title, rows });
+  }
+  function daysDetails(title, days) {
+    setDrawer({ type: "days", title, days });
+  }
+  async function saveStatus(day, reason, note) {
+    const cat = (
+      payload.data.directories?.[
+        calMode === "driver" ? "drivers" : "vehicles"
+      ] || []
+    ).find((r) => r.name === day.name);
+    if (!cat) throw Error("Сначала добавьте запись в справочник.");
+    await api("manual/statuses", {
+      method: "POST",
+      body: JSON.stringify({
+        date: day.date,
+        end_date: day.date,
+        kind: calMode,
+        entity_id: cat.id,
+        reason,
+        note,
+      }),
+    });
+    await refresh();
+    setDrawer(null);
+  }
+  useLayoutEffect(() => {
+    const update = () => {
+      const root = navRef.current;
+      const selected = root?.querySelector("a.active");
+      if (!root || !selected) return;
+      setNavCapsule({
+        y: selected.offsetTop,
+        height: selected.offsetHeight,
+        visible: true,
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [page, session?.user?.role]);
+  if (!session || (busy && !payload))
+    return (
+      <div className="loading">
+        <div className="wordmark">
+          CharterStats<span> / </span>
+        </div>
+        <p>Загрузка рабочего пространства…</p>
+        {error && <p role="alert">{error}</p>}
+      </div>
+    );
+  if (!session.user)
+    return (
+      <Login
+        onSuccess={async () => {
+          const s = await api("session");
+          csrf = s.csrf;
+          setSession(s);
+          refresh();
+        }}
+      />
+    );
+  if (!p || !a)
+    return (
+      <div className="loading">
+        <p>{error || "Загрузка данных…"}</p>
+        <B onClick={refresh}>Повторить</B>
+      </div>
+    );
+  const visibleNav = nav.filter(([id]) => id !== "users" || session.user.role === "admin"),
+    active = visibleNav.find((n) => n[0] === page) || visibleNav[0],
+    opts = M.available(p, filters),
+    count = Object.values(filters).reduce((n, v) => n + v.length, 0),
+    changed = (key) => M.delta(a[key], prev[key]).percent;
+  const allCarriers = [
+    ...new Set([
+      ...p.vehicles.map((v) => v.carrier),
+      ...p.drivers.map((v) => v.carrier),
+      ...p.trips.map((r) => r.carrier || M.UNKNOWN),
+    ]),
+  ].sort();
+  const openSignals = issues.filter(
+    (i) =>
+      !["Обосновано", "Исправлено"].includes(
+        payload.state.reviews[i.id]?.status,
+      ),
+  ).length;
+  const subnav = (id, label) => (
+    <button onClick={() => go(id)}>
+      {label}
+      <ArrowRight size={14} />
+    </button>
+  );
+  const finances = (
+    <div className="kpi-grid">
+      <KPI
+        label="Выручка"
+        raw={a.revenue}
+        format={money}
+        change={changed("revenue")}
+        sub="к предыдущему периоду"
+        primary
+        onClick={() => details("Выручка · исходные записи", a.rows)}
+        tip="Сумма выручки всех выбранных записей. Учёт по дате начала заявки."
+      />
+      <KPI
+        label="Выплаты по заявкам"
+        raw={a.payout}
+        format={money}
+        sub={
+          a.payout_percent === null
+            ? "Нет базы для расчёта доли"
+            : pct(a.payout_percent) + " от выручки"
+        }
+        onClick={() => details("Выплаты · исходные записи", a.rows)}
+      />
+      <KPI
+        label="Маржинальный результат"
+        raw={a.balance}
+        format={money}
+        sub={pct(a.margin) + " от выручки · без ГСМ"}
+        change={changed("balance")}
+        onClick={() => details("Выручка минус выплаты", a.rows)}
+        tip="Выручка минус выплаты по заявкам. Без ГСМ, ремонта, лизинга и амортизации; не чистая прибыль."
+      />
+      <KPI
+        label="Загрузка по дням"
+        raw={a.load}
+        format={pct}
+        sub={`${fmt(a.workDays)} из ${fmt(a.days.length)} авто-дней`}
+        onClick={() =>
+          daysDetails(
+            "Рабочие дни по ТТ",
+            a.days.filter((d) => d.status === "Работа"),
+          )
+        }
+        tip="Рабочие авто-дни / календарные авто-дни выбранных автомобилей. День с несколькими заявками считается один раз."
+      />
+    </div>
+  );
+  const statusPanel = (
+    <Section
+      title="Как работал автопарк"
+      subtitle="Основной статус · доля от выбранных авто-дней"
+      action={subnav("calendar", "Календарь")}
+    >
+      <div className="status-head">
+        <strong>
+          {fmt(a.workDays)}
+          <small> рабочих авто-дней</small>
+        </strong>
+        <Badge tone="success">{pct(a.load)}</Badge>
+      </div>
+      <div className="stacked-track">
+        {a.statuses.map((s) => (
+          <button
+            key={s.name}
+            style={{
+              width: `${(s.value / a.days.length) * 100}%`,
+              background: s.color,
+            }}
+            title={`${s.name}: ${s.value}`}
+            aria-label={s.name}
+            onClick={() => daysDetails(s.name, s.dates)}
+          />
+        ))}
+      </div>
+      <div className="status-list">
+        {a.statuses.map((s) => (
+          <button key={s.name} onClick={() => daysDetails(s.name, s.dates)}>
+            <i style={{ background: s.color }} />
+            <span>{s.name}</span>
+            <b>{s.value} дн.</b>
+            <small>{pct((s.value / a.days.length) * 100)}</small>
+            <ChevronRight size={14} />
+          </button>
+        ))}
+      </div>
+      <div className="section-foot">
+        Дополнительных событий: <b>{fmt(a.events)}</b> · учитываются отдельно
+      </div>
+    </Section>
+  );
+  const groupKey =
+      page === "drivers" ? "driver" : page === "clients" ? "client" : "vehicle",
+    groupRows = M.groups(p, a, groupKey);
+  return (
+    <VehicleMapContext.Provider value={p.vehicleMap}>
+      <div className="workspace">
+      <aside
+        id="workspace-navigation"
+        className={"sidebar " + (mobile ? "open" : "")}
+        aria-hidden={adaptive ? !mobile : undefined}
+        inert={adaptive && !mobile ? "" : undefined}
+      >
+        <a
+          href="/charter/overview"
+          className="wordmark"
+          onClick={(e) => {
+            e.preventDefault();
+            go("overview");
+          }}
+        >
+          CharterStats<span> / </span>
+        </a>
+        <nav aria-label="Основная навигация" ref={navRef}>
+          <i
+            className="nav-capsule"
+            aria-hidden="true"
+            style={{
+              transform: `translateY(${navCapsule.y}px)`,
+              height: navCapsule.height,
+              opacity: navCapsule.visible ? 1 : 0,
+            }}
+          />
+          {visibleNav.map(([id, label, Icon]) => (
+            <React.Fragment key={id}>
+              {["overview", "calendar", "data", "directories"].includes(id) && (
+                <div className="nav-caption">
+                  {id === "overview"
+                    ? "Аналитика"
+                    : id === "calendar"
+                      ? "Управление"
+                      : id === "data"
+                        ? "Данные"
+                        : "Рабочее пространство"}
+                </div>
+              )}
+              <a
+                href={"/charter/" + id}
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    go(id);
+                  }
+                }}
+                className={page === id ? "active" : ""}
+                aria-current={page === id ? "page" : undefined}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+                {id === "control" && openSignals > 0 && (
+                  <small>{openSignals}</small>
+                )}
+              </a>
+            </React.Fragment>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="account">
+            <div className="avatar">{session.user.name.slice(0, 1)}</div>
+            <div>
+              <b>{session.user.name}</b>
+              <small>
+                {session.user.role === "admin"
+                  ? "Руководитель"
+                  : session.user.role === "logist"
+                    ? "Логист"
+                    : "Наблюдатель"}
+              </small>
+            </div>
+            <button
+              aria-label="Выйти"
+              onClick={async () => {
+                await api("logout", { method: "POST" });
+                location.reload();
+              }}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+      {adaptive && mobile && (
+        <button
+          className="mobile-scrim"
+          aria-label="Закрыть меню"
+          onClick={() => {
+            setMobile(false);
+            menuButtonRef.current?.focus();
+          }}
+        />
+      )}
+      <div className="main-wrap">
+        <header className="topbar">
+          <span className="topbar-context">
+            Рабочее пространство <ChevronRight size={13} /> <b>{active[1]}</b>
+          </span>
+          <a
+            href="/charter/overview"
+            className="topbar-brand wordmark"
+            onClick={(event) => {
+              event.preventDefault();
+              go("overview");
+            }}
+          >
+            CharterStats<span> / </span>
+          </a>
+          <div className="topbar-controls">
+            <span className="environment">
+              {payload.demo
+                ? "ДЕМО"
+                : payload.local_preview
+                  ? "Локальная копия"
+                  : "Рабочая база"}
+            </span>
+            <B
+              className="refresh-button"
+              icon={<RefreshCw size={14} className={busy ? "spin" : ""} />}
+              disabled={busy}
+              onClick={refresh}
+            >
+              Перечитать
+            </B>
+            <button
+              ref={menuButtonRef}
+              className="mobile-toggle"
+              aria-label={mobile ? "Закрыть меню" : "Открыть меню"}
+              aria-expanded={mobile}
+              aria-controls="workspace-navigation"
+              onClick={() => setMobile(!mobile)}
+            >
+              <span className="menu-icon" aria-hidden="true">
+                <Menu className="menu-icon__open" size={24} />
+                <X className="menu-icon__close" size={25} />
+              </span>
+            </button>
+          </div>
+        </header>
+        <main>
+          <div key={page} className="page-content">
+          {payload.demo && (
+            <div className="demo-banner" role="status">
+              <div>
+                <strong>Демонстрационный режим</strong>
+                <span>
+                  Все компании, люди, операции и цифры вымышлены. Можно
+                  пробовать фильтры и изменять записи.
+                </span>
+              </div>
+              <div className="demo-actions">
+                <button
+                  onClick={() => {
+                    setFilters(M.emptyFilters());
+                    setPeriod(payload.demo.period);
+                    go("overview");
+                  }}
+                >
+                  Ноябрь · обзор
+                </button>
+                <button
+                  onClick={() => {
+                    setFilters(M.emptyFilters());
+                    setPeriod(["2026-01-01", "2026-11-30"]);
+                    setCompareMode("periods");
+                    go("compare");
+                  }}
+                >
+                  Динамика за год
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="page-heading">
+            <div>
+              <span className="eyebrow">CHARTER / ANALYTICS</span>
+              <h1>{active[1] === "Обзор" ? "Обзор автопарка" : active[1]}</h1>
+              <p>{hints[page]}</p>
+            </div>
+            <div className="heading-meta">
+              <Badge dot tone="neutral">
+                {payload.demo
+                  ? "Вымышленные данные"
+                  : payload.local_preview
+                    ? "Локальный снимок API"
+                    : "Данные приложения"}
+              </Badge>
+              <small>
+                {p.meta?.imported_at
+                  ? "Обновление: " + stamp(p.meta.imported_at) + " МСК"
+                  : "Дата обновления источника не указана"}
+              </small>
+            </div>
+          </div>
+          {error && (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          )}
+          {!["settings", "directories", "routes", "connections", "users"].includes(page) && (
+            <div className="filters">
+              <div className="filter-line">
+                <PeriodPicker period={period} onChange={updatePeriod} />
+                <Multi
+                  {...multiProps("carriers")}
+                  label="Исполнители"
+                  items={allCarriers}
+                  value={filters.carriers}
+                  onChange={(v) => filter("carriers", v)}
+                />
+                <Multi
+                  {...multiProps("vehicles")}
+                  label="Автомобили"
+                  items={opts.vehicles
+                    .sort((a, b) =>
+                      (a.carrier + a.name).localeCompare(
+                        b.carrier + b.name,
+                        "ru",
+                      ),
+                    )
+                    .map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                      group: v.carrier,
+                      note: v.brand,
+                    }))}
+                  value={filters.vehicles}
+                  onChange={(v) => filter("vehicles", v)}
+                />
+                <B
+                  className="filters-toggle"
+                  icon={<SlidersHorizontal size={15} />}
+                  aria-expanded={showMore}
+                  onClick={() => {
+                    setOpenMulti(null);
+                    setShowMore(!showMore);
+                  }}
+                >
+                  Фильтры{count ? " · " + count : ""}
+                </B>
+              </div>
+              <div className="filter-bottom">
+                <SlidingTabs
+                  className="period-presets"
+                  items={[
+                    ["day", "День"],
+                    ["week", "Неделя"],
+                    ["month", "Месяц"],
+                    ["quarter", "Квартал"],
+                    ["year", "Год"],
+                  ]}
+                  value={
+                    ["day", "week", "month", "quarter", "year"].find(
+                      (kind) =>
+                        JSON.stringify(M.periodFor(period[0], kind)) ===
+                        JSON.stringify(period),
+                    ) || "custom"
+                  }
+                  onChange={(kind) => setPeriod(M.periodFor(period[0], kind))}
+                />
+                <span>
+                  {date(period[0])} — {date(period[1])} ·{" "}
+                  {M.daysBetween(...period).length} дней
+                </span>
+                {count > 0 && (
+                  <button
+                    className="clear"
+                    onClick={() => setFilters(M.emptyFilters())}
+                  >
+                    Сбросить выбор <X size={13} />
+                  </button>
+                )}
+              </div>
+              {showMore && (
+                <div className="extra-filters">
+                  <Multi
+                    {...multiProps("drivers")}
+                    label="Водители"
+                    items={opts.drivers.map((v) => ({
+                      value: v.name,
+                      label: v.name,
+                      group: v.carrier,
+                    }))}
+                    value={filters.drivers}
+                    onChange={(v) => filter("drivers", v)}
+                  />
+                  <Multi
+                    {...multiProps("types")}
+                    label="Типы транспорта"
+                    items={[
+                      ...new Set(
+                        p.trips
+                          .filter(M.isTrip)
+                          .map((r) => r.type || M.UNKNOWN),
+                      ),
+                    ].sort()}
+                    value={filters.types}
+                    onChange={(v) => filter("types", v)}
+                  />
+                  <Multi
+                    {...multiProps("clients")}
+                    label="Клиенты"
+                    items={[
+                      ...new Set(p.trips.map((r) => r.client || M.UNKNOWN)),
+                    ].sort()}
+                    value={filters.clients}
+                    onChange={(v) => filter("clients", v)}
+                  />
+                  <Multi
+                    {...multiProps("statuses")}
+                    label="Статусы дней"
+                    items={Object.keys(M.STATUS_COLORS)}
+                    value={filters.statuses}
+                    onChange={(v) => filter("statuses", v)}
+                  />
+                  <Multi
+                    {...multiProps("ownership")}
+                    label="Принадлежность"
+                    items={[
+                      "Собственный парк",
+                      "Привлечённые",
+                      "Не установлено",
+                    ]}
+                    value={filters.ownership}
+                    onChange={(v) => filter("ownership", v)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {page === "overview" && (
+            <>
+              {finances}
+              <div className="dashboard-grid">
+                <Section
+                  title="Выручка и выплаты"
+                  subtitle="По дате начала заявки · финансовые строки без распределения по дням"
+                  className="main-chart"
+                  action={
+                    <SlidingTabs
+                      className="segments"
+                      items={[["day", "По дням"], ["month", "По месяцам"]]}
+                      value={unit}
+                      onChange={setUnit}
+                    />
+                  }
+                >
+                  <div className="chart-summary">
+                    <strong>{money(a.revenue)}</strong>
+                    <LegendRow />
+                  </div>
+                  <MoneyChart
+                    data={M.timeline(a, unit)}
+                    onSelect={(r) => details(r.name, r.rows)}
+                  />
+                  <div className="section-foot">
+                    <span>
+                      Средний чек <b>{money(a.average)}</b>
+                    </span>
+                    <span>
+                      Выручка / рабочий авто-день <b>{money(a.revenue_day)}</b>
+                    </span>
+                  </div>
+                </Section>
+                {statusPanel}
+              </div>
+              <TelemetrySummary
+                a={a}
+                onDetails={() =>
+                  setDrawer({
+                    type: "telemetry",
+                    title: "Пробег и время · спутниковые показания",
+                  })
+                }
+              />
+              <div className="work-strip">
+                {[
+                  [
+                    "Заявки",
+                    a.trips,
+                    "Несколько заявок могут занимать один день",
+                  ],
+                  [
+                    "Рабочие авто-дни ТТ",
+                    a.workDays,
+                    "Уникальные пары автомобиль–дата",
+                  ],
+                  [
+                    "Дни движения ГЛОНАСС",
+                    a.movementDays,
+                    `От ${payload.state.settings.movement_threshold} км за сутки`,
+                  ],
+                  [
+                    "Часы заявок ТТ",
+                    a.hours,
+                    "Длительность заявок; не моточасы",
+                  ],
+                ].map(([l, v, t]) => (
+                  <button
+                    key={l}
+                    title={t}
+                    onClick={() =>
+                      l === "Заявки"
+                        ? details(l, a.rows.filter(M.isTrip))
+                        : l === "Рабочие авто-дни ТТ"
+                          ? daysDetails(
+                              l,
+                              a.days.filter((d) => d.status === "Работа"),
+                            )
+                          : setDrawer({ type: "telemetry", title: l })
+                    }
+                  >
+                    <span>
+                      {l}
+                      <ArrowUpRight size={14} />
+                    </span>
+                    <strong>{fmt(v)}</strong>
+                    <small>{t}</small>
+                  </button>
+                ))}
+              </div>
+              <div className="dashboard-grid lower">
+                <Section
+                  title="Клиенты"
+                  subtitle="Доля выручки · количество заявок отдельно от рабочих дней"
+                  action={subnav("clients", "Все клиенты")}
+                >
+                  <div className="client-bars">
+                    {M.groups(p, a, "client")
+                      .slice(0, 6)
+                      .map((r, i) => (
+                        <button
+                          key={r.name}
+                          onClick={() => details(r.name, r.rows)}
+                        >
+                          <span className="rank">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className="bar-name">
+                            <b>{r.name}</b>
+                            <span className="bar-track">
+                              <i
+                                style={{
+                                  width:
+                                    Math.max(
+                                      0,
+                                      Math.min(
+                                        100,
+                                        M.percent(r.revenue, a.revenue) || 0,
+                                      ),
+                                    ) + "%",
+                                }}
+                              />
+                            </span>
+                          </span>
+                          <span>
+                            <b>{money(r.revenue)}</b>
+                            <small>
+                              {pct(M.percent(r.revenue, a.revenue))} · {r.trips}{" "}
+                              заявок
+                            </small>
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                  {!a.rows.length && <Empty />}
+                </Section>
+                <Section
+                  title="Требует внимания"
+                  subtitle="Отклонение — основание для проверки"
+                  action={subnav("control", "Открыть реестр")}
+                >
+                  <div className="attention-total">
+                    <span>
+                      <ShieldCheck size={22} />
+                    </span>
+                    <strong>{fmt(openSignals)}</strong>
+                    <small>
+                      сигналов
+                      <br />
+                      ожидают решения
+                    </small>
+                  </div>
+                  {[...new Set(issues.map((i) => i.kind))]
+                    .slice(0, 4)
+                    .map((kind) => (
+                      <button
+                        className="attention-row"
+                        key={kind}
+                        onClick={() => {
+                          setDrawer({
+                            type: "issues",
+                            title: kind,
+                            issues: issues.filter((i) => i.kind === kind),
+                          });
+                        }}
+                      >
+                        <span>{kind}</span>
+                        <b>{issues.filter((i) => i.kind === kind).length}</b>
+                        <ChevronRight size={14} />
+                      </button>
+                    ))}
+                  {!issues.length && (
+                    <p>В доступных данных сигналы не обнаружены.</p>
+                  )}
+                </Section>
+              </div>
+              <InfoNote>
+                Показатели основаны на доступных записях. Километраж ТТ,
+                отдельная оплата водителей и точная сверка интервалов требуют
+                подтверждённых данных источников.
+              </InfoNote>
+            </>
+          )}
+          {["fleet", "drivers", "clients"].includes(page) && (
+            <>
+              <div className="dashboard-grid">
+                <Section
+                  title={
+                    page === "clients"
+                      ? "Выручка по клиентам"
+                      : page === "drivers"
+                        ? "Рейтинг водителей"
+                        : "Рейтинг автомобилей"
+                  }
+                  subtitle="Нажмите строку для проверки исходных заявок"
+                  action={
+                    <select
+                      aria-label="Показатель рейтинга"
+                      value={rankMetric}
+                      onChange={(e) => setRankMetric(e.target.value)}
+                    >
+                      <option value="revenue">По выручке</option>
+                      <option value="balance">По результату</option>
+                      <option value="days">По рабочим дням</option>
+                      <option value="average">По среднему чеку</option>
+                    </select>
+                  }
+                >
+                  <div className="ranking">
+                    {[...groupRows]
+                      .sort(
+                        (a, b) =>
+                          (b[rankMetric] ?? -Infinity) -
+                          (a[rankMetric] ?? -Infinity),
+                      )
+                      .slice(0, 7)
+                      .map((r, i) => (
+                        <button
+                          key={r.name}
+                          onClick={() => details(r.name, r.rows)}
+                        >
+                          <span className="rank">{i + 1}</span>
+                          <span>
+                            <b>{r.name}</b>
+                            <small>
+                              {r.carrier ||
+                                `${r.trips} заявок · ${r.days} рабочих дней`}
+                            </small>
+                          </span>
+                          <strong>
+                            {rankMetric === "days"
+                              ? fmt(r[rankMetric])
+                              : money(r[rankMetric])}
+                          </strong>
+                          <ArrowUpRight size={16} />
+                        </button>
+                      ))}
+                  </div>
+                </Section>
+                {page === "drivers" ? (
+                  <Section
+                    title="Структура начислений"
+                    subtitle="Категории ТТ · выплата по записи"
+                  >
+                    <CategoryBreakdown rows={a.rows} onSelect={details} />
+                    <InfoNote>
+                      В текущем импорте WorkerSum — выплата исполнителю.
+                      Отдельная зарплата водителя не подтверждена и не
+                      вычитается повторно.
+                    </InfoNote>
+                  </Section>
+                ) : (
+                  statusPanel
+                )}
+              </div>
+              <FinanceGroups p={p} a={a} onSelect={details} />
+              {page === "drivers" && (
+                <InfoNote>
+                  Рабочие дни водителя считаются по назначениям. Два автомобиля
+                  в один день дают водителю один рабочий день. Суточный пробег
+                  машины не приписывается водителю.
+                </InfoNote>
+              )}
+              {page === "fleet" && <Opportunity p={p} a={a} />}
+              <Section
+                title={active[1] + " · подробная статистика"}
+                subtitle="Маржинальный результат без ГСМ и прочих затрат"
+              >
+                <DataTable
+                  rows={groupRows}
+                  columns={groupCols(groupKey === "vehicle")}
+                  title={active[1]}
+                  onRow={(r) => details(r.name, r.rows)}
+                />
+              </Section>
+            </>
+          )}
+          {page === "compare" && (
+            <>
+              <div className="comparison-toolbar">
+                <SlidingTabs
+                  className="segments"
+                  items={[["objects", "Объекты за период"], ["periods", "Динамика по периодам"]]}
+                  value={compareMode}
+                  onChange={setCompareMode}
+                />
+                <select
+                  aria-label="Группировка сравнения"
+                  value={compareBy}
+                  onChange={(e) => setCompareBy(e.target.value)}
+                >
+                  <option value="vehicle">Автомобили</option>
+                  <option value="driver">Водители</option>
+                  <option value="carrier">Исполнители</option>
+                  <option value="client">Клиенты</option>
+                  <option value="type">Типы транспорта</option>
+                </select>
+              </div>
+              <Section
+                title={
+                  compareMode === "objects"
+                    ? "Сравнение выручки и выплат"
+                    : "Динамика выручки и выплат"
+                }
+                subtitle={
+                  compareMode === "objects"
+                    ? "Первые 12 по выручке · полный список в таблице ниже"
+                    : "Выбранные объекты вместе · каждый месяц периода"
+                }
+                action={<LegendRow />}
+              >
+                <MoneyChart
+                  bar
+                  data={
+                    compareMode === "objects"
+                      ? M.groups(p, a, compareBy).slice(0, 12)
+                      : M.timeline(a, "month")
+                  }
+                  onSelect={(r) => details(r.name, r.rows)}
+                />
+              </Section>
+              <InfoNote>
+                Для сопоставимого рейтинга выберите один тип транспорта.
+                Изменения KPI рассчитаны относительно {date(prev.from)} —{" "}
+                {date(prev.to)}. При нулевой базе процент не рассчитывается.
+              </InfoNote>
+              <Section title="Числа для сравнения">
+                <DataTable
+                  title="Сравнение"
+                  rows={
+                    compareMode === "objects"
+                      ? M.groups(p, a, compareBy)
+                      : M.timeline(a, "month").map((r) => ({
+                          ...r,
+                          days: new Set(
+                            r.rows
+                              .filter(M.isTrip)
+                              .flatMap((t) =>
+                                M.daysBetween(...M.tripSpan(t)).map(
+                                  (d) => t.vehicle + "|" + d,
+                                ),
+                              ),
+                          ).size,
+                        }))
+                  }
+                  columns={groupCols(
+                    compareMode === "objects" && compareBy === "vehicle",
+                  )}
+                  onRow={(r) => details(r.name, r.rows)}
+                />
+              </Section>
+            </>
+          )}
+          {page === "calendar" && (
+            <>
+              <div className="comparison-toolbar">
+                <SlidingTabs
+                  className="segments"
+                  items={[["vehicle", "Автомобили"], ["driver", "Водители"]]}
+                  value={calMode}
+                  onChange={setCalMode}
+                />
+                <div className="inline">
+                  <B
+                    aria-label="Предыдущий месяц"
+                    icon={<ChevronLeft size={16} />}
+                    onClick={() =>
+                      setPeriod(M.periodFor(M.addDays(period[0], -1), "month"))
+                    }
+                  />
+                  <input
+                    aria-label="Месяц календаря"
+                    type="month"
+                    value={period[0].slice(0, 7)}
+                    onInput={(e) => {
+                      if (M.validDay(e.currentTarget.value + "-01"))
+                        setPeriod(
+                          M.periodFor(e.currentTarget.value + "-01", "month"),
+                        );
+                    }}
+                    onChange={(e) => {
+                      if (e.target.value)
+                        setPeriod(M.periodFor(e.target.value + "-01", "month"));
+                    }}
+                  />
+                  <B
+                    aria-label="Следующий месяц"
+                    icon={<ChevronRight size={16} />}
+                    onClick={() =>
+                      setPeriod(
+                        M.periodFor(
+                          M.addDays(M.periodFor(period[0], "month")[1], 1),
+                          "month",
+                        ),
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <Calendar
+                p={p}
+                filters={filters}
+                period={period}
+                mode={calMode}
+                onDay={(d) =>
+                  setDrawer({
+                    type: "day",
+                    title: `${d.name} · ${date(d.date)}`,
+                    day: d,
+                  })
+                }
+              />
+              <InfoNote>
+                «Не заполнено» определяется автоматически. «Без заявки» задаётся
+                вручную. Работа имеет приоритет; ремонт и другие события видны
+                внутри ячейки и не удваивают рабочие дни.
+              </InfoNote>
+            </>
+          )}
+          {page === "planner" && (
+            <PlannerPage
+              p={p}
+              period={period}
+              filters={filters}
+              user={session.user}
+              onOpen={(row = null) =>
+                setDrawer({
+                  type: "plan",
+                  title: row ? "Изменить назначение" : "Назначить маршрут",
+                  row,
+                })
+              }
+            />
+          )}
+          {page === "control" && (
+            <>
+              <div className="control-summary">
+                <Card pad="large">
+                  <span>Всего сигналов</span>
+                  <strong>{issues.length}</strong>
+                </Card>
+                <Card pad="large">
+                  <span>Ожидают решения</span>
+                  <strong>{openSignals}</strong>
+                </Card>
+                <Card pad="large">
+                  <span>Качество справочников и заявок</span>
+                  <strong>{q.length}</strong>
+                </Card>
+                <Card pad="large">
+                  <span>Порог движения</span>
+                  <strong>
+                    {payload.state.settings.movement_threshold}
+                    <small> км / сутки</small>
+                  </strong>
+                </Card>
+              </div>
+              <div className="comparison-toolbar">
+                <SlidingTabs
+                  className="segments"
+                  items={[["signals", "Реестр отклонений"], ["quality", "Качество данных"]]}
+                  value={controlTab}
+                  onChange={setControlTab}
+                />
+                <Multi
+                  {...multiProps("review")}
+                  label="Статус проверки"
+                  items={M.REVIEW_STATES}
+                  value={reviewFilter}
+                  onChange={setReviewFilter}
+                />
+              </div>
+              <Section
+                title={
+                  controlTab === "signals"
+                    ? "Очередь проверки"
+                    : "Ошибки и неполные записи"
+                }
+                subtitle={
+                  controlTab === "signals"
+                    ? "Откройте сигнал, укажите решение и оставьте комментарий"
+                    : "Все записи справочников; фильтры аналитики здесь не применяются"
+                }
+              >
+                {controlTab === "signals" ? (
+                  <IssueTable
+                    issues={issues.filter((i) =>
+                      M.selected(
+                        reviewFilter,
+                        payload.state.reviews[i.id]?.status || "Не проверено",
+                      ),
+                    )}
+                    reviews={payload.state.reviews}
+                    onRow={(r) =>
+                      setDrawer({ type: "review", title: r.kind, issue: r })
+                    }
+                  />
+                ) : (
+                  <DataTable
+                    rows={q}
+                    title="Качество"
+                    columns={[
+                      { key: "name", label: "Запись" },
+                      { key: "kind", label: "Что проверить" },
+                    ]}
+                  />
+                )}
+              </Section>
+              <InfoNote>
+                Перепробег рассчитывается только для сопоставимых интервалов.
+                Суточный ГЛОНАСС рядом с километражом части суток не доказывает
+                отклонение. При отсутствии точного интервала сигнал перепробега
+                не формируется.
+              </InfoNote>
+            </>
+          )}
+          {page === "fuel" && (
+            <FuelPage
+              a={a}
+              p={p}
+              filters={filters}
+              settings={payload.state.settings}
+              user={session.user}
+              save={save}
+              details={setDrawer}
+            />
+          )}
+          {page === "routes" && <RoutesPage p={p} />}
+          {page === "data" && (
+            <SourceDataPage
+              p={p}
+              fuel={payload.fuel}
+              period={period}
+              filters={filters}
+              onTrips={(title, rows) => details(title, rows)}
+            />
+          )}
+          {page === "directories" && (
+            <Directories
+              p={p}
+              user={session.user}
+              refresh={refresh}
+              onChoose={(kind, name) => {
+                setFilters({ ...M.emptyFilters(), [kind]: [name] });
+                go(kind === "drivers" ? "drivers" : "fleet");
+              }}
+            />
+          )}
+          {page === "connections" && (
+            <ConnectionsPage
+              user={session.user}
+              period={period}
+              disabled={!!payload.demo || !!payload.local_preview}
+              onRefresh={refresh}
+            />
+          )}
+          {page === "settings" && (
+            <Settings
+              settings={payload.state.settings}
+              save={save}
+              user={session.user}
+            />
+          )}
+          {page === "users" && session.user.role === "admin" && (
+            <UsersPage p={p} />
+          )}
+          <footer className="page-footer">
+            <span>
+              CharterStats ·{" "}
+              {payload.demo
+                ? "Демонстрационные данные · подключения к провайдерам отключены"
+                : payload.local_preview
+                  ? "Локальный предпросмотр · синхронизация отключена"
+                  : "Аналитика по доступным данным"}
+            </span>
+            <button onClick={() => go("data")}>
+              Исходные данные <ArrowRight size={12} />
+            </button>
+          </footer>
+          </div>
+        </main>
+      </div>
+      {drawer && (
+        <Drawer
+          title={drawer.title}
+          size={["trips", "days", "telemetry", "fuel"].includes(drawer.type) ? "wide" : "compact"}
+          onClose={() => setDrawer(null)}
+        >
+          {drawer.type === "trips" && (
+            <>
+              <InfoNote>
+                Финансовые суммы учтены по дате начала заявки. Пробег заявки не
+                распределяется по дням. «—» означает отсутствие данных.
+              </InfoNote>
+              <DataTable
+                title="Исходные заявки"
+                rows={drawer.rows}
+                columns={tripCols}
+              />
+              <button
+                className="text-link"
+                onClick={() => {
+                  setDrawer(null);
+                  go("data");
+                }}
+              >
+                Открыть исходные данные <ArrowRight size={14} />
+              </button>
+            </>
+          )}
+          {drawer.type === "days" && (
+            <DataTable
+              title="Даты статусов"
+              rows={drawer.days}
+              columns={[
+                { key: "date", label: "Дата" },
+                { key: "vehicle", label: "Автомобиль", vehicle: true },
+                { key: "driver", label: "Водитель" },
+                { key: "status", label: "Основной статус" },
+                {
+                  key: "events",
+                  label: "События",
+                  render: (r) =>
+                    r.events.map((e) => e.reason).join(", ") || "—",
+                },
+              ]}
+              onRow={(d) => {
+                setCalMode("vehicle");
+                setDrawer({
+                  type: "day",
+                  title: `${d.name} · ${date(d.date)}`,
+                  day: d,
+                });
+              }}
+            />
+          )}
+          {drawer.type === "day" && (
+            <DayDetail
+              day={drawer.day}
+              user={session.user}
+              reasons={p.directories.reasons}
+              onSave={saveStatus}
+            />
+          )}
+          {drawer.type === "issues" && (
+            <IssueTable
+              issues={drawer.issues}
+              reviews={payload.state.reviews}
+              onRow={(r) =>
+                setDrawer({ type: "review", title: r.kind, issue: r })
+              }
+            />
+          )}
+          {drawer.type === "review" && (
+            <Review
+              issue={drawer.issue}
+              value={payload.state.reviews[drawer.issue.id]}
+              user={session.user}
+              onSave={async (r) => {
+                await save({ kind: "review", review: r });
+                setDrawer(null);
+              }}
+            />
+          )}
+          {drawer.type === "telemetry" && (
+            <>
+              <InfoNote>
+                Данные относятся к автомобилю за сутки. Моточасы, движение,
+                стоянки и часы заявки имеют разные определения.
+              </InfoNote>
+              <DataTable
+                title="Спутниковые данные"
+                rows={a.satellite}
+                columns={[
+                  { key: "date", label: "Дата" },
+                  { key: "vehicle", label: "Автомобиль", vehicle: true },
+                  col("km", "Пробег, км"),
+                  col("engine_hours", "Моточасы, ч"),
+                  col("movement_hours", "Движение, ч"),
+                  col("stop_hours", "Стоянки, ч"),
+                  col("hours", "Интервал, ч"),
+                  { key: "source", label: "Источник" },
+                ]}
+              />
+            </>
+          )}
+          {drawer.type === "fuel" && (
+            <DataTable title="Заправки" rows={drawer.rows} columns={fuelCols} />
+          )}
+          {drawer.type === "plan" && (
+            <PlanForm
+              p={p}
+              row={drawer.row}
+              onSaved={async () => {
+                await refresh();
+                setDrawer(null);
+              }}
+            />
+          )}
+        </Drawer>
+      )}
+      </div>
+    </VehicleMapContext.Provider>
+  );
+}
+function CategoryBreakdown({ rows, onSelect }) {
+  const cats = [...new Set(rows.map(M.category))].map((name) => ({
+    name,
+    rows: rows.filter((r) => M.category(r) === name),
+  }));
+  const total = M.sum(rows, "payout");
+  return (
+    <div className="category-list">
+      {cats.map((c) => {
+        const value = M.sum(c.rows, "payout");
+        return (
+          <button key={c.name} onClick={() => onSelect(c.name, c.rows)}>
+            <span>{c.name}</span>
+            <b>{money(value)}</b>
+            <small>{pct(M.percent(value, total))}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+function Calendar({ p, filters, period, mode, onDay }) {
+  const [search, setSearch] = useState(""),
+    [offset, setOffset] = useState(0),
+    days = useMemo(
+      () => M.calendarRows(p, filters, ...period, mode),
+      [p, filters, period, mode],
+    );
+  const names = [...new Set(days.map((d) => d.name))].filter((n) =>
+      n.toLowerCase().includes(search.toLowerCase()),
+    ),
+    dates = M.daysBetween(...period),
+    index = new Map(days.map((d) => [d.name + "|" + d.date, d]));
+  useEffect(() => setOffset(0), [period, filters, mode, search]);
+  return (
+    <Section
+      title="Календарь занятости"
+      subtitle="Нажмите на день, чтобы открыть заявки и изменить статусы"
+    >
+      <div className="calendar-legend">
+        {Object.entries(M.STATUS_COLORS)
+          .slice(0, 7)
+          .map(([s, c]) => (
+            <span key={s}>
+              <i style={{ background: c }} />
+              {s}
+            </span>
+          ))}
+      </div>
+      <div className="table-tools">
+        <div className="search-input">
+          <Search size={16} />
+          <input
+            aria-label="Поиск в календаре"
+            placeholder={
+              mode === "vehicle" ? "Найти автомобиль" : "Найти водителя"
+            }
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <span className="muted">
+          {names.length} {mode === "vehicle" ? "автомобилей" : "водителей"}
+        </span>
+      </div>
+      <div className="table-scroll calendar-scroll">
+        <table className="calendar-table">
+          <thead>
+            <tr>
+              <th>{mode === "vehicle" ? "Автомобиль" : "Водитель"}</th>
+              {dates.map((d) => (
+                <th key={d} title={d}>
+                  {d.slice(8)}
+                  <small>
+                    {new Date(d + "T12:00:00Z").toLocaleDateString("ru-RU", {
+                      weekday: "short",
+                    })}
+                  </small>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {names.slice(offset, offset + 20).map((name) => (
+              <tr key={name}>
+                <td>
+                  <strong>{name}</strong>
+                  <small>
+                    {
+                      (mode === "vehicle" ? p.vehicleMap : p.driverMap).get(
+                        name,
+                      )?.carrier
+                    }
+                  </small>
+                </td>
+                {dates.map((date) => {
+                  const d = index.get(name + "|" + date);
+                  return (
+                    <td key={date}>
+                      {d && (
+                        <button
+                          className="calendar-cell"
+                          style={{
+                            "--status": M.STATUS_COLORS[d.status] || "#82939d",
+                          }}
+                          title={`${date} · ${d.status}${d.events.length ? " · " + d.events.map((s) => s.reason).join(", ") : ""}`}
+                          aria-label={`${name} ${date} ${d.status}`}
+                          onClick={() => onDay(d)}
+                        >
+                          {d.status === "Работа"
+                            ? d.trips.length
+                            : d.status === "Не заполнено"
+                              ? "!"
+                              : d.status === "Ремонт / сервис"
+                                ? "Р"
+                                : d.status === "Выходной"
+                                  ? "В"
+                                  : "•"}
+                          {d.events.length > 0 && d.trips.length > 0 && (
+                            <small>+</small>
+                          )}
+                        </button>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!names.length && <Empty />}
+      <div className="pagination">
+        <span>
+          {Math.min(offset + 1, names.length)}–
+          {Math.min(offset + 20, names.length)} из {names.length}
+        </span>
+        <B
+          disabled={!offset}
+          onClick={() => setOffset(Math.max(0, offset - 20))}
+          icon={<ChevronLeft size={16} />}
+        />
+        <B
+          disabled={offset + 20 >= names.length}
+          onClick={() => setOffset(offset + 20)}
+          icon={<ChevronRight size={16} />}
+        />
+      </div>
+    </Section>
+  );
+}
+function DayDetail({ day, user, reasons, onSave }) {
+  const [reason, setReason] = useState(""),
+    [note, setNote] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <>
+      <div className="day-summary">
+        <Badge tone={day.status === "Не заполнено" ? "warning" : "success"}>
+          {day.status}
+        </Badge>
+        <span>
+          {day.trips.length} заявок · {M.extraEventCount(day)} дополнительных
+          записей
+        </span>
+      </div>
+      {day.trips.length > 0 && (
+        <DataTable title="Заявки дня" rows={day.trips} columns={tripCols} />
+      )}
+      {day.other.length > day.trips.length && (
+        <InfoNote>
+          Есть работа вне текущих фильтров. День не считается незаполненным.
+        </InfoNote>
+      )}
+      <h3>Установленные статусы</h3>
+      {day.events.length ? (
+        day.events.map((e) => (
+          <div className="event" key={e.id || e.reason}>
+            <b>{e.reason}</b>
+            <p>{e.note || "Без комментария"}</p>
+            <a href="/planning/calendar">
+              Редактировать в журнале статусов <ExternalLink size={12} />
+            </a>
+          </div>
+        ))
+      ) : (
+        <p className="muted">Ручных статусов пока нет.</p>
+      )}
+      {user.role !== "viewer" && (
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              await onSave(day, reason, note);
+            } catch (e) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <h3>Добавить статус</h3>
+          <label>
+            Причина
+            <select
+              required
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            >
+              <option value="">Выберите причину</option>
+              {reasons
+                .filter(
+                  (r, i, all) =>
+                    !r.archived &&
+                    all.findIndex(
+                      (x) =>
+                        !x.archived &&
+                        M.statusName(x.name) === M.statusName(r.name),
+                    ) === i,
+                )
+                .map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {M.statusName(r.name)}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Комментарий
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={1000}
+              rows={3}
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <B variant="primary" type="submit" disabled={busy || !reason}>
+            Сохранить статус
+          </B>
+        </form>
+      )}
+    </>
+  );
+}
+function IssueTable({ issues, reviews, onRow }) {
+  return (
+    <DataTable
+      rows={issues.map((r) => ({
+        ...r,
+        status: reviews[r.id]?.status || "Не проверено",
+      }))}
+      title="Отклонения"
+      columns={[
+        { key: "date", label: "Дата" },
+        { key: "vehicle", label: "Автомобиль", vehicle: true },
+        { key: "kind", label: "Сигнал" },
+        { key: "detail", label: "Основание" },
+        {
+          key: "status",
+          label: "Проверка",
+          render: (r) => (
+            <Badge
+              tone={
+                r.status === "Нарушение"
+                  ? "danger"
+                  : r.status === "Исправлено" || r.status === "Обосновано"
+                    ? "success"
+                    : r.status === "В работе"
+                      ? "accent"
+                      : "warning"
+              }
+            >
+              {r.status}
+            </Badge>
+          ),
+        },
+      ]}
+      onRow={onRow}
+    />
+  );
+}
+function Review({ issue, value, user, onSave }) {
+  const [status, setStatus] = useState(value?.status || "Не проверено"),
+    [comment, setComment] = useState(value?.comment || ""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const can =
+    user.role === "admin" ||
+    (user.role === "logist" && user.vehicles.includes(issue.vehicle));
+  return (
+    <>
+      <div className="detail-facts">
+        <span>
+          Дата<b>{issue.date}</b>
+        </span>
+        <span>
+          Автомобиль<b>{issue.vehicle}</b>
+        </span>
+        <span>
+          Водитель<b>{issue.driver || "Не назначен"}</b>
+        </span>
+        <span>
+          Исполнитель<b>{issue.carrier || "Не установлен"}</b>
+        </span>
+      </div>
+      <InfoNote>{issue.detail}</InfoNote>
+      <form
+        className="form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setBusy(true);
+          try {
+            await onSave({ ...issue, status, comment });
+          } catch (e) {
+            setError(e.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          Результат проверки
+          <select
+            disabled={!can}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            {M.REVIEW_STATES.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Комментарий ответственного
+          <textarea
+            disabled={!can}
+            rows={4}
+            value={comment}
+            maxLength={2000}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Что проверили и чем объясняется отклонение"
+            required={["Обосновано", "Нарушение", "Исправлено"].includes(
+              status,
+            )}
+          />
+        </label>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {can && (
+          <B variant="primary" type="submit" disabled={busy}>
+            Сохранить решение
+          </B>
+        )}
+      </form>
+      <h3>История проверки</h3>
+      {value?.history?.length ? (
+        [...value.history].reverse().map((r, i) => (
+          <div className="history-item" key={i}>
+            <Badge>{r.status}</Badge>
+            <p>{r.comment || "Без комментария"}</p>
+            <small>
+              {r.author} · {stamp(r.at)} МСК
+            </small>
+          </div>
+        ))
+      ) : (
+        <p className="muted">Решений ещё нет.</p>
+      )}
+    </>
+  );
+}
+const fuelCols = [
+  { key: "date", label: "Дата" },
+  {
+    key: "vehicle",
+    label: "Автомобиль",
+    vehicle: true,
+  },
+  { key: "provider", label: "Источник" },
+  { key: "card", label: "Карта" },
+  { key: "product", label: "Топливо" },
+  col("liters", "Объём, л"),
+  col("amount", "Сумма", money),
+  { key: "allocation", label: "Привязка" },
+];
+function FuelPage({ a, p, filters, settings, user, save, details }) {
+  const [car, setCar] = useState(""),
+    [norm, setNorm] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
+  if (user.role !== "admin")
+    return (
+      <InfoNote>
+        Исходные операции топливных карт доступны руководителю. Для просмотра
+        обратитесь к ответственному сотруднику.
+      </InfoNote>
+    );
+  const scoped =
+    filters.drivers.length || filters.clients.length || filters.statuses.length;
+  if (scoped)
+    return (
+      <InfoNote>
+        Заправки не связаны однозначно с выбранными водителями, клиентами или
+        статусами. Очистите эти фильтры, чтобы увидеть статистику по
+        автомобилям.
+      </InfoNote>
+    );
+  const purchases = a.fuel.filter((r) => r.liters !== null),
+    liters = M.sum(purchases, "liters"),
+    amount = M.sum(purchases, "amount");
+  const rows = [
+    ...new Set([
+      ...purchases.map((r) => r.vehicle || M.UNKNOWN),
+      ...a.satellite.map((r) => r.vehicle),
+    ]),
+  ].map((name) => {
+    const ops = purchases.filter((r) => (r.vehicle || M.UNKNOWN) === name),
+      sat = a.satellite.filter((r) => r.vehicle === name),
+      km = M.knownSum(sat, "km"),
+      norm = settings.fuel_norms[name] ?? null,
+      expected = km !== null && norm !== null ? (km * norm) / 100 : null,
+      fuel = M.sum(ops, "liters");
+    return {
+      name,
+      km,
+      norm,
+      expected,
+      liters: fuel,
+      amount: M.sum(ops, "amount"),
+      difference: fuel !== null && expected !== null ? fuel - expected : null,
+      actual: M.knownSum(sat, "fuel_liters"),
+      ops,
+    };
+  });
+  return (
+    <>
+      <div className="kpi-grid">
+        <KPI
+          label="Расходы по картам"
+          value={money(amount)}
+          sub="С учётом возвратов · доступные операции"
+          onClick={() =>
+            details({
+              type: "fuel",
+              title: "Операции топливных карт",
+              rows: a.fuel,
+            })
+          }
+        />
+        <KPI
+          label="Заправлено"
+          value={fmt(liters) + " л"}
+          sub="Объём заправок, не фактический расход"
+          onClick={() =>
+            details({ type: "fuel", title: "Заправки", rows: purchases })
+          }
+        />
+        <KPI
+          label="Средняя цена литра"
+          value={money(M.ratio(amount, liters))}
+          sub="Стоимость / заправленный объём"
+          onClick={() =>
+            details({ type: "fuel", title: "Расчёт цены", rows: purchases })
+          }
+        />
+        <KPI
+          label="Без привязки к авто"
+          value={fmt(a.fuel.filter((r) => !r.vehicle).length)}
+          sub="Требуется историческая привязка карты"
+          onClick={() =>
+            details({
+              type: "fuel",
+              title: "Операции без привязки",
+              rows: a.fuel.filter((r) => !r.vehicle),
+            })
+          }
+        />
+      </div>
+      <Section
+        title="Заправки и норматив"
+        subtitle="Норма × пробег ГЛОНАСС / 100 · только по доступным показаниям"
+      >
+        <DataTable
+          title="ГСМ по автомобилям"
+          rows={rows}
+          columns={[
+            { key: "name", label: "Автомобиль", vehicle: true },
+            col("km", "ГЛОНАСС, км"),
+            col("norm", "Норма, л/100 км"),
+            col("expected", "Норматив, л"),
+            col("liters", "Заправлено, л"),
+            col("difference", "Разница, л"),
+            col("actual", "Расход датчика, л"),
+            col("amount", "Стоимость", money),
+          ]}
+          onRow={(r) => details({ type: "fuel", title: r.name, rows: r.ops })}
+        />
+      </Section>
+      <InfoNote>
+        Разница между заправками и нормативом не доказывает перерасход. Нужны
+        остатки в баке или надёжный датчик. Отсутствующие сутки ГЛОНАСС не
+        заменяются нулями; норматив относится только к доступному пробегу.
+      </InfoNote>
+      <Section
+        title="Норма автомобиля"
+        subtitle="Норма сохраняется в настройках приложения"
+      >
+        <form
+          className="inline-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              await save({
+                kind: "settings",
+                settings: {
+                  ...settings,
+                  fuel_norms: { ...settings.fuel_norms, [car]: Number(norm) },
+                },
+              });
+              setMessage("Норма сохранена");
+            } catch (e) {
+              setMessage(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Автомобиль
+            <select
+              required
+              value={car}
+              onChange={(e) => {
+                setCar(e.target.value);
+                setNorm(settings.fuel_norms[e.target.value] || "");
+              }}
+            >
+              <option value="">Выберите</option>
+              {p.vehicles.map((v) => (
+                <option key={v.name}>{v.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Литров на 100 км
+            <input
+              type="number"
+              required
+              min="0.1"
+              max="200"
+              step="0.1"
+              value={norm}
+              onChange={(e) => setNorm(e.target.value)}
+            />
+          </label>
+          <B variant="primary" type="submit" disabled={busy}>
+            Сохранить
+          </B>
+          <span role="status">{message}</span>
+        </form>
+      </Section>
+      <Section
+        title="Операции топливных карт"
+        subtitle="Время и АЗС не передаются в текущей нормализованной сводке; доступны в исходных данных"
+      >
+        <DataTable title="Заправки" rows={a.fuel} columns={fuelCols} />
+        <a className="text-link" href="/data/fuelcards">
+          История привязок карт <ExternalLink size={14} />
+        </a>
+      </Section>
+    </>
+  );
+}
+function RoutesPage({ p }) {
+  const routes = p.routes.filter((r) => !r.archived && !r.inactive_route),
+    [first, setFirst] = useState(routes[0]?.id || ""),
+    [second, setSecond] = useState(routes[1]?.id || ""),
+    a = routes.find((r) => r.id === first),
+    b = routes.find((r) => r.id === second),
+    r = a && b ? M.swapResult(a, b) : null;
+  return (
+    <>
+      <InfoNote tone="warm">
+        Предварительный сценарий по тарифам маршрутов. Доступность автомобилей и
+        водителей, расположение, нулевой пробег, ограничения клиента и стоимость
+        ГСМ требуют проверки перед назначением.
+      </InfoNote>
+      <div className="scenario-intro">
+        <div>
+          <span className="eyebrow">Два маршрута · одна экономика</span>
+          <h2>
+            Есть ли смысл поменять
+            <br />
+            назначения местами?
+          </h2>
+          <p>
+            Сравните результат пары заказов. Выручка остаётся той же; меняются
+            выплаты собственному водителю и привлечённому исполнителю.
+          </p>
+        </div>
+        <Route size={68} strokeWidth={1} />
+      </div>
+      <div className="dashboard-grid equal">
+        <Section
+          title="Маршрут А"
+          subtitle="В базовом сценарии — собственный автомобиль"
+        >
+          <select
+            aria-label="Маршрут А"
+            value={first}
+            onChange={(e) => setFirst(e.target.value)}
+          >
+            {routes.map((r) => (
+              <option key={r.id}>{r.id}</option>
+            ))}
+          </select>
+          {a && <RouteFacts route={a} />}
+        </Section>
+        <Section
+          title="Маршрут Б"
+          subtitle="В базовом сценарии — привлечённый исполнитель"
+        >
+          <select
+            aria-label="Маршрут Б"
+            value={second}
+            onChange={(e) => setSecond(e.target.value)}
+          >
+            {routes.map((r) => (
+              <option key={r.id}>{r.id}</option>
+            ))}
+          </select>
+          {b && <RouteFacts route={b} />}
+        </Section>
+      </div>
+      {r && first !== second ? (
+        <>
+          <div className="scenario-results">
+            <Card pad="large">
+              <span>Базовый результат</span>
+              <strong>{money(r.current)}</strong>
+              <small>Свой на А · привлечённый на Б</small>
+            </Card>
+            <div className="scenario-arrow">
+              <ArrowRight />
+            </div>
+            <Card pad="large">
+              <span>Альтернативный результат</span>
+              <strong>{money(r.alternative)}</strong>
+              <small>Свой на Б · привлечённый на А</small>
+            </Card>
+            <Card pad="large" className="scenario-gain">
+              <span>Изменение результата</span>
+              <strong>
+                {r.value > 0 ? "+" : ""}
+                {money(r.value)}
+              </strong>
+              <small>
+                {r.percent === null
+                  ? "Нет базы для сравнения"
+                  : pct(r.percent) + " к текущему варианту"}
+              </small>
+            </Card>
+          </div>
+          <Section title="Что проверить перед перестановкой">
+            <div className="detail-facts">
+              <span>
+                Категория маршрута А<b>{a.group || "Не определена"}</b>
+              </span>
+              <span>
+                Категория маршрута Б<b>{b.group || "Не определена"}</b>
+              </span>
+              <span>
+                Суммарная выручка<b>{money(r.revenue)}</b>
+              </span>
+              <span>
+                Дополнительный нулевой пробег<b>Нет данных</b>
+              </span>
+              <span>
+                Изменение рабочего времени<b>Нет данных</b>
+              </span>
+              <span>
+                Автомобиль и водитель свободны<b>Не подтверждено</b>
+              </span>
+            </div>
+            <InfoNote>
+              {r.value === null
+                ? "Недостаточно тарифов для расчёта."
+                : r.value > 0
+                  ? "Перестановка может увеличить результат по указанным выплатам. Это предварительный расчёт, не готовое назначение."
+                  : "По указанным выплатам перестановка не улучшает совокупный результат."}
+            </InfoNote>
+          </Section>
+        </>
+      ) : (
+        <Empty>Выберите два разных маршрута</Empty>
+      )}
+    </>
+  );
+}
+function RouteFacts({ route: r }) {
+  return (
+    <div className="route-facts">
+      <span>
+        Выручка<b>{money(r.revenue)}</b>
+      </span>
+      <span>
+        Собственному водителю<b>{money(r.payout)}</b>
+      </span>
+      <span>
+        Привлечённому исполнителю<b>{money(r.partner_payout)}</b>
+      </span>
+      <span>
+        Пробег маршрута<b>{fmt(r.km)} км</b>
+      </span>
+      <span>
+        Время маршрута<b>{fmt(r.hours)} ч</b>
+      </span>
+    </div>
+  );
+}
+function Directories({ p, onChoose, user, refresh }) {
+  const [search, setSearch] = useState("");
+  const carriers = [
+    ...new Set([
+      ...p.vehicles.map((r) => r.carrier),
+      ...p.drivers.map((r) => r.carrier),
+    ]),
+  ].sort((a, b) =>
+    a === M.UNKNOWN ? 1 : b === M.UNKNOWN ? -1 : a.localeCompare(b, "ru"),
+  );
+  return (
+    <>
+      <InfoNote>
+        Принадлежность взята из текущего справочника, а не из исполнителя
+        отдельной заявки. Неустановленные связи показаны отдельно. Импорт
+        справочников ТТ и их актуальность требуют отдельной проверки источника.
+      </InfoNote>
+      <div className="search-input directory-search">
+        <Search size={16} />
+        <input
+          aria-label="Поиск в справочниках"
+          placeholder="Исполнитель, автомобиль или водитель"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      {carriers.map((carrier) => {
+        const matches = (n) =>
+            !search ||
+            n.toLowerCase().includes(search.toLowerCase()) ||
+            carrier.toLowerCase().includes(search.toLowerCase()),
+          cars = p.vehicles.filter(
+            (v) => v.carrier === carrier && matches(v.name),
+          ),
+          drivers = p.drivers.filter(
+            (v) => v.carrier === carrier && matches(v.name),
+          );
+        if (!cars.length && !drivers.length) return null;
+        return (
+          <Card pad="large" key={carrier} className="directory-group">
+            <details
+              open={!!search || carrier === M.UNKNOWN || carriers.length < 5}
+            >
+              <summary>
+                <Building2 size={20} />
+                <span>
+                  <strong>
+                    {carrier === M.UNKNOWN
+                      ? "Принадлежность не установлена"
+                      : carrier}
+                  </strong>
+                  <small>
+                    {M.ownership(carrier)} · {cars.length} автомобилей ·{" "}
+                    {drivers.length} водителей
+                  </small>
+                </span>
+                <ChevronDown size={18} />
+              </summary>
+              <div className="directory-columns">
+                <div>
+                  <h3>Автомобили</h3>
+                  {[...new Set(cars.map((v) => v.transport_type))].map(
+                    (type) => (
+                      <details key={type} open>
+                        <summary>
+                          {type === M.UNKNOWN ? "Тип не установлен" : type}
+                          <span>
+                            {
+                              cars.filter((v) => v.transport_type === type)
+                                .length
+                            }
+                          </span>
+                        </summary>
+                        {cars
+                          .filter((v) => v.transport_type === type)
+                          .map((v) => (
+                            <button
+                              key={v.name}
+                              onClick={() => onChoose("vehicles", v.name)}
+                            >
+                              <Truck size={15} />
+                              {v.name}
+                              <small>{v.brand}</small>
+                              <ArrowUpRight size={14} />
+                            </button>
+                          ))}
+                      </details>
+                    ),
+                  )}
+                </div>
+                <div>
+                  <h3>Водители</h3>
+                  {drivers.map((d) => (
+                    <button
+                      key={d.name}
+                      onClick={() => onChoose("drivers", d.name)}
+                    >
+                      <Users size={15} />
+                      {d.name}
+                      <ArrowUpRight size={14} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
+          </Card>
+        );
+      })}
+      {user.role === "admin" && <AssignmentEditor p={p} refresh={refresh} />}
+      <a className="text-link" href="/data/directories">
+        Редактировать справочники <ExternalLink size={14} />
+      </a>
+    </>
+  );
+}
+function PlannerPage({ p, period, filters, user, onOpen }) {
+  const rows = (p.plans || [])
+    .filter(
+      (r) =>
+        r.date >= period[0] &&
+        r.date <= period[1] &&
+        M.selected(filters.vehicles, r.vehicle) &&
+        M.selected(filters.drivers, r.driver) &&
+        M.selected(filters.carriers, r.carrier || M.UNKNOWN),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const included = rows.filter(
+    (r) => ["scheduled", "unassigned"].includes(r.state) && !r.duplicate_review,
+  );
+  return (
+    <>
+      <div className="planner-actions">
+        <InfoNote>
+          Отменённые назначения, записи без маршрута и спорные повторы не входят
+          в плановые итоги. Тариф фиксируется на дату назначения.
+        </InfoNote>
+        {user.role !== "viewer" && (
+          <B variant="primary" icon={<Plus size={15} />} onClick={() => onOpen()}>
+            Назначить маршрут
+          </B>
+        )}
+      </div>
+      <div className="control-summary">
+        {[
+          ["Назначений", included.length, fmt],
+          ["Выручка, план", M.knownSum(included, "revenue"), money],
+          ["Выплаты, план", M.knownSum(included, "payout"), money],
+          ["Пробег, план", M.knownSum(included, "km"), (v) => fmt(v) + " км"],
+        ].map(([label, value, format]) => (
+          <Card pad="large" key={label}>
+            <span>{label}</span>
+            <strong><AnimatedNumber value={value} format={format} /></strong>
+          </Card>
+        ))}
+      </div>
+      <Section
+        title="Назначения водитель → автомобиль → маршрут"
+        subtitle="План сохраняется отдельно от фактических заявок ТрансТрейда"
+      >
+        <DataTable
+          rows={rows}
+          title="Планировщик"
+          onRow={user.role === "viewer" ? undefined : onOpen}
+          columns={[
+            { key: "date", label: "Дата" },
+            { key: "vehicle", label: "Автомобиль", vehicle: true },
+            { key: "driver", label: "Водитель" },
+            { key: "route", label: "Маршрут" },
+            {
+              key: "state",
+              label: "Состояние",
+              render: (r) =>
+                ({
+                  scheduled: "Назначен",
+                  unassigned: "Не назначен ресурс / водитель",
+                  no_route: "Нет маршрута",
+                  cancelled: "Отменён",
+                  review: "Требует проверки",
+                })[r.state] || r.state || "—",
+            },
+            { key: "slot", label: "Смена" },
+            col("revenue", "Выручка", money),
+            col("payout", "Выплата", money),
+            col("km", "Км"),
+            col("hours", "Часы"),
+          ]}
+        />
+      </Section>
+    </>
+  );
+}
+
+function PlanForm({ p, row, onSaved }) {
+  const editing = !!row;
+  const today = new Date().toLocaleDateString("sv-SE");
+  const [dateValue, setDateValue] = useState(row?.date || today);
+  const [routeId, setRouteId] = useState(row?.route_id || "");
+  const [quote, setQuote] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const active = (kind) =>
+    (p.directories[kind] || []).filter(
+      (r) => !r.archived && !r.merged_into && !r.placeholder,
+    );
+  useEffect(() => {
+    if (!routeId || !dateValue) {
+      setQuote("");
+      return;
+    }
+    let current = true;
+    api("tariffs/quote?" + new URLSearchParams({ route: routeId, date: dateValue }))
+      .then((q) => {
+        if (current)
+          setQuote(
+            "Тариф на дату: " + money(q.revenue) +
+              " · водителю " + money(q.payout) +
+              " · партнёру " + money(q.partner_payout) +
+              " · " + fmt(q.km) + " км · " + fmt(q.hours) + " ч",
+          );
+      })
+      .catch((e) => current && setQuote(e.message));
+    return () => {
+      current = false;
+    };
+  }, [routeId, dateValue]);
+  return (
+    <form
+      className="form plan-form"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+        setMessage("");
+        try {
+          const body = Object.fromEntries(new FormData(event.currentTarget));
+          if (!editing)
+            body.weekdays = [...event.currentTarget.querySelectorAll('[name="weekdays"]:checked')].map(
+              (input) => Number(input.value),
+            );
+          if (editing) body.revision = row.revision;
+          await api(editing ? "records/" + (row.record_id || row.id) : "manual/plans", {
+            method: editing ? "PUT" : "POST",
+            body: JSON.stringify(body),
+          });
+          await onSaved();
+        } catch (e) {
+          setMessage(e.message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <label>
+        Дата
+        <input
+          name="date"
+          type="date"
+          required
+          value={dateValue}
+          onChange={(e) => setDateValue(e.target.value)}
+        />
+      </label>
+      {!editing && (
+        <label>
+          По
+          <input name="end_date" type="date" required defaultValue={dateValue} />
+        </label>
+      )}
+      <label>
+        Состояние
+        <select name="state" defaultValue={row?.state || "scheduled"}>
+          <option value="scheduled">Назначен</option>
+          <option value="unassigned">Не назначен ресурс / водитель</option>
+          <option value="no_route">Нет маршрута</option>
+          <option value="cancelled">Отменён</option>
+          <option value="review">Требует проверки</option>
+        </select>
+      </label>
+      <label>
+        Автомобиль / ресурс
+        <select name="vehicle_id" defaultValue={row?.vehicle_id || ""}>
+          <option value="">Не выбран</option>
+          {active("vehicles").map((item) => (
+            <option value={item.id} key={item.id}>{item.name}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Водитель
+        <select name="driver_id" defaultValue={row?.driver_id || ""}>
+          <option value="">Не выбран</option>
+          {active("drivers").map((item) => (
+            <option value={item.id} key={item.id}>{item.name}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Маршрут
+        <select name="route_id" value={routeId} onChange={(e) => setRouteId(e.target.value)}>
+          <option value="">Не выбран</option>
+          {active("routes").map((item) => (
+            <option value={item.id} key={item.id}>{item.name}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Номер смены / рейса
+        <input name="slot" defaultValue={row?.slot || ""} maxLength={100} />
+      </label>
+      <label>
+        Комментарий
+        <textarea name="note" defaultValue={row?.note || ""} rows={3} maxLength={1000} />
+      </label>
+      {!editing && (
+        <fieldset className="weekday-field">
+          <legend>Дни недели</legend>
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label, index) => (
+            <label key={label}>
+              <input type="checkbox" name="weekdays" value={index} defaultChecked />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {quote && <InfoNote>{quote}</InfoNote>}
+      {message && <p className="error" role="alert">{message}</p>}
+      <div className="form-actions">
+        {editing && (
+          <B
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              if (!window.confirm("Убрать назначение? Действие сохранится в журнале.")) return;
+              setBusy(true);
+              try {
+                await api("manual/" + (row.record_id || row.id), {
+                  method: "DELETE",
+                  body: JSON.stringify({
+                    revision: row.revision,
+                    delete_token: row.delete_token,
+                  }),
+                });
+                await onSaved();
+              } catch (e) {
+                setMessage(e.message);
+                setBusy(false);
+              }
+            }}
+          >
+            Убрать назначение
+          </B>
+        )}
+        <B variant="primary" type="submit" disabled={busy}>
+          {editing ? "Сохранить" : "Создать назначения"}
+        </B>
+      </div>
+    </form>
+  );
+}
+
+function SourceDataPage({ p, fuel, period, filters, onTrips }) {
+  const [tab, setTab] = useState("orders");
+  const inPeriod = (row) => row.date >= period[0] && row.date <= period[1];
+  const trips = p.trips.filter((r) => inPeriod(r) && M.matches(r, filters, p));
+  const plans = (p.plans || []).filter(
+    (r) =>
+      inPeriod(r) &&
+      M.selected(filters.vehicles, r.vehicle) &&
+      M.selected(filters.drivers, r.driver),
+  );
+  const statuses = (p.statuses || []).filter((r) => inPeriod(r));
+  const satellite = (p.satellite || []).filter(
+    (r) => inPeriod(r) && M.selected(filters.vehicles, r.vehicle),
+  );
+  const fuelRows = (fuel || []).filter(
+    (r) => inPeriod(r) && M.selected(filters.vehicles, r.vehicle),
+  );
+  return (
+    <>
+      <SlidingTabs
+        className="source-tabs"
+        items={[
+          ["orders", "Заявки"],
+          ["plans", "Назначения"],
+          ["statuses", "Статусы"],
+          ["satellite", "Спутник"],
+          ["fuel", "Топливо"],
+          ["service", "Контрольные записи"],
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === "orders" && (
+        <Section title="Заявки ТрансТрейд и ручные записи" subtitle="Фактическая работа; исходные записи не заменяются планом">
+          <DataTable
+            rows={trips}
+            columns={tripCols}
+            title="Заявки"
+            onRow={(r) => onTrips("Заявка " + r.id, [r])}
+          />
+        </Section>
+      )}
+      {tab === "plans" && (
+        <Section title="Исходные назначения" subtitle="Сохранённый план до сопоставления с фактом">
+          <DataTable
+            rows={plans}
+            title="Назначения"
+            columns={[
+              { key: "date", label: "Дата" },
+              { key: "vehicle", label: "Автомобиль", vehicle: true },
+              { key: "driver", label: "Водитель" },
+              { key: "route", label: "Маршрут" },
+              { key: "state", label: "Состояние" },
+              col("revenue", "Выручка", money),
+              col("payout", "Выплата", money),
+            ]}
+          />
+        </Section>
+      )}
+      {tab === "statuses" && (
+        <Section title="Статусы и простои" subtitle="Ручные причины по автомобилям и водителям">
+          <DataTable
+            rows={statuses}
+            title="Статусы"
+            columns={[
+              { key: "date", label: "Дата" },
+              { key: "kind", label: "Объект" },
+              { key: "entity", label: "Наименование" },
+              { key: "reason", label: "Причина" },
+              { key: "note", label: "Комментарий" },
+            ]}
+          />
+        </Section>
+      )}
+      {tab === "satellite" && (
+        <Section title="Показания ГЛОНАССсофт" subtitle="Суточные значения автомобиля; не километраж отдельной заявки">
+          <DataTable
+            rows={satellite}
+            title="Спутниковые данные"
+            columns={[
+              { key: "date", label: "Дата" },
+              { key: "vehicle", label: "Автомобиль", vehicle: true },
+              col("km", "Пробег, км"),
+              col("engine_hours", "Моточасы"),
+              col("movement_hours", "Движение"),
+              col("stop_hours", "Стоянки"),
+              { key: "source", label: "Источник" },
+            ]}
+          />
+        </Section>
+      )}
+      {tab === "fuel" && (
+        <Section title="Топливные операции" subtitle="Операции доступны руководителю; карты связываются с автомобилем по датам">
+          <DataTable rows={fuelRows} title="Топливо" columns={fuelCols} />
+        </Section>
+      )}
+      {tab === "service" && (
+        <div className="service-grid">
+          <Section title="Полнота периодов">
+            <DataTable
+              rows={p.coverage || []}
+              title="Полнота"
+              columns={[
+                { key: "source", label: "Источник" },
+                { key: "start", label: "С" },
+                { key: "end", label: "По" },
+                { key: "note", label: "Комментарий" },
+              ]}
+            />
+          </Section>
+          <Section title="Привязки топливных карт">
+            <DataTable
+              rows={p.card_bindings || []}
+              title="Карты"
+              columns={[
+                { key: "card", label: "Карта" },
+                { key: "vehicle", label: "Автомобиль", vehicle: true },
+                { key: "start", label: "С" },
+                { key: "end", label: "По" },
+              ]}
+            />
+          </Section>
+          <Section title="Подтверждённые расходы">
+            <DataTable
+              rows={p.expenses || []}
+              title="Расходы"
+              columns={[
+                { key: "date", label: "Дата" },
+                { key: "vehicle", label: "Автомобиль", vehicle: true },
+                { key: "kind", label: "Вид" },
+                col("amount", "Сумма", money),
+                { key: "note", label: "Комментарий" },
+              ]}
+            />
+          </Section>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ConnectionsPage({ user, period, disabled, onRefresh }) {
+  const [rows, setRows] = useState([]);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const load = () =>
+    api("connections").then(setRows).catch((e) => setMessage(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  const sync = async (id) => {
+    setBusy(id);
+    setMessage("");
+    try {
+      const body = id === "monitoring" ? {} : { from: period[0], to: period[1] };
+      await api(id + "/sync", { method: "POST", body: JSON.stringify(body) });
+      await Promise.all([load(), onRefresh()]);
+      setMessage("Данные обновлены");
+    } catch (e) {
+      setMessage(e.message);
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <>
+      {disabled && (
+        <InfoNote tone="warning">
+          В демонстрационном и локальном предпросмотре синхронизация отключена.
+          Статусы показаны только для проверки интерфейса.
+        </InfoNote>
+      )}
+      <div className="connections-head">
+        <p className="muted">
+          Проверка сети не отправляет логины и пароли и не доказывает доступ к данным.
+        </p>
+        {user.role === "admin" && (
+          <B
+            disabled={busy === "check" || disabled}
+            onClick={async () => {
+              setBusy("check");
+              try {
+                const result = await api("connections/check", { method: "POST", body: "{}" });
+                setRows(result);
+                setMessage("Проверка подключений завершена");
+              } catch (e) {
+                setMessage(e.message);
+              } finally {
+                setBusy("");
+              }
+            }}
+          >
+            Проверить подключения
+          </B>
+        )}
+      </div>
+      <div className="connection-grid">
+        {rows.map((row) => (
+          <Card pad="large" className="connection-card" key={row.id}>
+            <div className="connection-title">
+              <div>
+                <h2>{row.name}</h2>
+                <small>{row.checked_at || row.authorization_checked_at || "Не проверено"}</small>
+              </div>
+              <Badge tone={/подключ|готов/i.test(row.status) ? "success" : "neutral"}>{row.status}</Badge>
+            </div>
+            <p>{row.detail}</p>
+            <div className="connection-actions">
+              {row.url && (
+                <a href={row.url} target="_blank" rel="noreferrer">
+                  Документация <ExternalLink size={13} />
+                </a>
+              )}
+              {user.role === "admin" && (
+                <B
+                  disabled={!!busy || disabled}
+                  onClick={() => sync(row.id)}
+                  icon={<RefreshCw size={14} className={busy === row.id ? "spin" : ""} />}
+                >
+                  Обновить данные
+                </B>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+      {message && <p className="success-message" role="status">{message}</p>}
+    </>
+  );
+}
+
+function UsersPage({ p }) {
+  const [users, setUsers] = useState([]);
+  const [audit, setAudit] = useState([]);
+  const [message, setMessage] = useState("");
+  const load = () =>
+    Promise.all([api("users"), api("audit")])
+      .then(([userRows, auditRows]) => {
+        setUsers(userRows);
+        setAudit(auditRows);
+      })
+      .catch((e) => setMessage(e.message));
+  useEffect(() => {
+    load();
+  }, []);
+  return (
+    <>
+      <Section title="Пользователи и роли" subtitle="Руководитель управляет доступами; сервер проверяет права для каждой записи">
+        <DataTable
+          rows={users}
+          title="Пользователи"
+          columns={[
+            { key: "name", label: "Имя" },
+            { key: "role", label: "Роль" },
+            {
+              key: "vehicles",
+              label: "Назначенные автомобили",
+              render: (r) => {
+                try {
+                  return JSON.parse(r.vehicles || "[]").join(", ") || "Все по роли";
+                } catch {
+                  return "—";
+                }
+              },
+            },
+          ]}
+        />
+        <form
+          className="inline-form user-form"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const body = Object.fromEntries(new FormData(form));
+            body.vehicles = [...form.elements.vehicles.selectedOptions].map(
+              (option) => option.value,
+            );
+            try {
+              await api("users", { method: "POST", body: JSON.stringify(body) });
+              form.reset();
+              setMessage("Пользователь добавлен");
+              await load();
+            } catch (e) {
+              setMessage(e.message);
+            }
+          }}
+        >
+          <label>Имя<input name="name" required /></label>
+          <label>Пароль<input name="password" type="password" minLength={12} required autoComplete="new-password" /></label>
+          <label>
+            Роль
+            <select name="role">
+              <option value="logist">Логист</option>
+              <option value="viewer">Наблюдатель</option>
+              <option value="admin">Руководитель</option>
+            </select>
+          </label>
+          <label>
+            Автомобили
+            <select name="vehicles" multiple>
+              {p.vehicles.map((vehicle) => (
+                <option key={vehicle.name}>{vehicle.name}</option>
+              ))}
+            </select>
+          </label>
+          <B variant="primary" type="submit">Добавить пользователя</B>
+        </form>
+        {message && <span role="status">{message}</span>}
+      </Section>
+      <Section title="Журнал действий" subtitle="Последние 100 событий">
+        <DataTable
+          rows={audit}
+          title="Журнал"
+          columns={[
+            { key: "at", label: "Время UTC" },
+            { key: "user_id", label: "Пользователь" },
+            { key: "action", label: "Действие" },
+            { key: "detail", label: "Детали" },
+          ]}
+        />
+      </Section>
+    </>
+  );
+}
+
+function Settings({ settings, save, user }) {
+  const [draft, setDraft] = useState(settings),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <>
+      <Section
+        title="Пороги контроля"
+        subtitle="Пробег сохраняется независимо от порога движения"
+      >
+        <form
+          className="form settings-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              await save({ kind: "settings", settings: draft });
+              setMessage("Настройки сохранены");
+            } catch (e) {
+              setMessage(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {[
+            ["movement_threshold", "День движения, км", 1000],
+            ["excess_km", "Допустимый перепробег, км", 10000],
+            ["excess_percent", "Допустимый перепробег, % от ТТ", 1000],
+          ].map(([key, label, max]) => (
+            <label key={key}>
+              {label}
+              <input
+                type="number"
+                value={draft[key]}
+                required
+                min={0}
+                max={max}
+                step="0.1"
+                disabled={user.role !== "admin"}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    [key]: e.target.value === "" ? "" : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+          ))}
+          <p className="muted">
+            Сигнал перепробега: превышены оба порога. При нулевом ТТ применяется
+            только порог в километрах. Сравнение требует одинакового интервала.
+          </p>
+          {user.role === "admin" && (
+            <B type="submit" variant="primary" disabled={busy}>
+              Сохранить настройки
+            </B>
+          )}
+          <span role="status">{message}</span>
+        </form>
+      </Section>
+      <Section title="Определения показателей">
+        <div className="definitions">
+          {[
+            [
+              "Заявки",
+              "Уникальные записи рейсов, без начислений, премий, ПРР и удержаний.",
+            ],
+            [
+              "Рабочий день",
+              "Автомобиль и календарная дата с рейсом; несколько рейсов не удваивают день. Для водителя — уникальная дата назначения.",
+            ],
+            [
+              "Финансовый период",
+              "Сохранено действующее правило по дате начала заявки. Переходящий рейс даёт рабочие дни в обоих периодах, деньги и километраж учитываются один раз.",
+            ],
+            [
+              "Маржинальный результат",
+              "Выручка минус выплаты по заявкам. Без ГСМ, ремонта, лизинга и амортизации. Отдельная выплата водителю не вычитается повторно.",
+            ],
+            [
+              "ГЛОНАСС",
+              "Суточные показания автомобиля. Не являются точными показаниями за интервал отдельного рейса или за смену конкретного водителя.",
+            ],
+            [
+              "Отсутствующие данные",
+              "Обозначены «—». Известная часть спутникового пробега подписана как доступные показания; неполные финансовые суммы не выдаются за итог.",
+            ],
+            [
+              "Будущие расходы",
+              "1С и ФинТабло не подключены. Текущий состав затрат не смешивается с расширенной экономикой.",
+            ],
+          ].map(([a, b]) => (
+            <div key={a}>
+              <h3>{a}</h3>
+              <p>{b}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+    </>
+  );
+}
+function Login({ onSuccess }) {
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <main className="login">
+      <section className="login-story">
+        <span className="wordmark">CharterStats<span> / </span></span>
+        <h1>Планируйте рейсы.<br /><em>Смотрите результат.</em></h1>
+        <div className="login-preview" aria-hidden="true">
+          <span><i>01</i><Truck size={16}/><b>Планирование</b><small>Маршруты и автомобили</small></span>
+          <span><i>02</i><ChartNoAxesCombined size={16}/><b>Данные</b><small>Заявки и показатели</small></span>
+          <span><i>03</i><ShieldCheck size={16}/><b>Контроль</b><small>Отклонения и решения</small></span>
+        </div>
+      </section>
+      <Card pad="large" className="login-entry">
+        <h2>Рады видеть вас</h2>
+        <p className="muted">Войдите, чтобы продолжить работу с автопарком.</p>
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              await api("login", {
+                method: "POST",
+                body: JSON.stringify(
+                  Object.fromEntries(new FormData(e.target)),
+                ),
+              });
+              await onSuccess();
+            } catch (e) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Логин
+            <input name="name" placeholder="Введите логин" required autoComplete="username" />
+          </label>
+          <label>
+            Пароль
+            <input
+              name="password"
+              type="password"
+              placeholder="Введите пароль"
+              required
+              autoComplete="current-password"
+            />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <B variant="primary" type="submit" disabled={busy}>
+            Войти в рабочее пространство <ArrowRight size={16}/>
+          </B>
+        </form>
+      </Card>
+    </main>
+  );
+}
+createRoot(document.getElementById("root")).render(<App />);
+function TelemetrySummary({ a, onDetails }) {
+  return (
+    <Section
+      title="Пробег и время"
+      subtitle="Заявки ТТ и доступные суточные показания автомобиля"
+      action={
+        <button onClick={onDetails}>
+          Показания <ArrowRight size={14} />
+        </button>
+      }
+    >
+      <div className="telemetry-summary">
+        <div>
+          <span>Пробег ТТ</span>
+          <strong>
+            {fmt(a.km)} <small>км</small>
+          </strong>
+          <small>
+            {a.km === null
+              ? "Нет полного километража заявок"
+              : "Один раз на заявку"}
+          </small>
+        </div>
+        <div>
+          <span>Пробег ГЛОНАСС</span>
+          <strong>
+            {fmt(a.sat_km)} <small>км</small>
+          </strong>
+          <small>
+            {a.satelliteScoped
+              ? "Нет однозначной связи с выборкой"
+              : `${a.sat_coverage} авто-дней с показаниями`}
+          </small>
+        </div>
+        <div>
+          <span>Время ТТ</span>
+          <strong>
+            {fmt(a.hours)} <small>ч</small>
+          </strong>
+          <small>Длительность заявок</small>
+        </div>
+        <div>
+          <span>Моточасы ГЛОНАСС</span>
+          <strong>
+            {fmt(
+              a.satelliteScoped
+                ? null
+                : M.knownSum(a.satellite, "engine_hours"),
+            )}{" "}
+            <small>ч</small>
+          </strong>
+          <small>Зажигание, не время работы</small>
+        </div>
+      </div>
+      <div className="section-foot">
+        Отклонение: — · для точной разницы в км, часах и процентах нужны
+        сопоставимые интервалы. Суточные показания не распределяются по заявкам.
+      </div>
+    </Section>
+  );
+}
+function FinanceGroups({ p, a, onSelect }) {
+  const kinds = ["Собственный парк", "Привлечённые", "Не установлено"];
+  return (
+    <Section
+      title="Финансы по принадлежности"
+      subtitle="Состав выплат сохранён как в источнике; без повторного вычитания зарплаты"
+    >
+      <div className="finance-groups">
+        {kinds.map((kind) => {
+          const rows = a.rows.filter(
+              (r) =>
+                (p.vehicleMap.get(r.vehicle)?.ownership || "Не установлено") ===
+                kind,
+            ),
+            f = M.financial(rows);
+          return (
+            <div key={kind}>
+              <h3>{kind}</h3>
+              <button onClick={() => onSelect(kind, rows)}>
+                <span>Выручка</span>
+                <b>{money(f.revenue)}</b>
+              </button>
+              <button onClick={() => onSelect(kind + " · выплаты", rows)}>
+                <span>
+                  {kind === "Собственный парк"
+                    ? "Выплаты по заявкам"
+                    : "Исполнителям"}
+                </span>
+                <b>{money(f.payout)}</b>
+              </button>
+              <div>
+                <span>Доля выплат</span>
+                <b>{pct(f.payout_percent)}</b>
+              </div>
+              <div>
+                <span>Разница</span>
+                <b>{money(f.balance)}</b>
+              </div>
+              <div>
+                <span>Доля разницы</span>
+                <b>{pct(f.margin)}</b>
+              </div>
+              {kind === "Собственный парк" && (
+                <p>
+                  Оплата водителю отдельно: {money(f.driver_payout)}.{" "}
+                  {f.driver_payout === null
+                    ? "Источник не подтверждает отдельное поле зарплаты."
+                    : "Включена в выплаты; повторно не вычитается."}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+function Opportunity({ p, a }) {
+  const weekdays = (d) => new Date(d + "T12:00:00Z").getUTCDay(),
+    rows = [];
+  for (const name of new Set(a.days.map((d) => d.vehicle))) {
+    const days = a.days.filter((d) => d.vehicle === name),
+      work = days.filter((d) => d.status === "Работа"),
+      byDay = new Map();
+    for (const r of a.rows.filter(
+      (r) =>
+        r.vehicle === name &&
+        M.isTrip(r) &&
+        M.tripSpan(r)[0] === M.tripSpan(r)[1],
+    )) {
+      if (!byDay.has(r.date)) byDay.set(r.date, []);
+      byDay.get(r.date).push(r);
+    }
+    for (const reason of ["Без заявки", "Без водителя", "Ремонт / сервис"]) {
+      const idle = days.filter((d) => d.status === reason);
+      if (!idle.length) continue;
+      let estimate = 0,
+        known = 0;
+      for (const day of idle) {
+        const comparable = [...byDay]
+          .filter(
+            ([date, rs]) =>
+              weekdays(date) === weekdays(day.date) &&
+              M.sum(rs, "revenue") !== null,
+          )
+          .map(([d, rs]) => M.sum(rs, "revenue"));
+        if (comparable.length) {
+          estimate += comparable.reduce((n, v) => n + v, 0) / comparable.length;
+          known++;
+        }
+      }
+      rows.push({
+        name,
+        reason,
+        days: idle.length,
+        covered: known,
+        estimate: known === idle.length ? estimate : null,
+      });
+    }
+  }
+  return (
+    <Section
+      title="Упущенная выручка · оценка"
+      subtitle="Средняя выручка того же автомобиля в тот же день недели × подтверждённые дни простоя"
+    >
+      <DataTable
+        title="Оценка простоя"
+        rows={rows}
+        columns={[
+          { key: "name", label: "Автомобиль", vehicle: true },
+          { key: "reason", label: "Причина" },
+          col("days", "Дни простоя"),
+          col("covered", "Дни с базой сравнения"),
+          col("estimate", "Оценка выручки", money),
+        ]}
+      />
+      <InfoNote>
+        Это сценарная оценка, а не финансовый убыток. Пустые дни, выходные и
+        переходящие рейсы исключены из базы. Без сопоставимых рабочих дней
+        оценка не рассчитывается.
+      </InfoNote>
+    </Section>
+  );
+}
+function AssignmentEditor({ p, refresh }) {
+  const [kind, setKind] = useState("vehicles"),
+    [id, setId] = useState(""),
+    [carrier, setCarrier] = useState(""),
+    [type, setType] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
+  const rows = (p.directories[kind] || []).filter(
+    (r) =>
+      !r.archived &&
+      !r.merged_into &&
+      (kind === "vehicles"
+        ? !r.resource_type || r.resource_type === "vehicle"
+        : !r.placeholder),
+  );
+  return (
+    <Section
+      title="Уточнить принадлежность"
+      subtitle="Ручное подтверждение связи в текущем справочнике приложения"
+    >
+      <form
+        className="inline-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const r = rows.find((r) => r.id === id);
+          if (!r) return;
+          setBusy(true);
+          try {
+            await api(`catalog/${kind}/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                ...r,
+                carrier_id: carrier,
+                ...(kind === "vehicles" ? { transport_type_id: type } : {}),
+              }),
+            });
+            setMessage("Связь сохранена");
+            await refresh();
+          } catch (e) {
+            setMessage(e.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          Справочник
+          <select
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value);
+              setId("");
+              setCarrier("");
+              setType("");
+            }}
+          >
+            <option value="vehicles">Автомобили</option>
+            <option value="drivers">Водители</option>
+          </select>
+        </label>
+        <label>
+          Запись
+          <select
+            required
+            value={id}
+            onChange={(e) => {
+              const r = rows.find((r) => r.id === e.target.value);
+              setId(e.target.value);
+              setCarrier(r?.carrier_id || "");
+              setType(r?.transport_type_id || "");
+            }}
+          >
+            <option value="">Выберите</option>
+            {rows.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Исполнитель
+          <select value={carrier} onChange={(e) => setCarrier(e.target.value)}>
+            <option value="">Связь с исполнителем ТТ не установлена</option>
+            {(p.directories.carriers || [])
+              .filter((r) => !r.archived)
+              .map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        {kind === "vehicles" && (
+          <label>
+            Тип транспорта
+            <select value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="">Не установлен</option>
+              {(p.directories.transport_types || [])
+                .filter(
+                  (r) =>
+                    !r.archived && M.category({ type: r.name }) === "Вождение",
+                )
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        <B type="submit" variant="primary" disabled={!id || busy}>
+          Сохранить связь
+        </B>
+        <span role="status">{message}</span>
+      </form>
+    </Section>
+  );
+}

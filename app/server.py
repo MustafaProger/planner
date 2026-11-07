@@ -2,7 +2,7 @@ import datetime as dt, functools, hashlib, io, json, os, re, secrets, sqlite3, t
 from pathlib import Path
 from flask import Flask,request,jsonify,session,send_from_directory,redirect,abort
 from werkzeug.security import generate_password_hash,check_password_hash
-from app.importer import load_excel,vehicle,resolve_sources
+from app.normalization import vehicle
 from app.analytics import report,reconcile
 from app import workspace as ws
 ROOT=Path(__file__).resolve().parent.parent
@@ -41,8 +41,8 @@ def init():
         c.executescript('CREATE TABLE IF NOT EXISTS snapshot(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT); CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT UNIQUE,password TEXT,role TEXT,vehicles TEXT); CREATE TABLE IF NOT EXISTS manual(id TEXT PRIMARY KEY,kind TEXT,body TEXT,created_by INTEGER,deleted INTEGER DEFAULT 0); CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT,user_id INTEGER,action TEXT,detail TEXT);')
         initial_source=None
         if not c.execute('select 1 from snapshot').fetchone():
-            # Validate both source books before creating a partial bootstrap.
-            initial_source=load_excel()
+            # API-only installations start with an empty workspace.
+            initial_source=dict(trips=[],satellite=[],statuses=[],plans=[],routes=[],vehicles={},drivers={},meta=dict(files=[],issues=[],source='API',counts={}))
         if not c.execute('select 1 from users').fetchone():
             pwd=secrets.token_urlsafe(18);c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',('Руководитель',generate_password_hash(pwd),'admin','[]'))
             (DATA/'local-login.txt').write_text('Пользователь: Руководитель\nПароль: '+pwd+'\n');os.chmod(DATA/'local-login.txt',0o600)
@@ -55,14 +55,6 @@ def init():
                 with sqlite3.connect(backup) as target:c.backup(target)
                 os.chmod(backup,0o600)
         original=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0])
-        if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
-            # Enrich only from the exact original files; never replace current financial rows.
-            paths=resolve_sources(required=False)
-            source_files={p.name:p for p in paths if p is not None}
-            if original['meta']['files'] and all(f['name'] in source_files and source_files[f['name']].is_file() and hashlib.sha256(source_files[f['name']].read_bytes()).hexdigest()==f['sha256'] for f in original['meta']['files']):
-                enriched=load_excel(*paths);original['vehicle_details']=enriched.get('vehicle_details',{})
-                extra={r['source']:r for r in enriched['satellite']}
-                original['satellite']=[dict(r,**{k:v for k,v in extra.get(r['source'],{}).items() if k not in r}) for r in original['satellite']]
         ws.initialize(c,original,c.execute('select * from manual').fetchall())
     os.chmod(DB,0o600)
     if app.config['ALLOW_BOOTSTRAP'] and not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
@@ -86,14 +78,20 @@ def auth(roles=None):
     return decorator
 def dataset():
     with db() as c:d=ws.dataset(c)
+    from app.demo_data import enabled, facts
+    if enabled():
+        fixture=facts(DATA)
+        d['satellite']=fixture['satellite']
+        d['satellite_raw']=[]
+        d['meta'].update(demo=True,source=fixture['source'],imported_at=fixture['created_at'])
+        return d
     from app.monitoring_history import daily_rows,merge_satellite
     names={name for r in d['directories']['vehicles'] for name in [r['name'],*r.get('aliases',[])]}
     history=daily_rows(DATA,names)
     for row in history:ws.resolve_row(row,d['directories'])
-    d['satellite_raw']=d['satellite']
-    if history:
-        d['satellite']=merge_satellite(d['satellite'],history)
-        d['meta']['monitoring_history_days']=len(history)
+    d['satellite_raw']=[]
+    d['satellite']=merge_satellite([],history)
+    d['meta']['monitoring_history_days']=len(history)
     return d
 
 @app.errorhandler(PermissionError)
@@ -189,12 +187,34 @@ def bad(e):return jsonify(error=str(e)),400
 @app.errorhandler(413)
 def large(e):return jsonify(error='Файл больше 25 МБ'),413
 @app.get('/')
-def index():return send_from_directory(app.static_folder,'index.html')
+def index():return redirect('/charter/overview')
 @app.get('/<section>/<page>')
 def page(section,page):
+    if section=='charter' and page in {'overview','fleet','drivers','clients','compare','calendar','planner','control','fuel','routes','data','directories','connections','settings','users'}:
+        return send_from_directory(app.static_folder,'charter/index.html')
     if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
-    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics','telemetry'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses','evidence'},'settings':{'connections','excel','users'},'help':{'guide'}}
-    pages['data'].update({'telemetry','monitoringdata','neftmdata','rosneftdata'})
+    # Old bookmarks now enter the matching area of the unified CharterStats shell.
+    legacy={
+        ('analytics','dashboard'):'overview',('analytics','statistics'):'overview',
+        ('analytics','comparison'):'compare',('analytics','reconcile'):'compare',
+        ('analytics','planreport'):'planner',('analytics','downtime'):'calendar',
+        ('analytics','economics'):'routes',('planning','calendar'):'calendar',
+        ('planning','planner'):'planner',('data','orders'):'data',
+        ('data','monitoringdata'):'data',('data','neftmdata'):'data',
+        ('data','rosneftdata'):'data',('data','coverage'):'data',
+        ('data','fuelcards'):'data',('data','expenses'):'data',
+        ('data','directories'):'directories',('data','connections'):'connections',
+        ('data','users'):'users',('data','quality'):'control',
+        ('integrations','neftm'):'connections',('integrations','monitoring'):'connections',
+        ('integrations','rosneft'):'connections',('integrations','transtrade'):'connections',
+        ('control','quality'):'control',('control','coverage'):'data',
+        ('control','fuelcards'):'data',('control','expenses'):'data',
+        ('control','evidence'):'data',('settings','connections'):'connections',
+        ('settings','users'):'users',('help','guide'):'settings',
+    }
+    if (section,page) in legacy:return redirect('/charter/'+legacy[(section,page)],code=302)
+    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses','evidence'},'settings':{'connections','users'},'help':{'guide'}}
+    pages['data'].update({'monitoringdata','neftmdata','rosneftdata'})
     if page not in pages.get(section,set()):abort(404)
     return send_from_directory(app.static_folder,'index.html')
 @app.get('/bootstrap/<token>')
@@ -254,28 +274,6 @@ def delete_manual(ident):
         ws.edit_record(c,ident,request.get_json(silent=True) or {},user(),delete=True);audit(c,'delete record',ident)
     return jsonify(ok=True)
 
-@app.post('/api/import')
-@auth(['admin'])
-def import_excel():
-    with LOCK:
-        if request.files:
-            if not all(k in request.files for k in ('statistics','planner')):raise ValueError('Выберите обе книги')
-            files={k:request.files[k].read() for k in ('statistics','planner')}
-            for v in files.values():
-                try:
-                    z=zipfile.ZipFile(io.BytesIO(v))
-                    if sum(x.file_size for x in z.infolist())>150*1024*1024:raise ValueError('Слишком большая распакованная книга')
-                except zipfile.BadZipFile:raise ValueError('Ожидается файл XLSX')
-            import tempfile
-            with tempfile.TemporaryDirectory(dir=DATA) as tmp:
-                a=Path(tmp)/'Статистика.xlsx';b=Path(tmp)/'Планировщик.xlsx';a.write_bytes(files['statistics']);b.write_bytes(files['planner']);d=load_excel(a,b)
-        else:d=load_excel()
-        with db() as c:
-            previous=c.execute('select body from snapshot where id=1').fetchone()[0]
-            backup=DATA/('snapshot-'+dt.datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.json');backup.write_text(previous);os.chmod(backup,0o600)
-            ws.ingest(c,d)
-            c.execute('update snapshot set body=? where id=1',(json.dumps(d,ensure_ascii=False),));audit(c,'import',json.dumps(d['meta']['counts']))
-    return jsonify(meta=d['meta'])
 @app.get('/api/users')
 @auth(['admin'])
 def users():
@@ -422,6 +420,9 @@ def health_check():
     expected=os.environ.get('FLEET_SCHEDULER','embedded')!='disabled'
     healthy=worker['healthy'] if expected else True
     return jsonify(status='ok' if healthy else 'degraded',web='ok',updates='ok' if worker['healthy'] else 'unavailable'),200 if healthy else 503
+
+from app.charter import register as register_charter
+register_charter(app,db,dataset,auth,user,audit,LOCK,DATA)
 
 from app.evidence_routes import register as register_evidence
 register_evidence(app,db,dataset,auth,audit,LOCK)
