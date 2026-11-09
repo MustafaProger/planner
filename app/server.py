@@ -1,6 +1,7 @@
 import datetime as dt, functools, hashlib, io, json, os, re, secrets, sqlite3, threading, zipfile
 from pathlib import Path
-from flask import Flask,request,jsonify,session,send_from_directory,redirect,abort
+from flask import Flask,request,jsonify,session,send_from_directory,redirect,abort,g,make_response,render_template
+from flask.sessions import SecureCookieSessionInterface
 from werkzeug.security import generate_password_hash,check_password_hash
 from app.normalization import vehicle
 from app.analytics import report,reconcile
@@ -27,6 +28,13 @@ def waitress_options():
     return options
 
 app=Flask(__name__,static_folder='static');app.config.update(MAX_CONTENT_LENGTH=25*1024*1024,SESSION_COOKIE_HTTPONLY=True,SESSION_COOKIE_SAMESITE='Strict',PERMANENT_SESSION_LIFETIME=dt.timedelta(hours=12),TRUSTED_HOSTS=trusted_hosts())
+
+class FleetSessionInterface(SecureCookieSessionInterface):
+    def save_session(self, app, session, response):
+        if request.endpoint != 'static':
+            super().save_session(app, session, response)
+
+app.session_interface=FleetSessionInterface()
 app.config['SESSION_COOKIE_SECURE']=os.environ.get('FLEET_SECURE_COOKIE')=='1'
 app.config['ALLOW_BOOTSTRAP']=os.environ.get('FLEET_ALLOW_BOOTSTRAP','1')=='1'
 key=DATA/'session.key'
@@ -49,22 +57,35 @@ def init():
         if not c.execute('select 1 from snapshot').fetchone():c.execute('insert into snapshot values(1,?)',(json.dumps(initial_source,ensure_ascii=False),))
     with db() as c:
         # Snapshot backup before the first non-destructive workspace migration.
-        if not c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone():
+        has_workspace=c.execute("select 1 from sqlite_master where name='workspace_meta'").fetchone()
+        if not has_workspace:
             backup=DATA/'before-workspace-v2.sqlite'
             if not backup.exists():
                 with sqlite3.connect(backup) as target:c.backup(target)
                 os.chmod(backup,0o600)
-        original=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0])
-        ws.initialize(c,original,c.execute('select * from manual').fetchall())
+        if has_workspace and c.execute("select 1 from workspace_meta where key='initialized'").fetchone():
+            ws.schema(c)
+        else:
+            original=json.loads(c.execute('select body from snapshot where id=1').fetchone()[0])
+            ws.initialize(c,original,c.execute('select * from manual').fetchall())
     os.chmod(DB,0o600)
     if app.config['ALLOW_BOOTSTRAP'] and not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
 def audit(c,action,detail):c.execute('insert into audit(at,user_id,action,detail) values(?,?,?,?)',(dt.datetime.now(dt.timezone.utc).isoformat(),session.get('uid'),action,detail))
 def user():
-    with db() as c:r=c.execute('select id,name,role,vehicles from users where id=?',(session.get('uid'),)).fetchone()
-    if not r:return None
-    u=dict(r)
-    with db() as c:cats=ws.catalogs(c)
-    u['vehicles']=[(ws.lookup(cats,'vehicles',v) or {'name':v})['name'] for v in json.loads(u['vehicles'])];return u
+    uid=session.get('uid')
+    if uid is None:return None
+    if getattr(g,'fleet_user',None) and g.fleet_user['id']==uid:return g.fleet_user
+    with db() as c:
+        r=c.execute('select id,name,role,vehicles from users where id=?',(uid,)).fetchone()
+        if not r:return None
+        u=dict(r)
+        vehicles=json.loads(u['vehicles'])
+        if vehicles:
+            cats=ws.catalogs(c)
+            vehicles=[(ws.lookup(cats,'vehicles',v) or {'name':v})['name'] for v in vehicles]
+    u['vehicles']=vehicles
+    g.fleet_user=u
+    return u
 def auth(roles=None):
     def decorator(fn):
         @functools.wraps(fn)
@@ -76,8 +97,8 @@ def auth(roles=None):
             return fn(*args,**kwargs)
         return wrapped
     return decorator
-def dataset():
-    with db() as c:d=ws.dataset(c)
+def dataset(*, charter_view=False):
+    with db() as c:d=ws.dataset(c,charter_view=charter_view)
     from app.demo_data import enabled, facts
     if enabled():
         fixture=facts(DATA)
@@ -88,7 +109,8 @@ def dataset():
     from app.monitoring_history import daily_rows,merge_satellite
     names={name for r in d['directories']['vehicles'] for name in [r['name'],*r.get('aliases',[])]}
     history=daily_rows(DATA,names)
-    for row in history:ws.resolve_row(row,d['directories'])
+    indexes=ws.catalog_indexes(d['directories'])
+    for row in history:ws.resolve_row(row,d['directories'],indexes=indexes)
     d['satellite_raw']=[]
     d['satellite']=merge_satellite([],history)
     d['meta']['monitoring_history_days']=len(history)
@@ -179,19 +201,45 @@ def extra_delete(kind,ident):
 
 @app.after_request
 def headers(r):
-    r.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"});return r
+    path=request.path
+    immutable = r.status_code in (200, 206, 304) and re.fullmatch(r'/static/charter/assets/[\w-]+-[\w-]{8}\.(?:js|css)',path,re.ASCII)
+    cache='public, max-age=31536000, immutable' if immutable else 'no-store'
+    r.headers.update({'Cache-Control':cache,'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'"})
+    r.headers.setdefault('Referrer-Policy','no-referrer')
+    return r
 @app.errorhandler(ws.ConflictError)
 def conflict(e):return jsonify(error=str(e),conflict=True),409
 @app.errorhandler(ValueError)
 def bad(e):return jsonify(error=str(e)),400
 @app.errorhandler(413)
 def large(e):return jsonify(error='Файл больше 25 МБ'),413
-@app.get('/')
-def index():return redirect('/charter/overview')
+CHARTER_PAGES={'overview','fleet','drivers','clients','compare','calendar','planner','control','fuel','routes','data','directories','connections','settings','users'}
+
+def charter_login_form(error=None,status=200):
+    response=make_response(render_template('charter_login.html',error=error),status)
+    response.headers['Referrer-Policy']='same-origin'
+    return response
+
+def charter_page(page):
+    if page not in CHARTER_PAGES:abort(404)
+    if request.method=='POST':
+        error,status=authenticate(request.form)
+        if error:return charter_login_form(error,status)
+        return redirect('/charter/'+page,code=303)
+    if not user():return charter_login_form()
+    return send_from_directory(app.static_folder,'charter/index.html')
+
+@app.route('/',methods=['GET','POST'])
+def index():
+    if request.method!='POST' and user():return redirect('/charter/overview')
+    return charter_page('overview')
+
+@app.post('/charter/<page>')
+def charter_login(page):return charter_page(page)
+
 @app.get('/<section>/<page>')
 def page(section,page):
-    if section=='charter' and page in {'overview','fleet','drivers','clients','compare','calendar','planner','control','fuel','routes','data','directories','connections','settings','users'}:
-        return send_from_directory(app.static_folder,'charter/index.html')
+    if section=='charter':return charter_page(page)
     if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
     # Old bookmarks now enter the matching area of the unified CharterStats shell.
     legacy={
@@ -226,13 +274,19 @@ def bootstrap(token):
 FAILURES={}
 @app.post('/api/login')
 def login():
+    error,status=authenticate(request.get_json())
+    if error:return jsonify(error=error),status
+    return jsonify(ok=True)
+
+def authenticate(b):
     if request.headers.get('Origin') not in (None,request.host_url.rstrip('/')):abort(403)
     now=dt.datetime.now().timestamp();ip=request.remote_addr;history=[x for x in FAILURES.get(ip,[]) if now-x<300]
-    if len(history)>=10:return jsonify(error='Слишком много попыток. Повторите через 5 минут'),429
-    b=request.get_json();
+    if len(history)>=10:return 'Слишком много попыток. Повторите через 5 минут',429
+    if not hasattr(b,'get') or not isinstance(b.get('name'),str):return 'Укажите логин и пароль',400
     with db() as c:u=c.execute('select * from users where name=?',(b.get('name'),)).fetchone()
-    if not u or not check_password_hash(u['password'],str(b.get('password',''))):FAILURES[ip]=history+[now];return jsonify(error='Неверный логин или пароль'),401
-    session.clear();session.update(uid=u['id'],csrf=secrets.token_hex(24));session.permanent=True;return jsonify(ok=True)
+    if not u or not check_password_hash(u['password'],str(b.get('password',''))):FAILURES[ip]=history+[now];return 'Неверный логин или пароль',401
+    session.clear();session.update(uid=u['id'],csrf=secrets.token_hex(24));session.permanent=True
+    return None,200
 @app.post('/api/logout')
 @auth()
 def logout():session.clear();return jsonify(ok=True)

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход · CharterStats</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 375px;
+      background: #f6f8fa;
+      color: #283344;
+      font: 14px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .login {
+      display: grid;
+      width: min(860px, calc(100% - 48px));
+      margin: max(24px, calc((100vh - 390px) / 2)) auto;
+      grid-template-columns: 0.88fr 1.12fr;
+      overflow: hidden;
+      border: 1px solid #e1e7ee;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 18px 50px rgb(40 51 68 / 6%);
+    }
+    .login-story {
+      padding: 28px 32px 30px;
+      background: linear-gradient(140deg, #e7f0fc, #f3f6fa);
+    }
+    .wordmark { font-size: 19px; font-weight: 720; letter-spacing: -0.6px; }
+    .wordmark span, h1 em { color: #0875db; font-style: normal; }
+    h1 { margin: 36px 0 0; font-size: 31px; line-height: 1.16; letter-spacing: -1.25px; }
+    h2 { margin: 0; font-size: 25px; letter-spacing: -0.2px; }
+    .login-preview {
+      margin-top: 24px;
+      padding: 5px 18px;
+      border-radius: 14px;
+      background: #ffffffd9;
+    }
+    .login-preview > span {
+      display: grid;
+      grid-template-columns: 22px 1fr 18px;
+      gap: 2px 9px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e7ef;
+    }
+    .login-preview > span:last-child { border: 0; }
+    .login-preview svg { grid-column: 1; grid-row: 1 / 3; align-self: center; color: #3974c4; }
+    .login-preview b { grid-column: 2; grid-row: 1; font-size: 11px; font-weight: 600; }
+    .login-preview small { grid-column: 2; color: #6d7887; font-size: 9px; }
+    .login-preview i { grid-column: 3; grid-row: 1 / 3; align-self: center; font-style: normal; color: #6d7887; font-size: 9px; }
+    .login-entry { display: grid; align-content: center; padding: 34px 42px; }
+    .login-entry p { margin: 7px 0; color: #6d7887; line-height: 1.55; }
+    form, label { display: grid; }
+    form { gap: 13px; margin-top: 9px; }
+    label { gap: 6px; font-size: 12px; font-weight: 600; }
+    input, button { min-height: 46px; font: inherit; }
+    input { width: 100%; border: 1px solid #dfe5ec; border-radius: 7px; padding: 0 12px; color: inherit; font-size: 14px; }
+    input:focus-visible { outline: 2px solid #0875db; outline-offset: 2px; }
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 7px;
+      border: 0;
+      border-radius: 23px;
+      background: #0875db;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #0665c0; }
+    button:focus-visible { outline: 2px solid #3974c4; outline-offset: 4px; }
+    form p.error { margin: 0; padding: 8px 12px; border-radius: 7px; color: #a23434; background: #fcf1f1; }
+    @media (max-width: 760px) {
+      .login { width: calc(100% - 24px); grid-template-columns: 1fr; margin: 12px auto; }
+      .login-story { padding: 24px 24px 0; background: #fff; }
+      .login-story h1, .login-preview { display: none; }
+      .login-entry { padding: 26px 24px 30px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login">
+    <section class="login-story">
+      <span class="wordmark">CharterStats<span> / </span></span>
+      <h1>Планируйте рейсы.<br><em>Смотрите результат.</em></h1>
+      <div class="login-preview" aria-hidden="true">
+        <span><i>01</i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1zm15 5h4l3 4v4h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg><b>Планирование</b><small>Маршруты и автомобили</small></span>
+        <span><i>02</i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v3m6-9v9m6-6v6m6-15v15M3 12l6-6 6 3 6-6"/></svg><b>Данные</b><small>Заявки и показатели</small></span>
+        <span><i>03</i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11zM9 12l2 2 4-4"/></svg><b>Контроль</b><small>Отклонения и решения</small></span>
+      </div>
+    </section>
+    <section class="login-entry">
+      <h2>Рады видеть вас</h2>
+      <p>Войдите, чтобы продолжить работу с автопарком.</p>
+      <form method="post">
+        <label>Логин
+          <input name="name" placeholder="Введите логин" required autocomplete="username">
+        </label>
+        <label>Пароль
+          <input name="password" type="password" placeholder="Введите пароль" required autocomplete="current-password">
+        </label>
+        {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+        <button type="submit">
+          Войти в рабочее пространство
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+        </button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

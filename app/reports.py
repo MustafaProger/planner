@@ -143,17 +143,24 @@ def downtime(d,q):
         out.append(dict(name=name,trips=len(ts),work_days=len(work),status_days=len(idle),overlap_days=len(work&idle),reasons=reasons,clients=dict(clients)))
     return dict(rows=out,entity=kind)
 
-def economics(d,q,data_dir):
+def fuel_operations(d,q,data_dir):
     from app.fuel_history import normalized
     ops,periods=normalized(data_dir);ops=[r for r in ops if in_period(r,q)]
-    cats=d['directories'];bindings=d['card_bindings'];expenses=[]
+    cats=d['directories'];bindings=collections.defaultdict(list)
+    for binding in d['card_bindings']:
+        bindings[binding['provider'],binding['card']].append(binding)
+    for r in ops:
+        matches=[b for b in bindings.get((r['provider'],r['card']), ()) if b['start']<=r['date']<=b['end']]
+        ref=lookup(cats,'vehicles',matches[0]['vehicle_id']) if len(matches)==1 else None
+        r['vehicle']=ref['name'] if ref else '';r['allocation']='Привязана' if ref else 'Нет однозначной привязки'
+    return ops,periods
+
+def economics(d,q,data_dir):
+    ops,periods=fuel_operations(d,q,data_dir)
+    cats=d['directories'];expenses=[]
     for e in d['expenses']:
         ref=lookup(cats,'vehicles',e['vehicle_id']);x=dict(e,vehicle=ref['name'] if ref else e['vehicle'])
         if in_period(x,q):expenses.append(x)
-    for r in ops:
-        matches=[b for b in bindings if b['provider']==r['provider'] and b['card']==r['card'] and b['start']<=r['date']<=b['end']]
-        ref=lookup(cats,'vehicles',matches[0]['vehicle_id']) if len(matches)==1 else None
-        r['vehicle']=ref['name'] if ref else '';r['allocation']='Привязана' if ref else 'Нет однозначной привязки'
     facts=filtered(d['trips'],{k:v for k,v in q.items() if k in ('from','to','vehicle')})
     base={r['name']:r for r in aggregate(facts,'vehicle')};names=set(base)|{r['vehicle'] for r in ops+expenses if r['vehicle']}
     out=[]

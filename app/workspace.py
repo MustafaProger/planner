@@ -81,13 +81,30 @@ def catalogs(c):
             if company:row['company']=company['name']
     return out
 
-def lookup(cats, kind, value, active=False):
+def catalog_indexes(cats):
+    names = {}
+    ids = {}
+    for kind, rows in cats.items():
+        names[kind] = {}
+        ids[kind] = {}
+        for row in rows:
+            ids[kind].setdefault(row['id'], row)
+            for key in (row['id'], row['name'], *row.get('aliases', [])):
+                names[kind].setdefault(key, row)
+    return names, ids
+
+def lookup(cats, kind, value, active=False, *, indexes=None):
     if not value:return None
-    rows=cats[kind];row=next((r for r in rows if r['id']==value or value==r['name'] or value in r.get('aliases',[])),None)
+    rows=cats[kind]
+    row=(indexes[0][kind].get(value) if indexes and isinstance(value,str)
+         else next((r for r in rows if r['id']==value or value==r['name'] or value in r.get('aliases',[])),None))
     seen=set()
     while row and row.get('merged_into'):
         if row['id'] in seen:raise ValueError('Циклическое соответствие справочника.')
-        seen.add(row['id']);row=next((r for r in rows if r['id']==row['merged_into']),None)
+        seen.add(row['id'])
+        target=row['merged_into']
+        row=(indexes[1][kind].get(target) if indexes and isinstance(target,str)
+             else next((r for r in rows if r['id']==target),None))
     return row if row and (not active or not row.get('archived')) else None
 
 def add_catalog(c, kind, name, **fields):
@@ -200,23 +217,46 @@ def current_rate(c, route_id, date):
     if not row:raise ValueError('Нет тарифа маршрута на выбранную дату. Добавьте тариф.')
     return dict(json.loads(row['body']),tariff_id=row['id'],effective_from=row['effective_from'])
 
-def resolve_row(r,cats):
-    for field,kind in REFS.items():
-        ref=lookup(cats,kind,r.get(field+'_id') or r.get(field))
+def resolve_row(r,cats,*,indexes=None,refs=REFS):
+    for field,kind in refs.items():
+        ref=lookup(cats,kind,r.get(field+'_id') or r.get(field),indexes=indexes)
         if ref:r[field]=ref['name'];r[field+'_id']=ref['id']
     if r.get('kind') in ('vehicle','driver'):
-        ref=lookup(cats,r['kind']+'s',r.get('entity_id') or r.get('entity'))
+        ref=lookup(cats,r['kind']+'s',r.get('entity_id') or r.get('entity'),indexes=indexes)
         if ref:r['entity']=ref['name'];r['entity_id']=ref['id']
     return r
 
-def dataset(c):
+CHARTER_TRIP_FIELDS = (
+    'id', 'record_id', 'date', 'start', 'end', 'vehicle', 'driver', 'client',
+    'carrier', 'type', 'category', 'cancelled', 'revenue', 'payout',
+    'driver_payout', 'partner_payout', 'km', 'hours',
+)
+CHARTER_TRIP_REFS = {field: kind for field, kind in REFS.items() if field in CHARTER_TRIP_FIELDS}
+
+def charter_trip(row):
+    return {key: row[key] for key in CHARTER_TRIP_FIELDS if key in row}
+
+def dataset(c, *, charter_view=False):
     cats=catalogs(c)
+    indexes=catalog_indexes(cats)
     d={k:[] for k in ('trips','plans','statuses','satellite')}
     d.update(directories=cats,vehicles={r['name']:r.get('company') or r.get('brand','') for r in cats['vehicles'] if not r.get('merged_into')},
-             drivers={r['name']:r.get('company','') for r in cats['drivers'] if not r.get('merged_into')},routes=[],meta=json.loads(c.execute("select body from workspace_meta where key='last_import'").fetchone()[0]))
+             drivers={r['name']:r.get('company','') for r in cats['drivers'] if not r.get('merged_into')},routes=[])
+    for kind in ('coverage','card_bindings','expenses'):
+        query='select * from '+kind+' where deleted=0'
+        d[kind]=[resolve_row(dict(json.loads(r['body']),id=r['id'],revision=r['revision']),cats,indexes=indexes) for r in c.execute(query)]
+    # Coverage attestations depend on the full record, including source conflicts.
+    compact = charter_view and not d['coverage']
     for row in c.execute('select * from records where deleted=0'):
-        r=resolve_row(json.loads(row['body']),cats);r.update(record_id=row['id'],revision=row['revision'])
+        r=json.loads(row['body'])
         if r.get('origin')=='excel':continue
+        if compact and row['kind']=='trips':
+            resolve_row(r,cats,indexes=indexes,refs=CHARTER_TRIP_REFS)
+            r['record_id']=row['id']
+            d['trips'].append(charter_trip(r))
+            continue
+        resolve_row(r,cats,indexes=indexes)
+        r.update(record_id=row['id'],revision=row['revision'])
         r.pop('legacy_snapshot',None)
         if row['kind']!='trips':r['id']=row['id']
         if row['kind']=='plans':r=normalize_plan(r)
@@ -244,19 +284,18 @@ def dataset(c):
         except ValueError:rate={k:None for k in NUMBERS}
         d['routes'].append(dict(rate,id=r['name'],uid=r['id'],group=r.get('group',''),archived=r.get('archived',False),inactive_route=r.get('inactive_route',False)))
     d['tariffs']=[dict(json.loads(r['body']),id=r['id'],route_id=r['route_id'],effective_from=r['effective_from']) for r in c.execute('select * from tariffs order by effective_from')]
-    for kind in ('coverage','card_bindings','expenses'):
-        query='select * from '+kind+' where deleted=0'
-        d[kind]=[resolve_row(dict(json.loads(r['body']),id=r['id'],revision=r['revision']),cats) for r in c.execute(query)]
-    if c.execute("select 1 from sqlite_master where name='transtrade_orders'").fetchone():
-        raw={r['id']:json.loads(r['body']) for r in c.execute('select id,body from transtrade_orders')}
+    if not compact and c.execute("select 1 from sqlite_master where name='transtrade_orders'").fetchone():
         from app.transtrade import normalize
         for trip in d['trips']:
-            if trip.get('origin')=='manual' and trip['id'] in raw:
-                trip['api_conflict']=normalize(raw[trip['id']])
+            if trip.get('origin')=='manual':
+                raw=c.execute('select body from transtrade_orders where id=?',(trip['id'],)).fetchone()
+                if raw:trip['api_conflict']=normalize(json.loads(raw['body']))
     # File observations are retained in storage, but never used in API-only reports.
     d['meta']=dict(files=[],issues=[],source='API',counts={})
     from app.coverage import evaluate
     d['coverage']=[evaluate(d,r) for r in d['coverage']]
+    if charter_view and not compact:
+        d['trips']=[charter_trip(r) for r in d['trips']]
     d['meta']['counts']={k:len(d[k]) for k in ('trips','plans','statuses','satellite','routes')}
     return d
 

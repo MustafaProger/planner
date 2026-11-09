@@ -43,3 +43,57 @@ def test_legacy_rows_not_used_and_database_preserved(api_only,monkeypatch):
     assert data['satellite'][0]['km']==42
     assert data['satellite'][0]['hours'] is None
     assert data['satellite'][0]['sources']['km']=='ГЛОНАССсофт API'
+
+def test_charter_html_login_and_private_workspace(api_only, tmp_path):
+    client=server.app.test_client()
+    login=client.get('/charter/planner')
+    assert login.status_code==200
+    assert b'<form method="post">' in login.data
+    assert b'<script' not in login.data
+    assert login.headers['Cache-Control']=='no-store'
+    assert login.headers['Referrer-Policy']=='same-origin'
+    assert client.get('/api/charter?view=workspace').status_code==401
+
+    password=(tmp_path/'local-login.txt').read_text().splitlines()[1].split(': ',1)[1]
+    credentials={'name':'Руководитель','password':password}
+    assert client.post('/charter/planner',data=credentials,headers={'Origin':'https://other.invalid'}).status_code==403
+    wrong=client.post('/charter/planner',data={**credentials,'password':'wrong'})
+    assert wrong.status_code==401 and b'role="alert"' in wrong.data
+    response=client.post('/charter/planner',data=credentials,headers={'Origin':'http://localhost'})
+    assert response.status_code==303 and response.location=='/charter/planner'
+    shell=client.get(response.location)
+    assert b'id="root"' in shell.data and shell.headers['Cache-Control']=='no-store'
+    for path in (server.ROOT/'app/static/charter/assets').glob('*.js'):
+        asset=client.get('/static/charter/assets/'+path.name)
+        assert asset.headers['Cache-Control']=='public, max-age=31536000, immutable'
+        assert 'Set-Cookie' not in asset.headers
+
+    workspace=client.get('/api/charter?view=workspace')
+    assert workspace.status_code==200 and workspace.json['user']['role']=='admin'
+    csrf=workspace.headers['X-CSRF-Token']
+    assert csrf and csrf.encode() not in workspace.data
+    assert workspace.headers['Cache-Control']=='no-store'
+    assert client.post('/api/logout').status_code==403
+    assert client.post('/api/logout',headers={'X-CSRF-Token':csrf}).status_code==200
+    assert client.get('/api/charter?view=workspace').status_code==401
+    assert b'<form method="post">' in client.get('/charter/planner').data
+
+def test_charter_projection_preserves_catalog_merges_and_coverage(api_only):
+    from app.coverage import ALGORITHM, fingerprint
+    with server.db() as c:
+        old=ws.save_catalog(c,'vehicles',{'name':'А001АА77','aliases':['Прежнее название']})
+        new=ws.save_catalog(c,'vehicles',{'name':'А002АА77'})
+        ws.merge_catalog(c,'vehicles',old,new)
+        trip=dict(id='r',vehicle='Прежнее название',date='2026-11-01',category='Рейс',
+                  km=None,revenue=100,payout=50,load_address='Исходное поле')
+        c.execute("insert into records(id,kind,body) values('r','trips',?)",(ws.dump(trip),))
+        day=trip['date']
+        coverage=dict(source='trips',start=day,end=day,checked_complete=True,fingerprint_algorithm=ALGORITHM)
+        coverage['checked_fingerprint']=fingerprint(ws.dataset(c),'trips',day,day)
+        c.execute("insert into coverage(id,body) values('period',?)",(ws.dump(coverage),))
+        full=ws.dataset(c)
+        compact=ws.dataset(c,charter_view=True)
+        assert full['coverage']==compact['coverage'] and compact['coverage'][0]['complete']
+        assert compact['trips'][0]['vehicle']=='А002АА77'
+        assert compact['trips'][0]['revenue']==100 and compact['trips'][0]['km'] is None
+        assert 'load_address' in full['trips'][0] and 'load_address' not in compact['trips'][0]

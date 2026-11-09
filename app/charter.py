@@ -9,7 +9,7 @@ REVIEW_STATES = ('Не проверено', 'В работе', 'Обоснова
 
 
 def register(app, db, dataset, auth, user, audit, lock, data_dir):
-    from flask import jsonify, request
+    from flask import jsonify, request, session
 
     def state(c):
         c.execute('CREATE TABLE IF NOT EXISTS charter_state (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, body TEXT NOT NULL)')
@@ -19,8 +19,10 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
     @app.get('/api/charter')
     @auth()
     def charter_data():
-        from app.reports import economics
-        d = dataset()
+        from app.reports import fuel_operations
+        compact = request.args.get('view') == 'workspace'
+        d = dataset(charter_view=True) if compact else dataset()
+        account = user()
         with db() as c:
             s = state(c)
         result = dict(data=d, state=s, local_preview=os.environ.get('FLEET_LOCAL_PREVIEW') == '1')
@@ -28,12 +30,19 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
         demo = facts(data_dir) if enabled() else None
         result['demo'] = dict(version=demo['version'], period=demo['period'], summary=demo['summary']) if demo else None
         # Match the existing role boundary for raw fuel operations and card data.
-        if user()['role'] == 'admin':
-            result['fuel'] = demo['fuel'] if demo else economics(d, {}, data_dir).get('operations', [])
+        if account['role'] == 'admin':
+            result['fuel'] = demo['fuel'] if demo else fuel_operations(d, {}, data_dir)[0]
         else:
             result['fuel'] = []
             d['card_bindings'] = []
-        return jsonify(result)
+        if not compact:
+            return jsonify(result)
+        result['user'] = account
+        body = app.json.dumps(result, ensure_ascii=False, sort_keys=False, separators=(',', ':'))
+        response = app.response_class(body, mimetype='application/json')
+        # Keep the CSRF secret outside the compressible response body.
+        response.headers['X-CSRF-Token'] = session.get('csrf', '')
+        return response
 
     @app.put('/api/charter/state')
     @auth(['admin', 'logist'])

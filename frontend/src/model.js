@@ -226,15 +226,16 @@ export function matches(r, f, p) {
   );
 }
 export function available(p, f) {
+  const matchingTypes = f.types.length
+    ? new Set(p.trips.filter((r) => f.types.includes(r.type) && isTrip(r)).map((r) => r.vehicle))
+    : null;
   const vehicles = p.vehicles.filter(
     (v) =>
       selected(f.carriers, v.carrier) &&
       selected(f.ownership, v.ownership) &&
-      (!f.types.length ||
+      (!matchingTypes ||
         f.types.includes(v.transport_type) ||
-        p.trips.some(
-          (r) => r.vehicle === v.name && f.types.includes(r.type) && isTrip(r),
-        )),
+        matchingTypes.has(v.name)),
   );
   const drivers = p.drivers.filter(
     (v) =>
@@ -269,9 +270,10 @@ export function calendarRows(p, f, from, to, mode = "vehicle") {
   for (const r of p.statuses || [])
     if (r.kind === mode && r.date >= from && r.date <= to)
       push(statusIndex, `${r.entity}|${r.date}`, r);
+  const dates = daysBetween(from, to);
   return names
     .flatMap((v) =>
-      daysBetween(from, to).map((date) => {
+      dates.map((date) => {
         const k = `${v.name}|${date}`,
           trips = index.get(k) || [],
           other = allIndex.get(k) || [],
@@ -337,14 +339,7 @@ export const extraEventCount = (day) =>
     ? day.events.length
     : Math.max(0, day.events.length - 1);
 
-export function analyze(
-  p,
-  f,
-  from,
-  to,
-  settings = { movement_threshold: 10 },
-  fuel = [],
-) {
+export function postingRows(p, f, from, to, days) {
   const posting = p.trips.filter(
     (r) =>
       !r.cancelled &&
@@ -353,11 +348,21 @@ export function analyze(
       r.date <= to &&
       matches(r, f, p),
   );
-  const days = calendarRows(p, f, from, to),
-    statusDates = new Set(days.map((d) => `${d.vehicle}|${d.date}`));
-  const rows = f.statuses.length
-    ? posting.filter((r) => statusDates.has(`${r.vehicle}|${r.date}`))
-    : posting;
+  if (!f.statuses.length) return posting;
+  const statusDates = new Set((days ?? calendarRows(p, f, from, to)).map((d) => `${d.vehicle}|${d.date}`));
+  return posting.filter((r) => statusDates.has(`${r.vehicle}|${r.date}`));
+}
+
+export function analyze(
+  p,
+  f,
+  from,
+  to,
+  settings = { movement_threshold: 10 },
+  fuel = [],
+) {
+  const days = calendarRows(p, f, from, to);
+  const rows = postingRows(p, f, from, to, days);
   const carNames = new Set(
     available(p, f)
       .vehicles.filter((v) => selected(f.vehicles, v.name))
@@ -387,22 +392,20 @@ export function analyze(
             sum(rs, "km") !== null &&
             sum(rs, "km") >= settings.movement_threshold,
         ).length;
-  const stats = financial(rows),
-    workDays = days.filter((d) => d.status === "Работа").length;
-  const statuses = Object.entries(STATUS_COLORS).map(([name, color]) => ({
+  const stats = financial(rows);
+  const byStatus = new Map();
+  for (const day of days) {
+    if (!byStatus.has(day.status)) byStatus.set(day.status, []);
+    byStatus.get(day.status).push(day);
+  }
+  const workDays = byStatus.get("Работа")?.length ?? 0;
+  const statusNames = new Set([...Object.keys(STATUS_COLORS), ...byStatus.keys()]);
+  const statuses = [...statusNames].filter((name) => byStatus.has(name)).map((name) => ({
     name,
-    color,
-    value: days.filter((d) => d.status === name).length,
-    dates: days.filter((d) => d.status === name),
+    color: STATUS_COLORS[name] || "#82939d",
+    value: byStatus.get(name).length,
+    dates: byStatus.get(name),
   }));
-  for (const name of new Set(days.map((d) => d.status)))
-    if (!STATUS_COLORS[name])
-      statuses.push({
-        name,
-        color: "#82939d",
-        value: days.filter((d) => d.status === name).length,
-        dates: days.filter((d) => d.status === name),
-      });
   const ops = fuel.filter(
     (r) =>
       r.date >= from &&
@@ -419,7 +422,7 @@ export function analyze(
     filters: f,
     rows,
     days,
-    statuses: statuses.filter((s) => s.value),
+    statuses,
     satellite: sat,
     satelliteScoped,
     daySat,
@@ -437,6 +440,7 @@ export function analyze(
 }
 export function groups(p, a, key) {
   const buckets = new Map();
+  const vehicleDays = new Map();
   for (const r of a.rows) {
     const name = r[key] || UNKNOWN;
     if (!buckets.has(name)) buckets.set(name, []);
@@ -444,8 +448,11 @@ export function groups(p, a, key) {
   }
   // The calendar includes incoming overnight trips whose financial posting is in another period.
   for (const day of a.days) {
-    if (key === "vehicle" && !buckets.has(day.vehicle))
-      buckets.set(day.vehicle, []);
+    if (key === "vehicle") {
+      if (!buckets.has(day.vehicle)) buckets.set(day.vehicle, []);
+      if (!vehicleDays.has(day.vehicle)) vehicleDays.set(day.vehicle, []);
+      vehicleDays.get(day.vehicle).push(day);
+    }
     for (const r of day.trips) {
       const name = r[key] || UNKNOWN;
       if (!buckets.has(name)) buckets.set(name, []);
@@ -462,11 +469,9 @@ export function groups(p, a, key) {
               a.to,
               "driver",
             )
-          : a.days.filter((d) =>
-              key === "vehicle"
-                ? d.vehicle === name
-                : d.trips.some((r) => (r[key] || UNKNOWN) === name),
-            );
+          : key === "vehicle"
+            ? vehicleDays.get(name) ?? []
+            : a.days.filter((d) => d.trips.some((r) => (r[key] || UNKNOWN) === name));
       const dates = new Set();
       for (const day of ownDays)
         if (day.trips.some((r) => (r[key] || UNKNOWN) === name))
@@ -572,6 +577,12 @@ export function deviations(p, a, settings, fuel = a.fuel) {
     if (!opDays.has(k)) opDays.set(k, []);
     opDays.get(k).push(r);
   }
+  const calendar = new Map();
+  if (opDays.size)
+    for (const day of a.days) {
+      const key = `${day.vehicle}|${day.date}`;
+      if (opDays.has(key) && !calendar.has(key)) calendar.set(key, day);
+    }
   for (const rs of opDays.values()) {
     const r = rs[0],
       d = {
@@ -593,9 +604,7 @@ export function deviations(p, a, settings, fuel = a.fuel) {
         `${rs.length} операций. Точного времени недостаточно для оценки интервала.`,
         rs.length,
       );
-    const cal = a.days.find(
-      (x) => x.vehicle === r.vehicle && x.date === r.date,
-    );
+    const cal = calendar.get(`${r.vehicle}|${r.date}`);
     if (cal && cal.status !== "Работа" && cal.status !== "Другая работа")
       push(
         "Заправка в день без работы",

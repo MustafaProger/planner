@@ -11,7 +11,6 @@ export default defineConfig({
         manualChunks(id) {
           if (/node_modules\/(react|react-dom|scheduler)\//.test(id))
             return "react";
-          if (id.includes("node_modules")) return "vendor";
         },
       },
     },

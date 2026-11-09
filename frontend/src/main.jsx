@@ -9,18 +9,6 @@ import React, {
 } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-import {
   LayoutDashboard,
   Truck,
   Users,
@@ -124,6 +112,7 @@ const hints = {
   users: "Роли, доступные автомобили и журнал действий",
 };
 let csrf = "";
+let workspaceRequests = new AbortController();
 const VehicleMapContext = createContext(new Map());
 
 function useReducedMotion() {
@@ -215,17 +204,29 @@ function VehicleCell({ name }) {
 }
 
 async function api(path, opt = {}) {
+  const signal = path === "logout"
+    ? opt.signal
+    : opt.signal
+      ? AbortSignal.any([workspaceRequests.signal, opt.signal])
+      : workspaceRequests.signal;
   const r = await fetch("/api/" + path, {
     ...opt,
+    signal,
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": csrf,
       ...opt.headers,
     },
   });
-  const b = await r.json();
-  if (!r.ok) throw Error(b.error || "Не удалось получить данные");
-  return b;
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    const error = new Error(body?.error || "Не удалось получить данные");
+    error.status = r.status;
+    throw error;
+  }
+  const token = r.headers.get("X-CSRF-Token");
+  if (token) csrf = token;
+  return r.json();
 }
 const B = ({ children, ...props }) => (
   <Button size="large" {...props}>
@@ -595,121 +596,15 @@ const groupCols = (vehicle = false) => [
   col("km", "ТТ, км"),
   col("hours", "ТТ, ч"),
 ];
+const Chart = React.lazy(() => import("./money-chart"));
+
 function MoneyChart({ data, bar = false, onSelect }) {
   const reduced = useReducedMotion();
   if (!data.length) return <Empty />;
-  const C = bar ? BarChart : AreaChart;
   return (
-    <div className="chart">
-      <ResponsiveContainer width="100%" height="100%">
-        <C
-          data={data}
-          margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
-          onClick={(e) => {
-            const row =
-              e?.activePayload?.[0]?.payload ??
-              data[Number(e?.activeTooltipIndex)];
-            if (row) onSelect?.(row);
-          }}
-          accessibilityLayer
-        >
-          <defs>
-            <linearGradient id="revenue-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4377c3" stopOpacity={0.18} />
-              <stop offset="100%" stopColor="#4377c3" stopOpacity={0.015} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            vertical={false}
-            stroke="#e9edf1"
-            strokeDasharray="3 4"
-          />
-          <XAxis
-            dataKey="name"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: "#77818e", fontSize: 11 }}
-            tickFormatter={(v) =>
-              /^\d{4}-/.test(v)
-                ? v.length === 7
-                  ? new Date(v + "-15").toLocaleDateString("ru-RU", {
-                      month: "short",
-                    })
-                  : date(v)
-                : v
-            }
-            minTickGap={28}
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            width={65}
-            tick={{ fill: "#77818e", fontSize: 11 }}
-            tickFormatter={short}
-          />
-          <Tooltip
-            formatter={(v, name) => [money(v), name]}
-            contentStyle={{
-              borderRadius: 10,
-              border: "1px solid #e6e9ef",
-              fontSize: 13,
-            }}
-            labelFormatter={(v) => v}
-          />
-          {bar ? (
-            <>
-              <Bar
-                dataKey="revenue"
-                name="Выручка"
-                fill="#477dc6"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={42}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
-              />
-              <Bar
-                dataKey="payout"
-                name="Выплаты"
-                fill="#89b9a7"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={42}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
-              />
-            </>
-          ) : (
-            <>
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                name="Выручка"
-                stroke="#4178c7"
-                strokeWidth={2.5}
-                fill="url(#revenue-fill)"
-                connectNulls={false}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
-              />
-              <Area
-                type="monotone"
-                dataKey="payout"
-                name="Выплаты"
-                stroke="#83af9f"
-                strokeWidth={2}
-                fill="transparent"
-                connectNulls={false}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
-              />
-            </>
-          )}
-        </C>
-      </ResponsiveContainer>
-    </div>
+    <React.Suspense fallback={<div className="chart" role="status">Загрузка графика…</div>}>
+      <Chart {...{ data, bar, onSelect, reduced, date, short, money }} />
+    </React.Suspense>
   );
 }
 function LegendRow() {
@@ -832,9 +727,10 @@ function App() {
   const menuButtonRef = useRef(null);
   const scrollPositions = useRef(new Map());
   const [navCapsule, setNavCapsule] = useState({ y: 0, height: 40, visible: false });
-  const [session, setSession] = useState(null),
-    [payload, setPayload] = useState(null),
+  const [payload, setPayload] = useState(null),
     [error, setError] = useState(""),
+    [logoutBusy, setLogoutBusy] = useState(false),
+    [logoutError, setLogoutError] = useState(""),
     [page, setPage] = useState(
       location.pathname.split("/").pop() || "overview",
     ),
@@ -844,8 +740,9 @@ function App() {
         : false,
     ),
     [mobile, setMobile] = useState(false),
-    [busy, setBusy] = useState(false),
+    [busy, setBusy] = useState(true),
     [drawer, setDrawer] = useState(null);
+  const user = payload?.user;
   const saved = useMemo(() => {
     try {
       return JSON.parse(sessionStorage.getItem("charter-filters") || "null");
@@ -917,41 +814,66 @@ function App() {
     open: openMulti === id,
     onToggle: (key, nextOpen) => setOpenMulti(nextOpen ? key : null),
   });
-  async function refresh() {
+  async function refresh(signal) {
     setBusy(true);
     try {
-      const result = await api("charter");
+      const result = await api("charter?view=workspace", { signal });
+      if (signal?.aborted) return;
       setPayload(result);
       if (
         !period ||
         (!payload && saved?.dataset !== (result.demo?.version || "snapshot"))
       ) {
-        const last =
-          result.data.trips
-            .map((r) => r.date)
-            .filter(M.validDay)
-            .sort()
-            .at(-1) || "2026-11-07";
+        let last = "";
+        for (const { date } of result.data.trips)
+          if (date > last && M.validDay(date)) last = date;
+        last ||= "2026-11-07";
         setFilters(M.emptyFilters());
         if (result.demo) setPeriod(result.demo.period);
         else setPeriod(M.periodFor(last, "month"), last);
       }
       setError("");
     } catch (e) {
+      if (signal?.aborted) return;
+      if (e.status === 401 && location.pathname.startsWith("/charter/")) {
+        if (import.meta.env.DEV) location.assign("http://127.0.0.1:8776" + location.pathname);
+        else location.reload();
+        return;
+      }
       setError(e.message);
     } finally {
-      setBusy(false);
+      if (!signal?.aborted) setBusy(false);
     }
   }
   useEffect(() => {
-    api("session")
-      .then((s) => {
-        csrf = s.csrf;
-        setSession(s);
-        if (s.user) refresh();
-      })
-      .catch((e) => setError(e.message));
+    const controller = new AbortController();
+    refresh(controller.signal);
+    const restore = (event) => {
+      if (event.persisted) location.reload();
+    };
+    window.addEventListener("pageshow", restore);
+    return () => {
+      controller.abort();
+      window.removeEventListener("pageshow", restore);
+    };
   }, []);
+  async function logout() {
+    setLogoutBusy(true);
+    setLogoutError("");
+    workspaceRequests.abort();
+    try {
+      await api("logout", { method: "POST" });
+      location.replace(location.pathname);
+    } catch (error) {
+      if (error.status === 401) {
+        location.replace(location.pathname);
+        return;
+      }
+      workspaceRequests = new AbortController();
+      setLogoutError(error.message);
+      setLogoutBusy(false);
+    }
+  }
   useEffect(() => {
     const pop = () => {
       scrollPositions.current.set(page, window.scrollY);
@@ -975,7 +897,7 @@ function App() {
           dataset: payload.demo?.version || "snapshot",
         }),
       );
-  }, [filters, period, periodAnchor, payload?.demo?.version]);
+  }, [filters, period, periodAnchor, !!payload, payload?.demo?.version]);
   function go(next) {
     if (next === page) {
       setMobile(false);
@@ -991,33 +913,34 @@ function App() {
   }
   const p = useMemo(
     () => (payload ? M.prepare(payload.data) : null),
-    [payload],
+    [payload?.data],
   );
   const a = useMemo(
     () =>
       p && period
         ? M.analyze(p, filters, ...period, payload.state.settings, payload.fuel)
         : null,
-    [p, filters, period, payload],
+    [p, filters, period, payload?.state.settings, payload?.fuel],
   );
   const prev = useMemo(
     () =>
-      p && period
-        ? M.analyze(
-            p,
-            filters,
-            ...M.previousPeriod(...period),
-            payload.state.settings,
-            [],
-          )
+      p && period && page === "overview"
+        ? M.financial(M.postingRows(p, filters, ...M.previousPeriod(...period)))
         : null,
-    [p, filters, period, payload],
+    [p, filters, period, page],
   );
   const issues = useMemo(
     () => (p && a ? M.deviations(p, a, payload.state.settings) : []),
-    [p, a, payload],
+    [p, a, payload?.state.settings],
   );
-  const q = useMemo(() => (p ? M.quality(p) : []), [p]);
+  const q = useMemo(() => (p && page === "control" ? M.quality(p) : []), [p, page]);
+  const groupKey =
+    page === "drivers" ? "driver" : page === "clients" ? "client" : "vehicle";
+  const groupRows = useMemo(
+    () => (p && a && ["overview", "fleet", "drivers", "clients"].includes(page)
+      ? M.groups(p, a, groupKey) : []),
+    [p, a, page, groupKey],
+  );
   function filter(key, value) {
     setFilters((f) => ({
       ...f,
@@ -1085,8 +1008,8 @@ function App() {
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [page, session?.user?.role]);
-  if (!session || (busy && !payload))
+  }, [page, user?.role]);
+  if (busy && !payload)
     return (
       <div className="loading">
         <div className="wordmark">
@@ -1096,29 +1019,18 @@ function App() {
         {error && <p role="alert">{error}</p>}
       </div>
     );
-  if (!session.user)
-    return (
-      <Login
-        onSuccess={async () => {
-          const s = await api("session");
-          csrf = s.csrf;
-          setSession(s);
-          refresh();
-        }}
-      />
-    );
   if (!p || !a)
     return (
       <div className="loading">
         <p>{error || "Загрузка данных…"}</p>
-        <B onClick={refresh}>Повторить</B>
+        <B onClick={() => refresh()}>Повторить</B>
       </div>
     );
-  const visibleNav = nav.filter(([id]) => id !== "users" || session.user.role === "admin"),
+  const visibleNav = nav.filter(([id]) => id !== "users" || user.role === "admin"),
     active = visibleNav.find((n) => n[0] === page) || visibleNav[0],
     opts = M.available(p, filters),
     count = Object.values(filters).reduce((n, v) => n + v.length, 0),
-    changed = (key) => M.delta(a[key], prev[key]).percent;
+    changed = (key) => M.delta(a[key], prev?.[key]).percent;
   const allCarriers = [
     ...new Set([
       ...p.vehicles.map((v) => v.carrier),
@@ -1228,9 +1140,6 @@ function App() {
       </div>
     </Section>
   );
-  const groupKey =
-      page === "drivers" ? "driver" : page === "clients" ? "client" : "vehicle",
-    groupRows = M.groups(p, a, groupKey);
   return (
     <VehicleMapContext.Provider value={p.vehicleMap}>
       <div className="workspace">
@@ -1295,27 +1204,26 @@ function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="account">
-            <div className="avatar">{session.user.name.slice(0, 1)}</div>
+            <div className="avatar">{user.name.slice(0, 1)}</div>
             <div>
-              <b>{session.user.name}</b>
+              <b>{user.name}</b>
               <small>
-                {session.user.role === "admin"
+                {user.role === "admin"
                   ? "Руководитель"
-                  : session.user.role === "logist"
+                  : user.role === "logist"
                     ? "Логист"
                     : "Наблюдатель"}
               </small>
             </div>
             <button
               aria-label="Выйти"
-              onClick={async () => {
-                await api("logout", { method: "POST" });
-                location.reload();
-              }}
+              onClick={logout}
+              disabled={logoutBusy}
             >
               <LogOut size={16} />
             </button>
           </div>
+          {logoutError && <p className="error" role="alert">{logoutError}</p>}
         </div>
       </aside>
       {adaptive && mobile && (
@@ -1355,7 +1263,7 @@ function App() {
               className="refresh-button"
               icon={<RefreshCw size={14} className={busy ? "spin" : ""} />}
               disabled={busy}
-              onClick={refresh}
+              onClick={() => refresh()}
             >
               Перечитать
             </B>
@@ -1883,8 +1791,8 @@ function App() {
               </Section>
               <InfoNote>
                 Для сопоставимого рейтинга выберите один тип транспорта.
-                Изменения KPI рассчитаны относительно {date(prev.from)} —{" "}
-                {date(prev.to)}. При нулевой базе процент не рассчитывается.
+                Изменения KPI рассчитаны относительно {M.previousPeriod(...period).map(date).join(" — ")}.
+                При нулевой базе процент не рассчитывается.
               </InfoNote>
               <Section title="Числа для сравнения">
                 <DataTable
@@ -1984,7 +1892,7 @@ function App() {
               p={p}
               period={period}
               filters={filters}
-              user={session.user}
+              user={user}
               onOpen={(row = null) =>
                 setDrawer({
                   type: "plan",
@@ -2082,7 +1990,7 @@ function App() {
               p={p}
               filters={filters}
               settings={payload.state.settings}
-              user={session.user}
+              user={user}
               save={save}
               details={setDrawer}
             />
@@ -2100,7 +2008,7 @@ function App() {
           {page === "directories" && (
             <Directories
               p={p}
-              user={session.user}
+              user={user}
               refresh={refresh}
               onChoose={(kind, name) => {
                 setFilters({ ...M.emptyFilters(), [kind]: [name] });
@@ -2110,7 +2018,7 @@ function App() {
           )}
           {page === "connections" && (
             <ConnectionsPage
-              user={session.user}
+              user={user}
               period={period}
               disabled={!!payload.demo || !!payload.local_preview}
               demo={!!payload.demo}
@@ -2121,10 +2029,10 @@ function App() {
             <Settings
               settings={payload.state.settings}
               save={save}
-              user={session.user}
+              user={user}
             />
           )}
-          {page === "users" && session.user.role === "admin" && (
+          {page === "users" && user.role === "admin" && (
             <UsersPage p={p} />
           )}
           <footer className="page-footer">
@@ -2200,7 +2108,7 @@ function App() {
           {drawer.type === "day" && (
             <DayDetail
               day={drawer.day}
-              user={session.user}
+              user={user}
               reasons={p.directories.reasons}
               onSave={saveStatus}
             />
@@ -2218,7 +2126,7 @@ function App() {
             <Review
               issue={drawer.issue}
               value={payload.state.reviews[drawer.issue.id]}
-              user={session.user}
+              user={user}
               onSave={async (r) => {
                 await save({ kind: "review", review: r });
                 setDrawer(null);
@@ -3747,70 +3655,6 @@ function Settings({ settings, save, user }) {
         </div>
       </Section>
     </>
-  );
-}
-function Login({ onSuccess }) {
-  const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  return (
-    <main className="login">
-      <section className="login-story">
-        <span className="wordmark">CharterStats<span> / </span></span>
-        <h1>Планируйте рейсы.<br /><em>Смотрите результат.</em></h1>
-        <div className="login-preview" aria-hidden="true">
-          <span><i>01</i><Truck size={16}/><b>Планирование</b><small>Маршруты и автомобили</small></span>
-          <span><i>02</i><ChartNoAxesCombined size={16}/><b>Данные</b><small>Заявки и показатели</small></span>
-          <span><i>03</i><ShieldCheck size={16}/><b>Контроль</b><small>Отклонения и решения</small></span>
-        </div>
-      </section>
-      <Card pad="large" className="login-entry">
-        <h2>Рады видеть вас</h2>
-        <p className="muted">Войдите, чтобы продолжить работу с автопарком.</p>
-        <form
-          className="form"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            try {
-              await api("login", {
-                method: "POST",
-                body: JSON.stringify(
-                  Object.fromEntries(new FormData(e.target)),
-                ),
-              });
-              await onSuccess();
-            } catch (e) {
-              setError(e.message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label>
-            Логин
-            <input name="name" placeholder="Введите логин" required autoComplete="username" />
-          </label>
-          <label>
-            Пароль
-            <input
-              name="password"
-              type="password"
-              placeholder="Введите пароль"
-              required
-              autoComplete="current-password"
-            />
-          </label>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <B variant="primary" type="submit" disabled={busy}>
-            Войти в рабочее пространство <ArrowRight size={16}/>
-          </B>
-        </form>
-      </Card>
-    </main>
   );
 }
 createRoot(document.getElementById("root")).render(<App />);
