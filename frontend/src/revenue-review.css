@@ -1,0 +1,52 @@
+.revenue-review {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.revenue-review > button {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px 36px 14px 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.revenue-review > button:enabled:hover,
+.revenue-review > button:enabled:focus-visible {
+  background: #f6f8fa;
+  border-color: #c7d8ed;
+}
+
+.revenue-review > button:disabled {
+  cursor: default;
+}
+
+.revenue-review span,
+.revenue-review small {
+  color: #6d7887;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.revenue-review strong {
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.revenue-review svg {
+  position: absolute;
+  top: calc(50% - 8px);
+  right: 12px;
+  color: #3974c4;
+}
+
+@media (max-width: 540px) {
+  .revenue-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -9,13 +9,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 export default function MoneyChart({ data, bar, onSelect, reduced, date, short, money }) {
   const C = bar ? BarChart : AreaChart;
+  const animate = !reduced && (bar || data.length <= 120);
   return (
-    <div className="chart">
+    <div className={`chart${!animate && !reduced ? " chart--reveal" : ""}`}>
       <ResponsiveContainer width="100%" height="100%">
         <C
           data={data}
@@ -79,9 +79,9 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
                 fill="#477dc6"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
+                isAnimationActive={animate}
+                animationDuration={220}
+                animationEasing="ease-out"
               />
               <Bar
                 dataKey="payout"
@@ -89,9 +89,9 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
                 fill="#89b9a7"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={42}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
+                isAnimationActive={animate}
+                animationDuration={220}
+                animationEasing="ease-out"
               />
             </>
           ) : (
@@ -104,9 +104,9 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
                 strokeWidth={2.5}
                 fill="url(#revenue-fill)"
                 connectNulls={false}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
+                isAnimationActive={animate}
+                animationDuration={220}
+                animationEasing="ease-out"
               />
               <Area
                 type="monotone"
@@ -116,9 +116,9 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
                 strokeWidth={2}
                 fill="transparent"
                 connectNulls={false}
-                isAnimationActive={!reduced}
-                animationDuration={280}
-                animationEasing="ease-in-out"
+                isAnimationActive={animate}
+                animationDuration={220}
+                animationEasing="ease-out"
               />
             </>
           )}

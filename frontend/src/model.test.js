@@ -184,6 +184,29 @@ test("driver workday is unique across two cars; satellite is not attributed to d
   assert.equal(a.sat_km, null);
   assert.equal(a.movementDays, null);
 });
+
+test("grouped driver and client days respect overnight trips, other work and status filters", () => {
+  const p = data([
+    trip("1", "2026-11-01", { client: "Клиент Б" }),
+    trip("2", "2026-11-02", { end: "2026-11-03T16:00:00" }),
+    trip("3", "2026-11-03", { vehicle: "А002АА77" }),
+  ], {
+    statuses: [
+      { date: "2026-11-04", kind: "driver", entity: "Водитель А", reason: "Ремонт" },
+    ],
+  });
+  const filters = {
+    ...M.emptyFilters(),
+    clients: ["Клиент А"],
+    drivers: ["Водитель А"],
+    statuses: ["Работа", "Ремонт / сервис", "Не заполнено"],
+  };
+  const a = M.analyze(p, filters, "2026-11-01", "2026-11-05");
+  const [driver] = M.groups(p, a, "driver");
+  const [client] = M.groups(p, a, "client");
+  assert.deepEqual([driver.trips, driver.days, driver.load], [2, 2, 50]);
+  assert.deepEqual([client.trips, client.days, client.load], [2, 3, 100]);
+});
 test("comparison uses preceding full calendar month, quarter, and arbitrary interval", () => {
   assert.deepEqual(M.previousPeriod("2026-11-01", "2026-11-30"), [
     "2026-10-01",
@@ -240,6 +263,13 @@ test("unassigned fuel cards do not become one repeated filling", () => {
     .filter((r) => r.kind === "Заправка без привязки")
     .map((i) => i.id);
   assert.equal(new Set(ids).size, 2);
+  assert.equal(
+    M.deviationCount(p, { ...a, fuel: ops }, { movement_threshold: 10 }, {
+      [ids[0]]: { status: "Обосновано" },
+      [ids[1]]: { status: "В работе" },
+    }),
+    issues.length - 1,
+  );
 });
 
 test("incoming overnight trip contributes vehicle, driver and client days without reposting money", () => {

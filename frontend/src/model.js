@@ -127,10 +127,6 @@ export function tripSpan(r) {
   const e = r.end?.slice(0, 10);
   return [a, validDay(e) && e >= a ? e : a];
 }
-const overlaps = (r, a, b) => {
-  const [s, e] = tripSpan(r);
-  return validDay(s) && s <= b && e >= a;
-};
 const active = (r) => !r.archived && !r.merged_into;
 export const ownership = (company) =>
   !company || company === UNKNOWN
@@ -243,73 +239,76 @@ export function available(p, f) {
   );
   return { vehicles, drivers };
 }
-export function calendarRows(p, f, from, to, mode = "vehicle") {
-  const options = available(p, f),
-    names = (mode === "vehicle" ? options.vehicles : options.drivers).filter(
-      (v) => selected(mode === "vehicle" ? f.vehicles : f.drivers, v.name),
-    );
-  const spans = p.trips.filter((r) => isTrip(r) && overlaps(r, from, to)),
-    selectedTrips = spans.filter((r) => matches(r, f, p));
-  const index = new Map(),
-    allIndex = new Map(),
-    statusIndex = new Map();
-  function push(map, k, r) {
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(r);
+const EMPTY = Object.freeze([]);
+const EMPTY_DAY = { trips: EMPTY, other: EMPTY, events: EMPTY };
+
+function calendarIndex(p, f, from, to, mode) {
+  const dates = daysBetween(from, to);
+  const index = new Map();
+  if (!dates.length) return { dates, index };
+  const last = dates.at(-1);
+  const offsets = new Map(dates.map((date, i) => [date, i]));
+  function cell(entity, date) {
+    const name = String(entity);
+    if (!index.has(name)) index.set(name, new Map());
+    const days = index.get(name);
+    if (!days.has(date)) days.set(date, { trips: [], other: [], events: [] });
+    return days.get(date);
   }
-  for (const r of spans) {
-    const [a, b] = tripSpan(r);
-    for (const day of daysBetween(a < from ? from : a, b > to ? to : b))
-      push(allIndex, `${r[mode]}|${day}`, r);
-  }
-  for (const r of selectedTrips) {
-    const [a, b] = tripSpan(r);
-    for (const day of daysBetween(a < from ? from : a, b > to ? to : b))
-      push(index, `${r[mode]}|${day}`, r);
+  for (const r of p.trips) {
+    if (!isTrip(r)) continue;
+    const [start, end] = tripSpan(r);
+    if (start > last || end < from || !validDay(start)) continue;
+    const matching = matches(r, f, p);
+    const first = offsets.get(start < from ? from : start);
+    const final = offsets.get(end > last ? last : end);
+    for (let i = first; i <= final; i++) {
+      const day = cell(r[mode], dates[i]);
+      day.other.push(r);
+      if (matching) day.trips.push(r);
+    }
   }
   for (const r of p.statuses || [])
-    if (r.kind === mode && r.date >= from && r.date <= to)
-      push(statusIndex, `${r.entity}|${r.date}`, r);
-  const dates = daysBetween(from, to);
-  return names
-    .flatMap((v) =>
-      dates.map((date) => {
-        const k = `${v.name}|${date}`,
-          trips = index.get(k) || [],
-          other = allIndex.get(k) || [],
-          events = statusIndex.get(k) || [],
-          reasons = [...new Set(events.map((s) => statusName(s.reason)))];
-        const status = trips.length
-          ? "Работа"
-          : other.length
-            ? "Другая работа"
-            : reasons.length === 1
-              ? reasons[0]
-              : reasons.length > 1
-                ? "Несколько статусов"
-                : "Не заполнено";
-        return {
-          date,
-          name: v.name,
-          vehicle:
-            mode === "vehicle"
-              ? v.name
-              : [...new Set(trips.map((t) => t.vehicle))].join(", "),
-          driver:
-            mode === "driver"
-              ? v.name
-              : [...new Set(trips.map((t) => t.driver).filter(Boolean))].join(
-                  ", ",
-                ),
-          carrier: v.carrier,
-          status,
-          events,
-          trips,
-          other,
-        };
-      }),
-    )
-    .filter((r) => selected(f.statuses, r.status));
+    if (r.kind === mode && offsets.has(r.date))
+      cell(r.entity, r.date).events.push(r);
+  return { dates, index };
+}
+
+function calendarStatus(working, { other, events }) {
+  if (working) return "Работа";
+  if (other.length) return "Другая работа";
+  if (!events.length) return "Не заполнено";
+  const reasons = new Set(events.map((s) => statusName(s.reason)));
+  return reasons.size === 1 ? reasons.values().next().value : "Несколько статусов";
+}
+
+export function calendarRows(p, f, from, to, mode = "vehicle", options = available(p, f)) {
+  const names = (mode === "vehicle" ? options.vehicles : options.drivers).filter(
+    (v) => selected(mode === "vehicle" ? f.vehicles : f.drivers, v.name),
+  );
+  const { dates, index } = calendarIndex(p, f, from, to, mode);
+  const rows = [];
+  for (const v of names) {
+    const cells = index.get(String(v.name));
+    for (const date of dates) {
+      const day = cells?.get(date) ?? EMPTY_DAY;
+      const { trips, other, events } = day;
+      const status = calendarStatus(trips.length, day);
+      if (!selected(f.statuses, status)) continue;
+      rows.push({
+        date,
+        name: v.name,
+        vehicle: mode === "vehicle" ? v.name : [...new Set(trips.map((t) => t.vehicle))].join(", "),
+        driver: mode === "driver" ? v.name : trips.length ? [...new Set(trips.map((t) => t.driver).filter(Boolean))].join(", ") : "",
+        carrier: v.carrier,
+        status,
+        events,
+        trips,
+        other,
+      });
+    }
+  }
+  return rows;
 }
 export function financial(rows) {
   const work = rows.filter(isTrip),
@@ -343,9 +342,9 @@ export function postingRows(p, f, from, to, days) {
   const posting = p.trips.filter(
     (r) =>
       !r.cancelled &&
-      validDay(r.date) &&
       r.date >= from &&
       r.date <= to &&
+      validDay(r.date) &&
       matches(r, f, p),
   );
   if (!f.statuses.length) return posting;
@@ -361,10 +360,11 @@ export function analyze(
   settings = { movement_threshold: 10 },
   fuel = [],
 ) {
-  const days = calendarRows(p, f, from, to);
+  const options = available(p, f);
+  const days = calendarRows(p, f, from, to, "vehicle", options);
   const rows = postingRows(p, f, from, to, days);
   const carNames = new Set(
-    available(p, f)
+    options
       .vehicles.filter((v) => selected(f.vehicles, v.name))
       .map((v) => v.name),
   );
@@ -438,54 +438,65 @@ export function analyze(
     to,
   };
 }
+function driverGroupDays(p, a, buckets) {
+  // A driver's calendar replaces the driver's selection with that driver,
+  // while keeping the remaining filters and distinguishing other work.
+  const filters = { ...a.filters, drivers: [] };
+  const { dates, index } = calendarIndex(p, filters, a.from, a.to, "driver");
+  const includeEmpty = selected(filters.statuses, "Не заполнено");
+  for (const { name } of available(p, filters).drivers) {
+    const bucket = buckets.get(name);
+    if (!bucket) continue;
+    const cells = index.get(String(name));
+    if (includeEmpty) bucket.total = dates.length - (cells?.size ?? 0);
+    for (const day of cells?.values() ?? EMPTY) {
+      const working = day.trips.some((r) => (r.driver || UNKNOWN) === name);
+      const status = calendarStatus(working, day);
+      if (!selected(filters.statuses, status)) continue;
+      bucket.total++;
+      if (status === "Работа") bucket.work++;
+      if (working) bucket.activeDays++;
+    }
+  }
+}
+
 export function groups(p, a, key) {
   const buckets = new Map();
-  const vehicleDays = new Map();
-  for (const r of a.rows) {
-    const name = r[key] || UNKNOWN;
-    if (!buckets.has(name)) buckets.set(name, []);
-    buckets.get(name).push(r);
+  function bucket(name) {
+    if (!buckets.has(name))
+      buckets.set(name, { rows: [], total: 0, work: 0, activeDays: 0 });
+    return buckets.get(name);
   }
+  for (const r of a.rows) bucket(r[key] || UNKNOWN).rows.push(r);
   // The calendar includes incoming overnight trips whose financial posting is in another period.
   for (const day of a.days) {
     if (key === "vehicle") {
-      if (!buckets.has(day.vehicle)) buckets.set(day.vehicle, []);
-      if (!vehicleDays.has(day.vehicle)) vehicleDays.set(day.vehicle, []);
-      vehicleDays.get(day.vehicle).push(day);
+      const own = bucket(day.vehicle);
+      own.total++;
+      if (day.status === "Работа") own.work++;
     }
-    for (const r of day.trips) {
-      const name = r[key] || UNKNOWN;
-      if (!buckets.has(name)) buckets.set(name, []);
+    if (!day.trips.length) continue;
+    const names = new Set(day.trips.map((r) => r[key] || UNKNOWN));
+    for (const name of names) {
+      const own = bucket(name);
+      if (key === "driver") continue;
+      if (key !== "vehicle") {
+        own.total++;
+        if (day.status === "Работа") own.work++;
+      }
+      if (key !== "vehicle" || name === day.vehicle) own.activeDays++;
     }
   }
+  if (key === "driver" && buckets.size) driverGroupDays(p, a, buckets);
   return [...buckets]
-    .map(([name, rows]) => {
-      const ownDays =
-        key === "driver"
-          ? calendarRows(
-              p,
-              { ...a.filters, drivers: [name] },
-              a.from,
-              a.to,
-              "driver",
-            )
-          : key === "vehicle"
-            ? vehicleDays.get(name) ?? []
-            : a.days.filter((d) => d.trips.some((r) => (r[key] || UNKNOWN) === name));
-      const dates = new Set();
-      for (const day of ownDays)
-        if (day.trips.some((r) => (r[key] || UNKNOWN) === name))
-          dates.add(key === "driver" ? day.date : `${day.vehicle}|${day.date}`);
+    .map(([name, { rows, total, work, activeDays }]) => {
       const v = p.vehicleMap.get(name);
       return {
         name,
         ...financial(rows),
         rows,
-        days: dates.size,
-        load: percent(
-          ownDays.filter((d) => d.status === "Работа").length,
-          ownDays.length,
-        ),
+        days: activeDays,
+        load: percent(work, total),
         carrier: v?.carrier,
         transport_type: v?.transport_type,
         ownership: v?.ownership,
@@ -504,23 +515,11 @@ export function timeline(a, unit = "day") {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, rs]) => ({ name, ...financial(rs), rows: rs }));
 }
-export function deviations(p, a, settings, fuel = a.fuel) {
-  const out = [];
-  const push = (kind, day, detail, value = null) =>
-    out.push({
-      id: `${kind}|${day.vehicle}|${day.date}${day.ref ? "|" + day.ref : ""}`,
-      kind,
-      date: day.date,
-      vehicle: day.vehicle,
-      driver: day.driver,
-      carrier: day.carrier,
-      detail,
-      value,
-    });
+const deviationId = (kind, day) =>
+  `${kind}|${day.vehicle}|${day.date}${day.ref ? "|" + day.ref : ""}`;
+
+function visitDeviations(p, a, settings, fuel, push) {
   for (const d of a.days) {
-    const readings = a.daySat.get(`${d.vehicle}|${d.date}`) || [],
-      km = sum(readings, "km"),
-      engine = sum(readings, "engine_hours");
     if (d.status === "Не заполнено")
       push(
         "Не заполненный день",
@@ -528,6 +527,10 @@ export function deviations(p, a, settings, fuel = a.fuel) {
         "Нет заявки и вручную установленного статуса",
       );
     if (!a.satelliteScoped) {
+      const readings = a.daySat.get(`${d.vehicle}|${d.date}`);
+      if (!readings && !d.other.length) continue;
+      const km = sum(readings || EMPTY, "km");
+      const engine = sum(readings || EMPTY, "engine_hours");
       if (!d.other.length && km !== null && km >= settings.movement_threshold)
         push(
           "Движение без заявки",
@@ -560,8 +563,8 @@ export function deviations(p, a, settings, fuel = a.fuel) {
         d.other.length === 1 &&
         d.other[0].start?.endsWith("T00:00:00") &&
         d.other[0].end === `${addDays(d.date, 1)}T00:00:00`;
-      const tt = sum(d.other, "km");
-      if (exact && tt !== null && km !== null) {
+      const tt = exact && km !== null ? sum(d.other, "km") : null;
+      if (tt !== null) {
         const diff = km - tt;
         if (
           diff > settings.excess_km &&
@@ -612,7 +615,34 @@ export function deviations(p, a, settings, fuel = a.fuel) {
         `Календарь: ${cal.status}. Требуется проверка.`,
       );
   }
+}
+
+export function deviations(p, a, settings, fuel = a.fuel) {
+  const out = [];
+  visitDeviations(p, a, settings, fuel, (kind, day, detail, value = null) =>
+    out.push({
+      id: deviationId(kind, day),
+      kind,
+      date: day.date,
+      vehicle: day.vehicle,
+      driver: day.driver,
+      carrier: day.carrier,
+      detail,
+      value,
+    }),
+  );
   return out;
+}
+
+export function deviationCount(p, a, settings, reviews = {}) {
+  const resolved = new Set(Object.keys(reviews).filter((id) =>
+    ["Обосновано", "Исправлено"].includes(reviews[id]?.status),
+  ));
+  let count = 0;
+  visitDeviations(p, a, settings, a.fuel, (kind, day) => {
+    if (!resolved.size || !resolved.has(deviationId(kind, day))) count++;
+  });
+  return count;
 }
 export function quality(p) {
   const q = [];

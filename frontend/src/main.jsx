@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  startTransition,
   useContext,
   useState,
   useEffect,
@@ -45,7 +46,9 @@ import {
 import { Button } from "./vendor/stageshow/controls/button";
 import { Card } from "./vendor/stageshow/parts/card";
 import { Badge } from "./vendor/stageshow/controls/badge";
+import { RevenueReview } from "./revenue-review.jsx";
 import * as M from "./model";
+import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
 const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
   money = (n) => (n == null ? "—" : N.format(n) + " ₽"),
@@ -66,6 +69,7 @@ const date = (s) =>
         month: "short",
       })
     : s || "—";
+const weekday = new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "UTC" });
 const stamp = (s) =>
   s
     ? new Date(s).toLocaleString("ru-RU", {
@@ -114,6 +118,27 @@ const hints = {
 let csrf = "";
 let workspaceRequests = new AbortController();
 const VehicleMapContext = createContext(new Map());
+const unfilteredPages = ["settings", "directories", "routes", "connections", "users"];
+const rankPages = ["fleet", "drivers", "clients"];
+
+function useReportView(request, busy) {
+  const [view, setView] = useState(null);
+  useEffect(() => {
+    if (busy || !request.p || !request.period) return;
+    // Give the browser a paint for the new controls and loading state before computing the report.
+    let commitFrame;
+    const paintFrame = requestAnimationFrame(() => {
+      commitFrame = requestAnimationFrame(() => {
+        startTransition(() => setView(request));
+      });
+    });
+    return () => {
+      cancelAnimationFrame(paintFrame);
+      if (commitFrame != null) cancelAnimationFrame(commitFrame);
+    };
+  }, [request, busy]);
+  return view;
+}
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(() =>
@@ -154,38 +179,8 @@ function SlidingTabs({ items, value, onChange, className = "" }) {
 }
 
 function AnimatedNumber({ value, format = fmt }) {
-  const reduced = useReducedMotion();
-  const previous = useRef(value);
-  const [shown, setShown] = useState(value);
-  useEffect(() => {
-    if (value == null || previous.current == null || reduced) {
-      previous.current = value;
-      setShown(value);
-      return;
-    }
-    const from = Number(previous.current);
-    const to = Number(value);
-    if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) {
-      previous.current = value;
-      setShown(value);
-      return;
-    }
-    let frame;
-    const start = performance.now();
-    const duration = 280;
-    const tick = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      const next = from + (to - from) * eased;
-      previous.current = next;
-      setShown(next);
-      if (t < 1) frame = requestAnimationFrame(tick);
-      else previous.current = value;
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, reduced]);
-  return <span className="animated-number">{format(shown)}</span>;
+  const text = format(value);
+  return <span className="animated-number" key={text}>{text}</span>;
 }
 
 function VehicleCell({ name }) {
@@ -441,17 +436,17 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
     [page, setPage] = useState(0),
     vehicles = useContext(VehicleMapContext);
   useEffect(() => setPage(0), [rows, search]);
-  let filtered = rows.filter((r) =>
-    columns.some((c) => {
-      const source = c.vehicle ? vehicles.get(r[c.key])?.carrier : "";
-      return String(`${r[c.key] ?? ""} ${source || ""}`)
-        .toLowerCase()
-        .includes(search.toLowerCase());
-    }),
-  );
-  if (sort) {
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    const matching = query ? rows.filter((r) =>
+      columns.some((c) => {
+        const source = c.vehicle ? vehicles.get(r[c.key])?.carrier : "";
+        return `${r[c.key] ?? ""} ${source || ""}`.toLowerCase().includes(query);
+      }),
+    ) : rows;
+    if (!sort) return matching;
     const { key, dir } = sort;
-    filtered = [...filtered].sort((a, b) => {
+    return [...matching].sort((a, b) => {
       const av = a[key],
         bv = b[key];
       if (av == null) return 1;
@@ -463,7 +458,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
           : String(av).localeCompare(String(bv), "ru"))
       );
     });
-  }
+  }, [rows, columns, search, sort, vehicles]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize)),
     safePage = Math.min(page, pages - 1);
   return (
@@ -602,7 +597,7 @@ function MoneyChart({ data, bar = false, onSelect }) {
   const reduced = useReducedMotion();
   if (!data.length) return <Empty />;
   return (
-    <React.Suspense fallback={<div className="chart" role="status">Загрузка графика…</div>}>
+    <React.Suspense fallback={<ChartSkeleton />}>
       <Chart {...{ data, bar, onSelect, reduced, date, short, money }} />
     </React.Suspense>
   );
@@ -726,6 +721,7 @@ function App() {
   const navRef = useRef(null);
   const menuButtonRef = useRef(null);
   const scrollPositions = useRef(new Map());
+  const restorePage = useRef(null);
   const [navCapsule, setNavCapsule] = useState({ y: 0, height: 40, visible: false });
   const [payload, setPayload] = useState(null),
     [error, setError] = useState(""),
@@ -760,7 +756,11 @@ function App() {
     }));
   const { period, anchor: periodAnchor } = periodSelection;
   function setPeriod(next, anchor = next[0]) {
-    setPeriodSelection({ period: next, anchor });
+    setPeriodSelection((current) => {
+      const samePeriod = current.period?.[0] === next[0] && current.period?.[1] === next[1];
+      if (samePeriod && current.anchor === anchor) return current;
+      return { period: samePeriod ? current.period : next, anchor };
+    });
   }
   const [showMore, setShowMore] = useState(false),
     [openMulti, setOpenMulti] = useState(null),
@@ -876,12 +876,7 @@ function App() {
   }
   useEffect(() => {
     const pop = () => {
-      scrollPositions.current.set(page, window.scrollY);
-      const next = location.pathname.split("/").pop();
-      setPage(next);
-      setMobile(false);
-      setDrawer(null);
-      requestAnimationFrame(() => window.scrollTo(0, scrollPositions.current.get(next) || 0));
+      selectPage(location.pathname.split("/").pop() || "overview");
     };
     window.addEventListener("popstate", pop);
     return () => window.removeEventListener("popstate", pop);
@@ -898,49 +893,120 @@ function App() {
         }),
       );
   }, [filters, period, periodAnchor, !!payload, payload?.demo?.version]);
-  function go(next) {
+  function selectPage(next) {
+    setMobile(false);
     if (next === page) {
-      setMobile(false);
       return;
     }
-    scrollPositions.current.set(page, window.scrollY);
-    history.pushState({}, "", `/charter/${next}`);
+    if (restorePage.current !== page) scrollPositions.current.set(page, window.scrollY);
+    restorePage.current = next;
+    window.scrollTo(0, 0);
     setPage(next);
     setOpenMulti(null);
-    setMobile(false);
+    setShowMore(false);
     setDrawer(null);
-    requestAnimationFrame(() => window.scrollTo(0, scrollPositions.current.get(next) || 0));
   }
-  const p = useMemo(
+  function go(next) {
+    if (next !== page) history.pushState({}, "", `/charter/${next}`);
+    selectPage(next);
+  }
+  const workspace = useMemo(
     () => (payload ? M.prepare(payload.data) : null),
     [payload?.data],
   );
+  const request = useMemo(() => ({
+    p: workspace,
+    filters,
+    period,
+    page,
+    settings: payload?.state.settings,
+    fuel: payload?.fuel,
+  }), [workspace, filters, period, page, payload?.state.settings, payload?.fuel]);
+  const view = useReportView(request, busy);
+  const pending = busy || view !== request;
+  const { p, filters: reportFilters, period: reportPeriod, page: reportPage, settings, fuel } = view || {};
   const a = useMemo(
-    () =>
-      p && period
-        ? M.analyze(p, filters, ...period, payload.state.settings, payload.fuel)
-        : null,
-    [p, filters, period, payload?.state.settings, payload?.fuel],
+    () => (p ? M.analyze(p, reportFilters, ...reportPeriod, settings, fuel) : null),
+    [p, reportFilters, reportPeriod, settings, fuel],
   );
   const prev = useMemo(
     () =>
-      p && period && page === "overview"
-        ? M.financial(M.postingRows(p, filters, ...M.previousPeriod(...period)))
+      p && reportPage === "overview"
+        ? M.financial(M.postingRows(p, reportFilters, ...M.previousPeriod(...reportPeriod)))
         : null,
-    [p, filters, period, page],
+    [p, reportFilters, reportPeriod, reportPage],
   );
   const issues = useMemo(
-    () => (p && a ? M.deviations(p, a, payload.state.settings) : []),
-    [p, a, payload?.state.settings],
+    () => (p && (reportPage === "overview" || reportPage === "control")
+      ? M.deviations(p, a, settings) : null),
+    [p, a, settings, reportPage],
   );
-  const q = useMemo(() => (p && page === "control" ? M.quality(p) : []), [p, page]);
+  const q = useMemo(() => (p && reportPage === "control" ? M.quality(p) : []), [p, reportPage]);
   const groupKey =
-    page === "drivers" ? "driver" : page === "clients" ? "client" : "vehicle";
+    reportPage === "drivers" ? "driver" : reportPage === "clients" ? "client" : "vehicle";
   const groupRows = useMemo(
-    () => (p && a && ["overview", "fleet", "drivers", "clients"].includes(page)
-      ? M.groups(p, a, groupKey) : []),
-    [p, a, page, groupKey],
+    () => (p && a && rankPages.includes(reportPage) ? M.groups(p, a, groupKey) : []),
+    [p, a, reportPage, groupKey],
   );
+  const overviewClients = useMemo(
+    () => (reportPage === "overview" ? M.groups(p, a, "client").slice(0, 6) : []),
+    [p, a, reportPage],
+  );
+  const timeline = useMemo(
+    () => (reportPage === "overview" ? M.timeline(a, unit) : []),
+    [a, reportPage, unit],
+  );
+  const comparisonRows = useMemo(() => {
+    if (reportPage !== "compare") return [];
+    if (compareMode === "objects") return M.groups(p, a, compareBy);
+    return M.timeline(a, "month").map((r) => ({
+      ...r,
+      days: new Set(
+        r.rows.filter(M.isTrip).flatMap((trip) =>
+          M.daysBetween(...M.tripSpan(trip)).map((day) => trip.vehicle + "|" + day),
+        ),
+      ).size,
+    }));
+  }, [p, a, reportPage, compareMode, compareBy]);
+  const reviews = payload?.state.reviews;
+  const openSignals = useMemo(() => {
+    if (!p) return 0;
+    if (!issues) return M.deviationCount(p, a, settings, reviews);
+    return issues.reduce((count, issue) => (
+      ["Обосновано", "Исправлено"].includes(reviews[issue.id]?.status) ? count : count + 1
+    ), 0);
+  }, [p, a, settings, issues, reviews]);
+  const issuesByKind = useMemo(() => {
+    const kinds = new Map();
+    if (reportPage !== "overview") return kinds;
+    for (const issue of issues) {
+      if (!kinds.has(issue.kind)) kinds.set(issue.kind, []);
+      kinds.get(issue.kind).push(issue);
+    }
+    return kinds;
+  }, [issues, reportPage]);
+  const opts = useMemo(() => workspace && M.available(workspace, filters), [workspace, filters]);
+  const vehicleOptions = useMemo(() => opts && [...opts.vehicles]
+    .sort((a, b) => (a.carrier + a.name).localeCompare(b.carrier + b.name, "ru"))
+    .map((v) => ({ value: v.name, label: v.name, group: v.carrier, note: v.brand })), [opts]);
+  const driverOptions = useMemo(() => opts?.drivers.map((v) => ({
+    value: v.name, label: v.name, group: v.carrier,
+  })), [opts]);
+  const directories = useMemo(() => {
+    if (!workspace) return null;
+    const carriers = new Set([
+      ...workspace.vehicles.map((v) => v.carrier),
+      ...workspace.drivers.map((v) => v.carrier),
+    ]);
+    const types = new Set();
+    const clients = new Set();
+    for (const trip of workspace.trips) {
+      carriers.add(trip.carrier || M.UNKNOWN);
+      clients.add(trip.client || M.UNKNOWN);
+      if (M.isTrip(trip)) types.add(trip.type || M.UNKNOWN);
+    }
+    return { carriers: [...carriers].sort(), types: [...types].sort(), clients: [...clients].sort() };
+  }, [workspace]);
   function filter(key, value) {
     setFilters((f) => ({
       ...f,
@@ -1008,17 +1074,19 @@ function App() {
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [page, user?.role]);
-  if (busy && !payload)
-    return (
-      <div className="loading">
-        <div className="wordmark">
-          CharterStats<span> / </span>
-        </div>
-        <p>Загрузка рабочего пространства…</p>
-        {error && <p role="alert">{error}</p>}
-      </div>
-    );
+  }, [page, user?.role, !!view]);
+  useLayoutEffect(() => {
+    if (!pending && restorePage.current === page) {
+      restorePage.current = null;
+      window.scrollTo(0, scrollPositions.current.get(page) || 0);
+    }
+  }, [page, pending]);
+  const visibleNav = nav.filter(([id]) => id !== "users" || user?.role === "admin"),
+    active = visibleNav.find((n) => n[0] === page) || visibleNav[0],
+    title = active[0] === "overview" ? "Обзор автопарка" : active[1];
+  if (!a && (!error || busy)) {
+    return <WorkspaceSkeleton page={active[0]} title={title} hint={hints[page]} filtered={!unfilteredPages.includes(page)} />;
+  }
   if (!p || !a)
     return (
       <div className="loading">
@@ -1026,24 +1094,8 @@ function App() {
         <B onClick={() => refresh()}>Повторить</B>
       </div>
     );
-  const visibleNav = nav.filter(([id]) => id !== "users" || user.role === "admin"),
-    active = visibleNav.find((n) => n[0] === page) || visibleNav[0],
-    opts = M.available(p, filters),
-    count = Object.values(filters).reduce((n, v) => n + v.length, 0),
+  const count = Object.values(filters).reduce((n, v) => n + v.length, 0),
     changed = (key) => M.delta(a[key], prev?.[key]).percent;
-  const allCarriers = [
-    ...new Set([
-      ...p.vehicles.map((v) => v.carrier),
-      ...p.drivers.map((v) => v.carrier),
-      ...p.trips.map((r) => r.carrier || M.UNKNOWN),
-    ]),
-  ].sort();
-  const openSignals = issues.filter(
-    (i) =>
-      !["Обосновано", "Исправлено"].includes(
-        payload.state.reviews[i.id]?.status,
-      ),
-  ).length;
   const subnav = (id, label) => (
     <button onClick={() => go(id)}>
       {label}
@@ -1105,24 +1157,26 @@ function App() {
     >
       <div className="status-head">
         <strong>
-          {fmt(a.workDays)}
+          <AnimatedNumber value={a.workDays} />
           <small> рабочих авто-дней</small>
         </strong>
-        <Badge tone="success">{pct(a.load)}</Badge>
+        <Badge tone="success"><AnimatedNumber value={a.load} format={pct} /></Badge>
       </div>
       <div className="stacked-track">
-        {a.statuses.map((s) => (
-          <button
-            key={s.name}
-            style={{
-              width: `${(s.value / a.days.length) * 100}%`,
-              background: s.color,
-            }}
-            title={`${s.name}: ${s.value}`}
-            aria-label={s.name}
-            onClick={() => daysDetails(s.name, s.dates)}
-          />
-        ))}
+        <div className="stacked-fill">
+          {a.statuses.map((s) => (
+            <button
+              key={s.name}
+              style={{
+                width: `${(s.value / a.days.length) * 100}%`,
+                background: s.color,
+              }}
+              title={`${s.name}: ${s.value}`}
+              aria-label={s.name}
+              onClick={() => daysDetails(s.name, s.dates)}
+            />
+          ))}
+        </div>
       </div>
       <div className="status-list">
         {a.statuses.map((s) => (
@@ -1195,7 +1249,7 @@ function App() {
               >
                 <Icon size={18} />
                 <span>{label}</span>
-                {id === "control" && openSignals > 0 && (
+                {id === "control" && request.period === reportPeriod && request.filters === reportFilters && openSignals > 0 && (
                   <small>{openSignals}</small>
                 )}
               </a>
@@ -1319,7 +1373,7 @@ function App() {
           <div className="page-heading">
             <div>
               <span className="eyebrow">CHARTER / ANALYTICS</span>
-              <h1>{active[1] === "Обзор" ? "Обзор автопарка" : active[1]}</h1>
+              <h1>{title}</h1>
               <p>{hints[page]}</p>
             </div>
             <div className="heading-meta">
@@ -1331,8 +1385,8 @@ function App() {
                     : "Данные приложения"}
               </Badge>
               <small>
-                {p.meta?.imported_at
-                  ? "Обновление: " + stamp(p.meta.imported_at) + " МСК"
+                {workspace.meta?.imported_at
+                  ? "Обновление: " + stamp(workspace.meta.imported_at) + " МСК"
                   : "Дата обновления источника не указана"}
               </small>
             </div>
@@ -1342,33 +1396,21 @@ function App() {
               {error}
             </div>
           )}
-          {!["settings", "directories", "routes", "connections", "users"].includes(page) && (
+          {!unfilteredPages.includes(page) && (
             <div className="filters">
               <div className="filter-line">
                 <PeriodPicker period={period} onChange={updatePeriod} />
                 <Multi
                   {...multiProps("carriers")}
                   label="Исполнители"
-                  items={allCarriers}
+                  items={directories.carriers}
                   value={filters.carriers}
                   onChange={(v) => filter("carriers", v)}
                 />
                 <Multi
                   {...multiProps("vehicles")}
                   label="Автомобили"
-                  items={opts.vehicles
-                    .sort((a, b) =>
-                      (a.carrier + a.name).localeCompare(
-                        b.carrier + b.name,
-                        "ru",
-                      ),
-                    )
-                    .map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                      group: v.carrier,
-                      note: v.brand,
-                    }))}
+                  items={vehicleOptions}
                   value={filters.vehicles}
                   onChange={(v) => filter("vehicles", v)}
                 />
@@ -1423,33 +1465,21 @@ function App() {
                   <Multi
                     {...multiProps("drivers")}
                     label="Водители"
-                    items={opts.drivers.map((v) => ({
-                      value: v.name,
-                      label: v.name,
-                      group: v.carrier,
-                    }))}
+                    items={driverOptions}
                     value={filters.drivers}
                     onChange={(v) => filter("drivers", v)}
                   />
                   <Multi
                     {...multiProps("types")}
                     label="Типы транспорта"
-                    items={[
-                      ...new Set(
-                        p.trips
-                          .filter(M.isTrip)
-                          .map((r) => r.type || M.UNKNOWN),
-                      ),
-                    ].sort()}
+                    items={directories.types}
                     value={filters.types}
                     onChange={(v) => filter("types", v)}
                   />
                   <Multi
                     {...multiProps("clients")}
                     label="Клиенты"
-                    items={[
-                      ...new Set(p.trips.map((r) => r.client || M.UNKNOWN)),
-                    ].sort()}
+                    items={directories.clients}
                     value={filters.clients}
                     onChange={(v) => filter("clients", v)}
                   />
@@ -1475,6 +1505,11 @@ function App() {
               )}
             </div>
           )}
+          {pending && <span className="loading-announcement" role="status">Загрузка данных…</span>}
+          <div className={"report-body" + (pending ? " is-pending" : "")} aria-busy={pending}>
+          {pending && <ReportSkeleton page={active[0]} />}
+          {reportPage === page && (
+          <div className="report-results" inert={pending ? "" : undefined} aria-hidden={pending || undefined}>
           {page === "overview" && (
             <>
               {finances}
@@ -1497,7 +1532,7 @@ function App() {
                     <LegendRow />
                   </div>
                   <MoneyChart
-                    data={M.timeline(a, unit)}
+                    data={timeline}
                     onSelect={(r) => details(r.name, r.rows)}
                   />
                   <div className="section-foot">
@@ -1566,6 +1601,7 @@ function App() {
                   </button>
                 ))}
               </div>
+              <RevenueReview rows={a.rows} Section={Section} onSelect={details} />
               <div className="dashboard-grid lower">
                 <Section
                   title="Клиенты"
@@ -1573,9 +1609,7 @@ function App() {
                   action={subnav("clients", "Все клиенты")}
                 >
                   <div className="client-bars">
-                    {M.groups(p, a, "client")
-                      .slice(0, 6)
-                      .map((r, i) => (
+                    {overviewClients.map((r, i) => (
                         <button
                           key={r.name}
                           onClick={() => details(r.name, r.rows)}
@@ -1628,9 +1662,9 @@ function App() {
                       ожидают решения
                     </small>
                   </div>
-                  {[...new Set(issues.map((i) => i.kind))]
+                  {[...issuesByKind]
                     .slice(0, 4)
-                    .map((kind) => (
+                    .map(([kind, kindIssues]) => (
                       <button
                         className="attention-row"
                         key={kind}
@@ -1638,12 +1672,12 @@ function App() {
                           setDrawer({
                             type: "issues",
                             title: kind,
-                            issues: issues.filter((i) => i.kind === kind),
+                            issues: kindIssues,
                           });
                         }}
                       >
                         <span>{kind}</span>
-                        <b>{issues.filter((i) => i.kind === kind).length}</b>
+                        <b>{kindIssues.length}</b>
                         <ChevronRight size={14} />
                       </button>
                     ))}
@@ -1659,7 +1693,7 @@ function App() {
               </InfoNote>
             </>
           )}
-          {["fleet", "drivers", "clients"].includes(page) && (
+          {rankPages.includes(page) && (
             <>
               <div className="dashboard-grid">
                 <Section
@@ -1735,7 +1769,7 @@ function App() {
                   машины не приписывается водителю.
                 </InfoNote>
               )}
-              {page === "fleet" && <Opportunity p={p} a={a} />}
+              {page === "fleet" && <Opportunity a={a} />}
               <Section
                 title={active[1] + " · подробная статистика"}
                 subtitle="Маржинальный результат без ГСМ и прочих затрат"
@@ -1782,37 +1816,20 @@ function App() {
                 <MoneyChart
                   bar
                   data={
-                    compareMode === "objects"
-                      ? M.groups(p, a, compareBy).slice(0, 12)
-                      : M.timeline(a, "month")
+                    compareMode === "objects" ? comparisonRows.slice(0, 12) : comparisonRows
                   }
                   onSelect={(r) => details(r.name, r.rows)}
                 />
               </Section>
               <InfoNote>
                 Для сопоставимого рейтинга выберите один тип транспорта.
-                Изменения KPI рассчитаны относительно {M.previousPeriod(...period).map(date).join(" — ")}.
+                Изменения KPI рассчитаны относительно {M.previousPeriod(...reportPeriod).map(date).join(" — ")}.
                 При нулевой базе процент не рассчитывается.
               </InfoNote>
               <Section title="Числа для сравнения">
                 <DataTable
                   title="Сравнение"
-                  rows={
-                    compareMode === "objects"
-                      ? M.groups(p, a, compareBy)
-                      : M.timeline(a, "month").map((r) => ({
-                          ...r,
-                          days: new Set(
-                            r.rows
-                              .filter(M.isTrip)
-                              .flatMap((t) =>
-                                M.daysBetween(...M.tripSpan(t)).map(
-                                  (d) => t.vehicle + "|" + d,
-                                ),
-                              ),
-                          ).size,
-                        }))
-                  }
+                  rows={comparisonRows}
                   columns={groupCols(
                     compareMode === "objects" && compareBy === "vehicle",
                   )}
@@ -1869,8 +1886,8 @@ function App() {
               </div>
               <Calendar
                 p={p}
-                filters={filters}
-                period={period}
+                filters={reportFilters}
+                period={reportPeriod}
                 mode={calMode}
                 onDay={(d) =>
                   setDrawer({
@@ -1890,8 +1907,8 @@ function App() {
           {page === "planner" && (
             <PlannerPage
               p={p}
-              period={period}
-              filters={filters}
+              period={reportPeriod}
+              filters={reportFilters}
               user={user}
               onOpen={(row = null) =>
                 setDrawer({
@@ -1988,7 +2005,7 @@ function App() {
             <FuelPage
               a={a}
               p={p}
-              filters={filters}
+              filters={reportFilters}
               settings={payload.state.settings}
               user={user}
               save={save}
@@ -1999,9 +2016,9 @@ function App() {
           {page === "data" && (
             <SourceDataPage
               p={p}
-              fuel={payload.fuel}
-              period={period}
-              filters={filters}
+              fuel={fuel}
+              period={reportPeriod}
+              filters={reportFilters}
               onTrips={(title, rows) => details(title, rows)}
             />
           )}
@@ -2019,7 +2036,7 @@ function App() {
           {page === "connections" && (
             <ConnectionsPage
               user={user}
-              period={period}
+              period={reportPeriod}
               disabled={!!payload.demo || !!payload.local_preview}
               demo={!!payload.demo}
               onRefresh={refresh}
@@ -2035,6 +2052,9 @@ function App() {
           {page === "users" && user.role === "admin" && (
             <UsersPage p={p} />
           )}
+          </div>
+          )}
+          </div>
           <footer className="page-footer">
             <span>
               CharterStats ·{" "}
@@ -2202,11 +2222,21 @@ function Calendar({ p, filters, period, mode, onDay }) {
       () => M.calendarRows(p, filters, ...period, mode),
       [p, filters, period, mode],
     );
-  const names = [...new Set(days.map((d) => d.name))].filter((n) =>
-      n.toLowerCase().includes(search.toLowerCase()),
-    ),
-    dates = M.daysBetween(...period),
-    index = new Map(days.map((d) => [d.name + "|" + d.date, d]));
+  const { names, index } = useMemo(() => {
+    const names = new Set();
+    const index = new Map();
+    for (const day of days) {
+      names.add(day.name);
+      index.set(day.name + "|" + day.date, day);
+    }
+    return { names: [...names], index };
+  }, [days]);
+  const query = search.toLowerCase();
+  const matches = query ? names.filter((name) => name.toLowerCase().includes(query)) : names;
+  const dates = useMemo(() => M.daysBetween(...period).map((day) => ({
+    day,
+    weekday: weekday.format(new Date(day + "T12:00:00Z")),
+  })), [period]);
   useEffect(() => setOffset(0), [period, filters, mode, search]);
   return (
     <Section
@@ -2236,7 +2266,7 @@ function Calendar({ p, filters, period, mode, onDay }) {
           />
         </div>
         <span className="muted">
-          {names.length} {mode === "vehicle" ? "автомобилей" : "водителей"}
+          {matches.length} {mode === "vehicle" ? "автомобилей" : "водителей"}
         </span>
       </div>
       <div className="table-scroll calendar-scroll">
@@ -2244,20 +2274,16 @@ function Calendar({ p, filters, period, mode, onDay }) {
           <thead>
             <tr>
               <th>{mode === "vehicle" ? "Автомобиль" : "Водитель"}</th>
-              {dates.map((d) => (
-                <th key={d} title={d}>
-                  {d.slice(8)}
-                  <small>
-                    {new Date(d + "T12:00:00Z").toLocaleDateString("ru-RU", {
-                      weekday: "short",
-                    })}
-                  </small>
+              {dates.map(({ day, weekday }) => (
+                <th key={day} title={day}>
+                  {day.slice(8)}
+                  <small>{weekday}</small>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {names.slice(offset, offset + 20).map((name) => (
+            {matches.slice(offset, offset + 20).map((name) => (
               <tr key={name}>
                 <td>
                   <strong>{name}</strong>
@@ -2269,7 +2295,7 @@ function Calendar({ p, filters, period, mode, onDay }) {
                     }
                   </small>
                 </td>
-                {dates.map((date) => {
+                {dates.map(({ day: date }) => {
                   const d = index.get(name + "|" + date);
                   return (
                     <td key={date}>
@@ -2305,11 +2331,11 @@ function Calendar({ p, filters, period, mode, onDay }) {
           </tbody>
         </table>
       </div>
-      {!names.length && <Empty />}
+      {!matches.length && <Empty />}
       <div className="pagination">
         <span>
-          {Math.min(offset + 1, names.length)}–
-          {Math.min(offset + 20, names.length)} из {names.length}
+          {Math.min(offset + 1, matches.length)}–
+          {Math.min(offset + 20, matches.length)} из {matches.length}
         </span>
         <B
           disabled={!offset}
@@ -2317,7 +2343,7 @@ function Calendar({ p, filters, period, mode, onDay }) {
           icon={<ChevronLeft size={16} />}
         />
         <B
-          disabled={offset + 20 >= names.length}
+          disabled={offset + 20 >= matches.length}
           onClick={() => setOffset(offset + 20)}
           icon={<ChevronRight size={16} />}
         />
@@ -3776,49 +3802,56 @@ function FinanceGroups({ p, a, onSelect }) {
     </Section>
   );
 }
-function Opportunity({ p, a }) {
-  const weekdays = (d) => new Date(d + "T12:00:00Z").getUTCDay(),
-    rows = [];
-  for (const name of new Set(a.days.map((d) => d.vehicle))) {
-    const days = a.days.filter((d) => d.vehicle === name),
-      work = days.filter((d) => d.status === "Работа"),
-      byDay = new Map();
-    for (const r of a.rows.filter(
-      (r) =>
-        r.vehicle === name &&
-        M.isTrip(r) &&
-        M.tripSpan(r)[0] === M.tripSpan(r)[1],
-    )) {
-      if (!byDay.has(r.date)) byDay.set(r.date, []);
-      byDay.get(r.date).push(r);
+function Opportunity({ a }) {
+  const rows = useMemo(() => {
+    const reasons = ["Без заявки", "Без водителя", "Ремонт / сервис"];
+    const weekdayOf = (day) => new Date(day + "T12:00:00Z").getUTCDay();
+    const idleByVehicle = new Map();
+    for (const day of a.days) {
+      if (!idleByVehicle.has(day.vehicle)) idleByVehicle.set(day.vehicle, new Map());
+      if (!reasons.includes(day.status)) continue;
+      const idle = idleByVehicle.get(day.vehicle);
+      if (!idle.has(day.status)) idle.set(day.status, []);
+      idle.get(day.status).push(day);
     }
-    for (const reason of ["Без заявки", "Без водителя", "Ремонт / сервис"]) {
-      const idle = days.filter((d) => d.status === reason);
-      if (!idle.length) continue;
-      let estimate = 0,
-        known = 0;
-      for (const day of idle) {
-        const comparable = [...byDay]
-          .filter(
-            ([date, rs]) =>
-              weekdays(date) === weekdays(day.date) &&
-              M.sum(rs, "revenue") !== null,
-          )
-          .map(([d, rs]) => M.sum(rs, "revenue"));
-        if (comparable.length) {
-          estimate += comparable.reduce((n, v) => n + v, 0) / comparable.length;
-          known++;
-        }
+    const revenueByVehicle = new Map();
+    for (const trip of a.rows) {
+      if (!idleByVehicle.get(trip.vehicle)?.size || !M.isTrip(trip)) continue;
+      const [from, to] = M.tripSpan(trip);
+      if (from !== to) continue;
+      if (!revenueByVehicle.has(trip.vehicle)) revenueByVehicle.set(trip.vehicle, new Map());
+      const byDay = revenueByVehicle.get(trip.vehicle);
+      if (!byDay.has(trip.date)) byDay.set(trip.date, []);
+      byDay.get(trip.date).push(trip);
+    }
+    const result = [];
+    for (const [name, idle] of idleByVehicle) {
+      if (!idle.size) continue;
+      const sums = Array(7).fill(0);
+      const counts = Array(7).fill(0);
+      for (const [day, trips] of revenueByVehicle.get(name) || []) {
+        const revenue = M.sum(trips, "revenue");
+        if (revenue === null) continue;
+        const weekday = weekdayOf(day);
+        sums[weekday] += revenue;
+        counts[weekday]++;
       }
-      rows.push({
-        name,
-        reason,
-        days: idle.length,
-        covered: known,
-        estimate: known === idle.length ? estimate : null,
-      });
+      for (const reason of reasons) {
+        const days = idle.get(reason);
+        if (!days) continue;
+        let estimate = 0;
+        let covered = 0;
+        for (const day of days) {
+          const weekday = weekdayOf(day.date);
+          if (!counts[weekday]) continue;
+          estimate += sums[weekday] / counts[weekday];
+          covered++;
+        }
+        result.push({ name, reason, days: days.length, covered, estimate: covered === days.length ? estimate : null });
+      }
     }
-  }
+    return result;
+  }, [a]);
   return (
     <Section
       title="Упущенная выручка · оценка"
