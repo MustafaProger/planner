@@ -46,7 +46,9 @@ import {
 import { Button } from "./vendor/stageshow/controls/button";
 import { Card } from "./vendor/stageshow/parts/card";
 import { Badge } from "./vendor/stageshow/controls/badge";
+import { FleetStatus } from "./fleet-status.jsx";
 import { RevenueReview } from "./revenue-review.jsx";
+import { AnimatedMetric } from "./animated-metric.jsx";
 import * as M from "./model";
 import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
@@ -54,6 +56,9 @@ const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
   money = (n) => (n == null ? "—" : N.format(n) + " ₽"),
   fmt = (n) => (n == null ? "—" : N.format(n)),
   pct = (n) => (n == null ? "—" : fmt(n) + "%"),
+  signedPct = (n) => (n > 0 ? "+" + pct(n) : pct(n)),
+  signedMoney = (n) => (n > 0 ? "+" + money(n) : money(n)),
+  litersText = (n) => fmt(n) + " л",
   short = (n) =>
     n == null
       ? "—"
@@ -176,11 +181,6 @@ function SlidingTabs({ items, value, onChange, className = "" }) {
       ))}
     </div>
   );
-}
-
-function AnimatedNumber({ value, format = fmt }) {
-  const text = format(value);
-  return <span className="animated-number" key={text}>{text}</span>;
 }
 
 function VehicleCell({ name }) {
@@ -320,7 +320,7 @@ function Multi({ id, label, items, value, onChange, open, onToggle }) {
         onClick={() => onToggle?.(id, !open)}
       >
         {label}
-        {value.length > 0 && <span className="count">{value.length}</span>}
+        {value.length > 0 && <span className="count"><AnimatedMetric value={value.length} format={fmt} integer /></span>}
         <ChevronDown size={14} />
       </button>
       <div
@@ -461,6 +461,8 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
   }, [rows, columns, search, sort, vehicles]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize)),
     safePage = Math.min(page, pages - 1);
+  const pageRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
+  const rowKeyCounts = new Map();
   return (
     <div className="data-table">
       <div className="table-tools">
@@ -473,7 +475,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <span className="muted">{fmt(filtered.length)} записей</span>
+        <span className="muted"><AnimatedMetric value={filtered.length} format={fmt} integer /> записей</span>
       </div>
       <div className="table-scroll">
         <table>
@@ -512,11 +514,19 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
             </tr>
           </thead>
           <tbody>
-            {filtered
-              .slice(safePage * pageSize, (safePage + 1) * pageSize)
-              .map((r, i) => (
+            {pageRows.map((r, index) => {
+              const id = r.record_id ?? r.id;
+              const subject = r.name ?? r.vehicle ?? r.entity;
+              const identity = id != null
+                ? `id:${id}`
+                : r.date && subject != null
+                  ? `day:${r.date}|${subject}|${r.reason ?? ""}`
+                  : r.name != null ? `name:${r.name}|${r.reason ?? ""}` : `row:${index}`;
+              const occurrence = rowKeyCounts.get(identity) ?? 0;
+              rowKeyCounts.set(identity, occurrence + 1);
+              return (
                 <tr
-                  key={`${r.id || r.name || "row"}-${i}`}
+                  key={`${identity}:${occurrence}`}
                   onClick={() => onRow?.(r)}
                   onKeyDown={(e) => {
                     if (onRow && e.key === "Enter") onRow(r);
@@ -536,7 +546,8 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
                     </td>
                   ))}
                 </tr>
-              ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -561,11 +572,11 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
     </div>
   );
 }
-const col = (key, label, format = fmt) => ({
+const col = (key, label, format = fmt, integer = false) => ({
   key,
   label,
   numeric: true,
-  render: (r) => format(r[key]),
+  render: (r) => <AnimatedMetric value={r[key]} format={format} integer={integer} />,
 });
 const tripCols = [
   { key: "id", label: "Заявка" },
@@ -585,8 +596,8 @@ const groupCols = (vehicle = false) => [
   col("payout", "Выплаты", money),
   col("balance", "Марж. результат", money),
   col("margin", "Доля результата", pct),
-  col("trips", "Заявки"),
-  col("days", "Рабочие дни"),
+  col("trips", "Заявки", fmt, true),
+  col("days", "Рабочие дни", fmt, true),
   col("average", "Средний чек", money),
   col("km", "ТТ, км"),
   col("hours", "ТТ, ч"),
@@ -616,24 +627,23 @@ function LegendRow() {
     </div>
   );
 }
-function KPI({ label, value, raw, format, sub, change, onClick, primary = false, tip }) {
+function KPI({ label, raw, format = fmt, integer = false, sub, change, onClick, primary = false, tip }) {
   return (
     <Card pad="large" className={"kpi " + (primary ? "primary-kpi" : "")}>
       <div className="kpi-label">
         {label}
-        <span title={tip || sub}>
+        <span title={tip || (typeof sub === "string" ? sub : undefined)}>
           <Info size={13} />
         </span>
       </div>
       <button className="kpi-value" onClick={onClick}>
-        {raw !== undefined ? <AnimatedNumber value={raw} format={format} /> : value}
+        <AnimatedMetric value={raw} format={format} integer={integer} />
         <ArrowUpRight size={19} />
       </button>
       <div className="kpi-bottom">
         {change !== undefined && change !== null && (
           <span className={"delta " + (change >= 0 ? "positive" : "negative")}>
-            {change > 0 ? "+" : ""}
-            {pct(change)}
+            <AnimatedMetric value={change} format={signedPct} />
           </span>
         )}
         <span>{sub}</span>
@@ -925,6 +935,7 @@ function App() {
   const view = useReportView(request, busy);
   const pending = busy || view !== request;
   const { p, filters: reportFilters, period: reportPeriod, page: reportPage, settings, fuel } = view || {};
+  const hasCurrentReport = reportPage === page;
   const a = useMemo(
     () => (p ? M.analyze(p, reportFilters, ...reportPeriod, settings, fuel) : null),
     [p, reportFilters, reportPeriod, settings, fuel],
@@ -1121,15 +1132,16 @@ function App() {
         sub={
           a.payout_percent === null
             ? "Нет базы для расчёта доли"
-            : pct(a.payout_percent) + " от выручки"
+            : <><AnimatedMetric value={a.payout_percent} format={pct} /> от выручки</>
         }
         onClick={() => details("Выплаты · исходные записи", a.rows)}
+        tip={a.payout_percent === null ? undefined : pct(a.payout_percent) + " от выручки"}
       />
       <KPI
         label="Маржинальный результат"
         raw={a.balance}
         format={money}
-        sub={pct(a.margin) + " от выручки · без ГСМ"}
+        sub={<><AnimatedMetric value={a.margin} format={pct} /> от выручки · без ГСМ</>}
         change={changed("balance")}
         onClick={() => details("Выручка минус выплаты", a.rows)}
         tip="Выручка минус выплаты по заявкам. Без ГСМ, ремонта, лизинга и амортизации; не чистая прибыль."
@@ -1138,7 +1150,12 @@ function App() {
         label="Загрузка по дням"
         raw={a.load}
         format={pct}
-        sub={`${fmt(a.workDays)} из ${fmt(a.days.length)} авто-дней`}
+        sub={
+          <>
+            <AnimatedMetric value={a.workDays} format={fmt} integer /> из{" "}
+            <AnimatedMetric value={a.days.length} format={fmt} integer /> авто-дней
+          </>
+        }
         onClick={() =>
           daysDetails(
             "Рабочие дни по ТТ",
@@ -1155,43 +1172,12 @@ function App() {
       subtitle="Основной статус · доля от выбранных авто-дней"
       action={subnav("calendar", "Календарь")}
     >
-      <div className="status-head">
-        <strong>
-          <AnimatedNumber value={a.workDays} />
-          <small> рабочих авто-дней</small>
-        </strong>
-        <Badge tone="success"><AnimatedNumber value={a.load} format={pct} /></Badge>
-      </div>
-      <div className="stacked-track">
-        <div className="stacked-fill">
-          {a.statuses.map((s) => (
-            <button
-              key={s.name}
-              style={{
-                width: `${(s.value / a.days.length) * 100}%`,
-                background: s.color,
-              }}
-              title={`${s.name}: ${s.value}`}
-              aria-label={s.name}
-              onClick={() => daysDetails(s.name, s.dates)}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="status-list">
-        {a.statuses.map((s) => (
-          <button key={s.name} onClick={() => daysDetails(s.name, s.dates)}>
-            <i style={{ background: s.color }} />
-            <span>{s.name}</span>
-            <b>{s.value} дн.</b>
-            <small>{pct((s.value / a.days.length) * 100)}</small>
-            <ChevronRight size={14} />
-          </button>
-        ))}
-      </div>
-      <div className="section-foot">
-        Дополнительных событий: <b>{fmt(a.events)}</b> · учитываются отдельно
-      </div>
+      <FleetStatus
+        analysis={a}
+        format={fmt}
+        formatPercent={pct}
+        onSelect={daysDetails}
+      />
     </Section>
   );
   return (
@@ -1249,8 +1235,8 @@ function App() {
               >
                 <Icon size={18} />
                 <span>{label}</span>
-                {id === "control" && request.period === reportPeriod && request.filters === reportFilters && openSignals > 0 && (
-                  <small>{openSignals}</small>
+                {id === "control" && openSignals > 0 && (
+                  <small><AnimatedMetric value={openSignals} format={fmt} integer /></small>
                 )}
               </a>
             </React.Fragment>
@@ -1315,6 +1301,7 @@ function App() {
             </span>
             <B
               className="refresh-button"
+              aria-label="Перечитать"
               icon={<RefreshCw size={14} className={busy ? "spin" : ""} />}
               disabled={busy}
               onClick={() => refresh()}
@@ -1423,7 +1410,7 @@ function App() {
                     setShowMore(!showMore);
                   }}
                 >
-                  Фильтры{count ? " · " + count : ""}
+                  Фильтры{count > 0 && <> · <AnimatedMetric value={count} format={fmt} integer /></>}
                 </B>
               </div>
               <div className="filter-bottom">
@@ -1505,10 +1492,17 @@ function App() {
               )}
             </div>
           )}
-          {pending && <span className="loading-announcement" role="status">Загрузка данных…</span>}
+          {pending && (!hasCurrentReport || busy) && (
+            <span className="loading-announcement" role="status">Загрузка данных…</span>
+          )}
           <div className={"report-body" + (pending ? " is-pending" : "")} aria-busy={pending}>
-          {pending && <ReportSkeleton page={active[0]} />}
-          {reportPage === page && (
+          {!hasCurrentReport && <ReportSkeleton page={active[0]} />}
+          {hasCurrentReport && (
+          <div className="report-skeleton-layer" aria-hidden="true">
+            <ReportSkeleton page={active[0]} />
+          </div>
+          )}
+          {hasCurrentReport && (
           <div className="report-results" inert={pending ? "" : undefined} aria-hidden={pending || undefined}>
           {page === "overview" && (
             <>
@@ -1528,7 +1522,7 @@ function App() {
                   }
                 >
                   <div className="chart-summary">
-                    <strong>{money(a.revenue)}</strong>
+                    <strong><AnimatedMetric value={a.revenue} format={money} /></strong>
                     <LegendRow />
                   </div>
                   <MoneyChart
@@ -1537,10 +1531,10 @@ function App() {
                   />
                   <div className="section-foot">
                     <span>
-                      Средний чек <b>{money(a.average)}</b>
+                      Средний чек <b><AnimatedMetric value={a.average} format={money} /></b>
                     </span>
                     <span>
-                      Выручка / рабочий авто-день <b>{money(a.revenue_day)}</b>
+                      Выручка / рабочий авто-день <b><AnimatedMetric value={a.revenue_day} format={money} /></b>
                     </span>
                   </div>
                 </Section>
@@ -1576,8 +1570,9 @@ function App() {
                     "Часы заявок ТТ",
                     a.hours,
                     "Длительность заявок; не моточасы",
+                    false,
                   ],
-                ].map(([l, v, t]) => (
+                ].map(([l, v, t, integer = true]) => (
                   <button
                     key={l}
                     title={t}
@@ -1596,7 +1591,7 @@ function App() {
                       {l}
                       <ArrowUpRight size={14} />
                     </span>
-                    <strong>{fmt(v)}</strong>
+                    <strong><AnimatedMetric value={v} format={fmt} integer={integer} /></strong>
                     <small>{t}</small>
                   </button>
                 ))}
@@ -1635,10 +1630,10 @@ function App() {
                             </span>
                           </span>
                           <span>
-                            <b>{money(r.revenue)}</b>
+                            <b><AnimatedMetric value={r.revenue} format={money} /></b>
                             <small>
-                              {pct(M.percent(r.revenue, a.revenue))} · {r.trips}{" "}
-                              заявок
+                              <AnimatedMetric value={M.percent(r.revenue, a.revenue)} format={pct} /> ·{" "}
+                              <AnimatedMetric value={r.trips} format={fmt} integer /> заявок
                             </small>
                           </span>
                         </button>
@@ -1655,7 +1650,7 @@ function App() {
                     <span>
                       <ShieldCheck size={22} />
                     </span>
-                    <strong>{fmt(openSignals)}</strong>
+                    <strong><AnimatedMetric value={openSignals} format={fmt} integer /></strong>
                     <small>
                       сигналов
                       <br />
@@ -1677,7 +1672,7 @@ function App() {
                         }}
                       >
                         <span>{kind}</span>
-                        <b>{kindIssues.length}</b>
+                        <b><AnimatedMetric value={kindIssues.length} format={fmt} integer /></b>
                         <ChevronRight size={14} />
                       </button>
                     ))}
@@ -1731,14 +1726,21 @@ function App() {
                           <span>
                             <b>{r.name}</b>
                             <small>
-                              {r.carrier ||
-                                `${r.trips} заявок · ${r.days} рабочих дней`}
+                              {r.carrier || (
+                                <>
+                                  <AnimatedMetric value={r.trips} format={fmt} integer /> заявок ·{" "}
+                                  <AnimatedMetric value={r.days} format={fmt} integer /> рабочих дней
+                                </>
+                              )}
                             </small>
                           </span>
                           <strong>
-                            {rankMetric === "days"
-                              ? fmt(r[rankMetric])
-                              : money(r[rankMetric])}
+                            <AnimatedMetric
+                              key={rankMetric}
+                              value={r[rankMetric]}
+                              format={rankMetric === "days" ? fmt : money}
+                              integer={rankMetric === "days"}
+                            />
                           </strong>
                           <ArrowUpRight size={16} />
                         </button>
@@ -1924,20 +1926,20 @@ function App() {
               <div className="control-summary">
                 <Card pad="large">
                   <span>Всего сигналов</span>
-                  <strong>{issues.length}</strong>
+                  <strong><AnimatedMetric value={issues.length} format={fmt} integer /></strong>
                 </Card>
                 <Card pad="large">
                   <span>Ожидают решения</span>
-                  <strong>{openSignals}</strong>
+                  <strong><AnimatedMetric value={openSignals} format={fmt} integer /></strong>
                 </Card>
                 <Card pad="large">
                   <span>Качество справочников и заявок</span>
-                  <strong>{q.length}</strong>
+                  <strong><AnimatedMetric value={q.length} format={fmt} integer /></strong>
                 </Card>
                 <Card pad="large">
                   <span>Порог движения</span>
                   <strong>
-                    {payload.state.settings.movement_threshold}
+                    <AnimatedMetric value={payload.state.settings.movement_threshold} format={fmt} />
                     <small> км / сутки</small>
                   </strong>
                 </Card>
@@ -2207,8 +2209,8 @@ function CategoryBreakdown({ rows, onSelect }) {
         return (
           <button key={c.name} onClick={() => onSelect(c.name, c.rows)}>
             <span>{c.name}</span>
-            <b>{money(value)}</b>
-            <small>{pct(M.percent(value, total))}</small>
+            <b><AnimatedMetric value={value} format={money} /></b>
+            <small><AnimatedMetric value={M.percent(value, total)} format={pct} /></small>
           </button>
         );
       })}
@@ -2266,7 +2268,8 @@ function Calendar({ p, filters, period, mode, onDay }) {
           />
         </div>
         <span className="muted">
-          {matches.length} {mode === "vehicle" ? "автомобилей" : "водителей"}
+          <AnimatedMetric key={mode} value={matches.length} format={fmt} integer />{" "}
+          {mode === "vehicle" ? "автомобилей" : "водителей"}
         </span>
       </div>
       <div className="table-scroll calendar-scroll">
@@ -2363,8 +2366,8 @@ function DayDetail({ day, user, reasons, onSave }) {
           {day.status}
         </Badge>
         <span>
-          {day.trips.length} заявок · {M.extraEventCount(day)} дополнительных
-          записей
+          <AnimatedMetric value={day.trips.length} format={fmt} integer /> заявок ·{" "}
+          <AnimatedMetric value={M.extraEventCount(day)} format={fmt} integer /> дополнительных записей
         </span>
       </div>
       {day.trips.length > 0 && (
@@ -2634,7 +2637,8 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
       <div className="kpi-grid">
         <KPI
           label="Расходы по картам"
-          value={money(amount)}
+          raw={amount}
+          format={money}
           sub="С учётом возвратов · доступные операции"
           onClick={() =>
             details({
@@ -2646,7 +2650,8 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
         />
         <KPI
           label="Заправлено"
-          value={fmt(liters) + " л"}
+          raw={liters}
+          format={litersText}
           sub="Объём заправок, не фактический расход"
           onClick={() =>
             details({ type: "fuel", title: "Заправки", rows: purchases })
@@ -2654,7 +2659,8 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
         />
         <KPI
           label="Средняя цена литра"
-          value={money(M.ratio(amount, liters))}
+          raw={M.ratio(amount, liters)}
+          format={money}
           sub="Стоимость / заправленный объём"
           onClick={() =>
             details({ type: "fuel", title: "Расчёт цены", rows: purchases })
@@ -2662,7 +2668,8 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
         />
         <KPI
           label="Без привязки к авто"
-          value={fmt(a.fuel.filter((r) => !r.vehicle).length)}
+          raw={a.fuel.filter((r) => !r.vehicle).length}
+          integer
           sub="Требуется историческая привязка карты"
           onClick={() =>
             details({
@@ -2810,7 +2817,7 @@ function RoutesPage({ p }) {
           <div className="scenario-results">
             <Card pad="large">
               <span>Базовый результат</span>
-              <strong>{money(r.current)}</strong>
+              <strong><AnimatedMetric value={r.current} format={money} /></strong>
               <small>Свой на А · привлечённый на Б</small>
             </Card>
             <div className="scenario-arrow">
@@ -2818,19 +2825,18 @@ function RoutesPage({ p }) {
             </div>
             <Card pad="large">
               <span>Альтернативный результат</span>
-              <strong>{money(r.alternative)}</strong>
+              <strong><AnimatedMetric value={r.alternative} format={money} /></strong>
               <small>Свой на Б · привлечённый на А</small>
             </Card>
             <Card pad="large" className="scenario-gain">
               <span>Изменение результата</span>
               <strong>
-                {r.value > 0 ? "+" : ""}
-                {money(r.value)}
+                <AnimatedMetric value={r.value} format={signedMoney} />
               </strong>
               <small>
                 {r.percent === null
                   ? "Нет базы для сравнения"
-                  : pct(r.percent) + " к текущему варианту"}
+                  : <><AnimatedMetric value={r.percent} format={pct} /> к текущему варианту</>}
               </small>
             </Card>
           </div>
@@ -2843,7 +2849,7 @@ function RoutesPage({ p }) {
                 Категория маршрута Б<b>{b.group || "Не определена"}</b>
               </span>
               <span>
-                Суммарная выручка<b>{money(r.revenue)}</b>
+                Суммарная выручка<b><AnimatedMetric value={r.revenue} format={money} /></b>
               </span>
               <span>
                 Дополнительный нулевой пробег<b>Нет данных</b>
@@ -2874,19 +2880,19 @@ function RouteFacts({ route: r }) {
   return (
     <div className="route-facts">
       <span>
-        Выручка<b>{money(r.revenue)}</b>
+        Выручка<b><AnimatedMetric value={r.revenue} format={money} /></b>
       </span>
       <span>
-        Собственному водителю<b>{money(r.payout)}</b>
+        Собственному водителю<b><AnimatedMetric value={r.payout} format={money} /></b>
       </span>
       <span>
-        Привлечённому исполнителю<b>{money(r.partner_payout)}</b>
+        Привлечённому исполнителю<b><AnimatedMetric value={r.partner_payout} format={money} /></b>
       </span>
       <span>
-        Пробег маршрута<b>{fmt(r.km)} км</b>
+        Пробег маршрута<b><AnimatedMetric value={r.km} format={fmt} /> км</b>
       </span>
       <span>
-        Время маршрута<b>{fmt(r.hours)} ч</b>
+        Время маршрута<b><AnimatedMetric value={r.hours} format={fmt} /> ч</b>
       </span>
     </div>
   );
@@ -2943,8 +2949,8 @@ function Directories({ p, onChoose, user, refresh }) {
                       : carrier}
                   </strong>
                   <small>
-                    {M.ownership(carrier)} · {cars.length} автомобилей ·{" "}
-                    {drivers.length} водителей
+                    {M.ownership(carrier)} · <AnimatedMetric value={cars.length} format={fmt} integer /> автомобилей ·{" "}
+                    <AnimatedMetric value={drivers.length} format={fmt} integer /> водителей
                   </small>
                 </span>
                 <ChevronDown size={18} />
@@ -3040,14 +3046,14 @@ function PlannerPage({ p, period, filters, user, onOpen }) {
       </div>
       <div className="control-summary">
         {[
-          ["Назначений", included.length, fmt],
+          ["Назначений", included.length, fmt, true],
           ["Выручка, план", M.knownSum(included, "revenue"), money],
           ["Выплаты, план", M.knownSum(included, "payout"), money],
           ["Пробег, план", M.knownSum(included, "km"), (v) => fmt(v) + " км"],
-        ].map(([label, value, format]) => (
+        ].map(([label, value, format, integer]) => (
           <Card pad="large" key={label}>
             <span>{label}</span>
-            <strong><AnimatedNumber value={value} format={format} /></strong>
+            <strong><AnimatedMetric value={value} format={format} integer={integer} /></strong>
           </Card>
         ))}
       </div>
@@ -3699,7 +3705,7 @@ function TelemetrySummary({ a, onDetails }) {
         <div>
           <span>Пробег ТТ</span>
           <strong>
-            {fmt(a.km)} <small>км</small>
+            <AnimatedMetric value={a.km} format={fmt} /> <small>км</small>
           </strong>
           <small>
             {a.km === null
@@ -3710,29 +3716,28 @@ function TelemetrySummary({ a, onDetails }) {
         <div>
           <span>Пробег ГЛОНАСС</span>
           <strong>
-            {fmt(a.sat_km)} <small>км</small>
+            <AnimatedMetric value={a.sat_km} format={fmt} /> <small>км</small>
           </strong>
           <small>
             {a.satelliteScoped
               ? "Нет однозначной связи с выборкой"
-              : `${a.sat_coverage} авто-дней с показаниями`}
+              : <><AnimatedMetric value={a.sat_coverage} format={fmt} integer /> авто-дней с показаниями</>}
           </small>
         </div>
         <div>
           <span>Время ТТ</span>
           <strong>
-            {fmt(a.hours)} <small>ч</small>
+            <AnimatedMetric value={a.hours} format={fmt} /> <small>ч</small>
           </strong>
           <small>Длительность заявок</small>
         </div>
         <div>
           <span>Моточасы ГЛОНАСС</span>
           <strong>
-            {fmt(
-              a.satelliteScoped
-                ? null
-                : M.knownSum(a.satellite, "engine_hours"),
-            )}{" "}
+            <AnimatedMetric
+              value={a.satelliteScoped ? null : M.knownSum(a.satellite, "engine_hours")}
+              format={fmt}
+            />{" "}
             <small>ч</small>
           </strong>
           <small>Зажигание, не время работы</small>
@@ -3765,7 +3770,7 @@ function FinanceGroups({ p, a, onSelect }) {
               <h3>{kind}</h3>
               <button onClick={() => onSelect(kind, rows)}>
                 <span>Выручка</span>
-                <b>{money(f.revenue)}</b>
+                <b><AnimatedMetric value={f.revenue} format={money} /></b>
               </button>
               <button onClick={() => onSelect(kind + " · выплаты", rows)}>
                 <span>
@@ -3773,23 +3778,23 @@ function FinanceGroups({ p, a, onSelect }) {
                     ? "Выплаты по заявкам"
                     : "Исполнителям"}
                 </span>
-                <b>{money(f.payout)}</b>
+                <b><AnimatedMetric value={f.payout} format={money} /></b>
               </button>
               <div>
                 <span>Доля выплат</span>
-                <b>{pct(f.payout_percent)}</b>
+                <b><AnimatedMetric value={f.payout_percent} format={pct} /></b>
               </div>
               <div>
                 <span>Разница</span>
-                <b>{money(f.balance)}</b>
+                <b><AnimatedMetric value={f.balance} format={money} /></b>
               </div>
               <div>
                 <span>Доля разницы</span>
-                <b>{pct(f.margin)}</b>
+                <b><AnimatedMetric value={f.margin} format={pct} /></b>
               </div>
               {kind === "Собственный парк" && (
                 <p>
-                  Оплата водителю отдельно: {money(f.driver_payout)}.{" "}
+                  Оплата водителю отдельно: <AnimatedMetric value={f.driver_payout} format={money} />.{" "}
                   {f.driver_payout === null
                     ? "Источник не подтверждает отдельное поле зарплаты."
                     : "Включена в выплаты; повторно не вычитается."}
@@ -3863,8 +3868,8 @@ function Opportunity({ a }) {
         columns={[
           { key: "name", label: "Автомобиль", vehicle: true },
           { key: "reason", label: "Причина" },
-          col("days", "Дни простоя"),
-          col("covered", "Дни с базой сравнения"),
+          col("days", "Дни простоя", fmt, true),
+          col("covered", "Дни с базой сравнения", fmt, true),
           col("estimate", "Оценка выручки", money),
         ]}
       />

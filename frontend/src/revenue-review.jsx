@@ -1,10 +1,14 @@
 import React, { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
+import { AnimatedMetric } from "./animated-metric.jsx";
 import { percent } from "./model.js";
 import { summarizeRevenueReview } from "./revenue-review-model.js";
 import "./revenue-review.css";
 
 const number = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+const formatNumber = (value) => (value == null ? "—" : number.format(value));
+const formatMoney = (value) => `${formatNumber(value)} ₽`;
+const formatShare = (value) => `${formatNumber(value)}%`;
 
 export function RevenueReview({ rows, Section, onSelect }) {
   const { aboveRevenue, incomplete, comparable, difference } = useMemo(
@@ -29,12 +33,23 @@ export function RevenueReview({ rows, Section, onSelect }) {
             >
               <span>Выплата выше выручки</span>
               <strong>
-                {comparable ? number.format(aboveRevenue.length) : "—"}
+                <AnimatedMetric
+                  value={comparable ? aboveRevenue.length : null}
+                  format={formatNumber}
+                  integer
+                />
               </strong>
               <small>
-                {share === null
-                  ? "Для сравнения нужны обе суммы"
-                  : `${number.format(difference)} ₽ превышения · ${number.format(share)}% сопоставимых рейсов`}
+                {share === null ? (
+                  "Для сравнения нужны обе суммы"
+                ) : (
+                  <>
+                    <AnimatedMetric value={difference} format={formatMoney} />
+                    {" превышения · "}
+                    <AnimatedMetric value={share} format={formatShare} />
+                    {" сопоставимых рейсов"}
+                  </>
+                )}
               </small>
               {!!aboveRevenue.length && <ChevronRight size={16} aria-hidden="true" />}
             </button>
@@ -44,14 +59,21 @@ export function RevenueReview({ rows, Section, onSelect }) {
               onClick={() => onSelect("Рейсы без полной суммы", incomplete)}
             >
               <span>Не указана сумма</span>
-              <strong>{number.format(incomplete.length)}</strong>
+              <strong>
+                <AnimatedMetric value={incomplete.length} format={formatNumber} integer />
+              </strong>
               <small>Нет выручки, выплаты или обеих сумм</small>
               {!!incomplete.length && <ChevronRight size={16} aria-hidden="true" />}
             </button>
           </div>
           <div className="section-foot">
-            Рейсы с обеими суммами — {number.format(comparable)} из {number.format(total)}.
-            Суммы относятся к отдельным строкам.
+            <span>
+              Рейсы с обеими суммами —{" "}
+              <AnimatedMetric value={comparable} format={formatNumber} integer />
+              {" из "}
+              <AnimatedMetric value={total} format={formatNumber} integer />
+              . Суммы относятся к отдельным строкам.
+            </span>
           </div>
         </>
       ) : (

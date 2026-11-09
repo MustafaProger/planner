@@ -768,22 +768,6 @@ details summary::-webkit-details-marker {
   font-weight: 400;
   color: #9aa4ae;
 }
-.stacked-track {
-  height: 10px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #f0f2f5;
-}
-.stacked-fill {
-  display: flex;
-  gap: 2px;
-  height: 100%;
-  transform-origin: left center;
-}
-.stacked-track button {
-  padding: 0;
-  min-width: 1px;
-}
 .status-list {
   display: grid;
   gap: 3px;
@@ -805,7 +789,7 @@ details summary::-webkit-details-marker {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-list span {
+.status-list > button > span {
   flex: 1;
 }
 .status-list b {
@@ -840,7 +824,7 @@ details summary::-webkit-details-marker {
 .work-strip > button:last-child {
   border: 0;
 }
-.work-strip span {
+.work-strip > button > span {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -944,7 +928,7 @@ details summary::-webkit-details-marker {
   font-size: 11px;
   text-align: left;
 }
-.attention-row span {
+.attention-row > span {
   flex: 1;
 }
 .attention-row b {
@@ -1165,7 +1149,7 @@ details summary::-webkit-details-marker {
   font-size: 12px;
   text-align: left;
 }
-.category-list span {
+.category-list > button > span {
   flex: 1;
 }
 .category-list small {
@@ -1180,7 +1164,7 @@ details summary::-webkit-details-marker {
   gap: 15px;
   margin-bottom: 22px;
 }
-.control-summary span {
+.control-summary .ss-card > span {
   color: #8d98a7;
   font-size: 11px;
 }
@@ -1333,7 +1317,7 @@ details summary::-webkit-details-marker {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
-.detail-facts span {
+.detail-facts > span {
   display: grid;
   gap: 8px;
   font-size: 11px;
@@ -1895,7 +1879,7 @@ details summary::-webkit-details-marker {
   .work-strip {
     margin-bottom: 16px;
   }
-  .work-strip span {
+  .work-strip > button > span {
     font-size: 9px;
   }
   .work-strip strong {
@@ -1928,7 +1912,7 @@ details summary::-webkit-details-marker {
   .control-summary .ss-card {
     padding: 15px;
   }
-  .control-summary span {
+  .control-summary .ss-card > span {
     font-size: 10px;
   }
   .control-summary strong {
@@ -2024,7 +2008,7 @@ details summary::-webkit-details-marker {
 .telemetry-summary > div:last-child {
   border: 0;
 }
-.telemetry-summary span {
+.telemetry-summary > div > span {
   font-size: 11px;
   color: #8695a4;
 }
@@ -2068,7 +2052,8 @@ details summary::-webkit-details-marker {
   font-size: 11px;
   text-align: left;
 }
-.finance-groups span {
+.finance-groups button > span,
+.finance-groups > div > div > span {
   color: #8796a5;
 }
 .finance-groups b {
@@ -2098,7 +2083,7 @@ details summary::-webkit-details-marker {
   .telemetry-summary > div:nth-child(2) {
     border: 0;
   }
-  .telemetry-summary span {
+  .telemetry-summary > div > span {
     font-size: 10px;
   }
   .telemetry-summary strong {
@@ -2169,6 +2154,7 @@ button:not(:disabled):active,
   min-width: 0;
 }
 .report-body {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -2176,27 +2162,37 @@ button:not(:disabled):active,
   grid-area: 1 / 1;
   min-width: 0;
 }
-.report-body.is-pending .report-results {
-  opacity: 0;
-  pointer-events: none;
+.report-results {
+  opacity: 1;
+  transition: opacity 500ms var(--motion-ease-out);
 }
-.report-body:not(.is-pending) .report-results > :not(.dashboard-grid, .kpi-grid, .control-summary),
-.report-body:not(.is-pending) :is(.dashboard-grid, .kpi-grid, .control-summary) > * {
+.report-body.is-pending .report-results {
+  opacity: .92;
+  transition-duration: 180ms;
+}
+.report-skeleton-layer {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: #f6f8fa;
+  transition: opacity 180ms var(--motion-ease-out);
+}
+.report-body.is-pending .report-skeleton-layer {
+  opacity: 1;
+  /* This loading threshold also applies with reduced motion. */
+  transition-delay: 180ms !important;
+}
+.report-body:not(.is-pending) .report-skeleton-layer .skeleton-card {
+  animation: none;
+}
+.report-results > :not(.dashboard-grid, .kpi-grid, .control-summary),
+.report-results :is(.dashboard-grid, .kpi-grid, .control-summary) > * {
   animation: report-card-in 180ms var(--motion-ease-out) backwards;
 }
-.report-body:not(.is-pending) :is(.dashboard-grid, .kpi-grid, .control-summary) > :nth-child(even) {
+.report-results :is(.dashboard-grid, .kpi-grid, .control-summary) > :nth-child(even) {
   animation-delay: 35ms;
-}
-.report-body:not(.is-pending) .stacked-fill {
-  animation: fleet-status-in 220ms var(--motion-ease-out) backwards;
-}
-.animated-number {
-  display: inline-block;
-  font-variant-numeric: tabular-nums;
-  animation: result-fade-in 160ms var(--motion-ease-out);
-}
-.chart--reveal .recharts-wrapper {
-  animation: result-fade-in 200ms var(--motion-ease-out);
 }
 @keyframes report-card-in {
   from { opacity: .58; transform: translateY(5px); }
@@ -2205,10 +2201,6 @@ button:not(:disabled):active,
 @keyframes result-fade-in {
   from { opacity: .58; }
   to { opacity: 1; }
-}
-@keyframes fleet-status-in {
-  from { transform: scaleX(.12); }
-  to { transform: scaleX(1); }
 }
 .loading-announcement {
   position: absolute;
@@ -2474,11 +2466,6 @@ button:not(:disabled):active,
 @keyframes filters-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
-}
-.animated-number {
-  display: inline-block;
-  min-width: 1ch;
-  font-variant-numeric: tabular-nums;
 }
 .drawer {
   width: min(1100px, 68vw);
@@ -2776,14 +2763,12 @@ button:not(:disabled):active,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .report-body:not(.is-pending) .report-results > :not(.dashboard-grid, .kpi-grid, .control-summary),
-  .report-body:not(.is-pending) :is(.dashboard-grid, .kpi-grid, .control-summary) > * {
+  .report-results > :not(.dashboard-grid, .kpi-grid, .control-summary),
+  .report-results :is(.dashboard-grid, .kpi-grid, .control-summary) > * {
     animation: result-fade-in 100ms ease;
   }
-  .report-body:not(.is-pending) .stacked-fill,
   .skeleton-card,
   .chart-skeleton,
-  .animated-number,
   .extra-filters,
   .mobile-scrim {
     animation: none;

@@ -1,0 +1,49 @@
+.money-series-mask {
+  transform-box: fill-box;
+  transform-origin: right center;
+}
+
+.money-series-preview {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fleet-status-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #f0f2f5;
+}
+
+.fleet-status-rail {
+  position: relative;
+  height: 100%;
+  transform-origin: left center;
+  animation: fleet-track-fill var(--fleet-status-duration) var(--fleet-status-easing) backwards;
+}
+
+.fleet-status-rail > .fleet-status-segment {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  padding: 0;
+  border-radius: 0;
+  transform-origin: left center;
+  transition: transform var(--fleet-status-duration) var(--fleet-status-easing);
+}
+
+.fleet-status-segment:disabled {
+  pointer-events: none;
+  opacity: 1;
+}
+
+@keyframes fleet-track-fill {
+  from { transform: scaleX(.08); }
+  to { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fleet-status-rail { animation: none; }
+  .fleet-status-rail,
+  .fleet-status-rail > .fleet-status-segment { transition: none; }
+}

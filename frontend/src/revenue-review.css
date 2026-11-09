@@ -25,7 +25,7 @@
   cursor: default;
 }
 
-.revenue-review span,
+.revenue-review > button > span,
 .revenue-review small {
   color: #6d7887;
   font-size: 12px;
