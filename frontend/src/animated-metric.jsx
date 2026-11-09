@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef } from "react";
-import { REPORT_MOTION_MS, easeOutProgress } from "./report-motion.js";
+import { createMetricMotion, metricMotionFrame } from "./report-motion.js";
 import "./animated-metric.css";
 
 const activeMetrics = new Map();
@@ -19,22 +19,22 @@ function stopMetric(node) {
 function advanceMetrics(now) {
   animationFrame = undefined;
   const reduced = reducedMotion();
-  for (const [node, { from, value, start, write }] of activeMetrics) {
-    const elapsed = Math.max(0, now - start);
-    if (reduced || elapsed >= REPORT_MOTION_MS) {
-      write(value);
+  for (const [node, metric] of activeMetrics) {
+    if (reduced) {
+      metric.write(metric.value);
       stopMetric(node);
-    } else {
-      const progress = easeOutProgress(elapsed / REPORT_MOTION_MS);
-      write(from * (1 - progress) + value * progress);
+      continue;
     }
+    const frame = metricMotionFrame(metric, Math.max(0, now - metric.start));
+    metric.write(frame.next, frame.opacity);
+    if (frame.done) stopMetric(node);
   }
   if (activeMetrics.size) animationFrame = requestAnimationFrame(advanceMetrics);
 }
 
-function animateMetric(node, from, value, write) {
+function animateMetric(node, motion, write) {
   const observed = activeMetrics.has(node);
-  activeMetrics.set(node, { from, value, start: performance.now(), write });
+  activeMetrics.set(node, { ...motion, start: performance.now(), write });
 
   if (typeof IntersectionObserver === "function" && !observed) {
     metricObserver ??= new IntersectionObserver((entries) => {
@@ -54,12 +54,17 @@ function animateMetric(node, from, value, write) {
 
 const firstValue = Symbol("first value");
 
+function formatMetric(value, format, integer) {
+  const rounded = integer && Number.isFinite(value) ? Math.round(value) : value;
+  return format(Object.is(rounded, -0) ? 0 : rounded);
+}
+
 export function AnimatedMetric({ value, format, integer = false, className = "" }) {
   const visible = useRef(null);
-  const displayed = useRef(0);
+  const displayed = useRef({ value: undefined, opacity: 1 });
   const previous = useRef(firstValue);
   const formatter = useRef();
-  const target = format(value);
+  const target = formatMetric(value, format, integer);
 
   useLayoutEffect(() => {
     const node = visible.current;
@@ -69,27 +74,36 @@ export function AnimatedMetric({ value, format, integer = false, className = "" 
   useLayoutEffect(() => {
     const node = visible.current;
     formatter.current = { format, integer };
-    const write = (next) => {
-      displayed.current = next;
-      const options = formatter.current;
-      const rounded = options.integer && Number.isFinite(next) ? Math.round(next) : next;
-      const text = options.format(Object.is(rounded, -0) ? 0 : rounded);
+    const current = displayed.current;
+    const write = (next, opacity = 1, force = false) => {
+      if (current.opacity !== opacity) {
+        node.style.opacity = opacity === 1 ? "" : String(opacity);
+        current.opacity = opacity;
+      }
+      if (!force && Object.is(current.value, next)) return;
+      current.value = next;
+      const text = formatMetric(next, formatter.current.format, formatter.current.integer);
       if (node.textContent !== text) node.textContent = text;
     };
 
     if (Object.is(previous.current, value)) {
-      write(displayed.current);
+      write(current.value, current.opacity, true);
       return;
     }
     previous.current = value;
-    const from = Number.isFinite(displayed.current) ? displayed.current : 0;
-    if (reducedMotion() || !Number.isFinite(value) || from === value) {
+    const from = current.value;
+    if (
+      reducedMotion() ||
+      !Number.isFinite(value) ||
+      !Number.isFinite(from) ||
+      formatMetric(from, format, integer) === target
+    ) {
       stopMetric(node);
-      write(value);
+      write(value, 1, true);
       return;
     }
-    write(from);
-    animateMetric(node, from, value, write);
+    write(from, current.opacity, true);
+    animateMetric(node, createMetricMotion(from, value, integer, current.opacity), write);
   });
 
   return (
