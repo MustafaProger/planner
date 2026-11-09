@@ -274,6 +274,7 @@ function PeriodPicker({ period, onChange }) {
     return () => document.removeEventListener('pointerdown', close);
   }, []);
   function commit(i) {
+    if (draft[i] === period[i].split('-').reverse().join('.')) return;
     const value = draft[i].split('.').reverse().join('-');
     if (/^\d{4}-\d{2}-\d{2}$/.test(value) && M.validDay(value)) onChange(i, value);
     else setDraft(period.map(v => v.split('-').reverse().join('.')));
@@ -856,7 +857,14 @@ function App() {
       ...M.emptyFilters(),
       ...saved?.filters,
     }),
-    [period, setPeriod] = useState(saved?.period || null);
+    [periodSelection, setPeriodSelection] = useState(() => ({
+      period: saved?.period || null,
+      anchor: saved?.periodAnchor || saved?.period?.[0],
+    }));
+  const { period, anchor: periodAnchor } = periodSelection;
+  function setPeriod(next, anchor = next[0]) {
+    setPeriodSelection({ period: next, anchor });
+  }
   const [showMore, setShowMore] = useState(false),
     [openMulti, setOpenMulti] = useState(null),
     [unit, setUnit] = useState("day"),
@@ -925,7 +933,8 @@ function App() {
             .sort()
             .at(-1) || "2026-11-07";
         setFilters(M.emptyFilters());
-        setPeriod(result.demo?.period || M.periodFor(last, "month"));
+        if (result.demo) setPeriod(result.demo.period);
+        else setPeriod(M.periodFor(last, "month"), last);
       }
       setError("");
     } catch (e) {
@@ -962,10 +971,11 @@ function App() {
         JSON.stringify({
           filters,
           period,
+          periodAnchor,
           dataset: payload.demo?.version || "snapshot",
         }),
       );
-  }, [filters, period, payload?.demo?.version]);
+  }, [filters, period, periodAnchor, payload?.demo?.version]);
   function go(next) {
     if (next === page) {
       setMobile(false);
@@ -1024,7 +1034,7 @@ function App() {
     if (next[0] > next[1]) next[1 - index] = value;
     if (M.daysBetween(...next).length > 730)
       next[1 - index] = M.addDays(value, index === 0 ? 729 : -729);
-    setPeriod(next);
+    setPeriod(next, value);
   }
   async function save(body) {
     const state = await api("charter/state", {
@@ -1479,11 +1489,13 @@ function App() {
                   value={
                     ["day", "week", "month", "quarter", "year"].find(
                       (kind) =>
-                        JSON.stringify(M.periodFor(period[0], kind)) ===
+                        JSON.stringify(M.periodFor(periodAnchor, kind)) ===
                         JSON.stringify(period),
                     ) || "custom"
                   }
-                  onChange={(kind) => setPeriod(M.periodFor(period[0], kind))}
+                  onChange={(kind) =>
+                    setPeriod(M.periodFor(periodAnchor, kind), periodAnchor)
+                  }
                 />
                 <span>
                   {date(period[0])} — {date(period[1])} ·{" "}
@@ -2101,6 +2113,7 @@ function App() {
               user={session.user}
               period={period}
               disabled={!!payload.demo || !!payload.local_preview}
+              demo={!!payload.demo}
               onRefresh={refresh}
             />
           )}
@@ -3146,7 +3159,6 @@ function PlanForm({ p, row, onSaved }) {
   const today = new Date().toLocaleDateString("sv-SE");
   const [dateValue, setDateValue] = useState(row?.date || today);
   const [routeId, setRouteId] = useState(row?.route_id || "");
-  const [state, setState] = useState(row?.state || "scheduled");
   const [vehicleId, setVehicleId] = useState(row?.vehicle_id || "");
   const [driverId, setDriverId] = useState(row?.driver_id || "");
   const [quote, setQuote] = useState("");
@@ -3186,6 +3198,7 @@ function PlanForm({ p, row, onSaved }) {
         setMessage("");
         try {
           const body = Object.fromEntries(new FormData(event.currentTarget));
+          body.state = "scheduled";
           if (!editing)
             body.weekdays = [...event.currentTarget.querySelectorAll('[name="weekdays"]:checked')].map(
               (input) => Number(input.value),
@@ -3219,16 +3232,6 @@ function PlanForm({ p, row, onSaved }) {
           <input name="end_date" type="date" required defaultValue={dateValue} />
         </label>
       )}
-      <label>
-        Состояние
-        <SelectMenu name="state" ariaLabel="Состояние" value={state} onChange={(event) => setState(event.target.value)} options={[
-          { value: "scheduled", label: "Назначен" },
-          { value: "unassigned", label: "Не назначен ресурс / водитель" },
-          { value: "no_route", label: "Нет маршрута" },
-          { value: "cancelled", label: "Отменён" },
-          { value: "review", label: "Требует проверки" },
-        ]} />
-      </label>
       <label>
         Автомобиль / ресурс
         <SelectMenu name="vehicle_id" ariaLabel="Автомобиль / ресурс" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} options={[
@@ -3446,7 +3449,7 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
   );
 }
 
-function ConnectionsPage({ user, period, disabled, onRefresh }) {
+function ConnectionsPage({ user, period, disabled, demo, onRefresh }) {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -3473,17 +3476,18 @@ function ConnectionsPage({ user, period, disabled, onRefresh }) {
     <>
       {disabled && (
         <InfoNote tone="warning">
-          В демонстрационном и локальном предпросмотре синхронизация отключена.
-          Статусы показаны только для проверки интерфейса.
+          {demo
+            ? "В демонстрационном режиме подключения отключены."
+            : "Это локальная копия. Проверка сети и обновление данных доступны на рабочем сайте. Даты в карточках относятся к сохранённым данным."}
         </InfoNote>
       )}
-      <div className="connections-head">
+      {!disabled && <div className="connections-head">
         <p className="muted">
           Проверка сети не отправляет логины и пароли и не доказывает доступ к данным.
         </p>
         {user.role === "admin" && (
           <B
-            disabled={busy === "check" || disabled}
+            disabled={!!busy}
             onClick={async () => {
               setBusy("check");
               try {
@@ -3500,27 +3504,41 @@ function ConnectionsPage({ user, period, disabled, onRefresh }) {
             Проверить подключения
           </B>
         )}
-      </div>
+      </div>}
       <div className="connection-grid">
         {rows.map((row) => (
           <Card pad="large" className="connection-card" key={row.id}>
             <div className="connection-title">
               <div>
                 <h2>{row.name}</h2>
-                <small>{row.checked_at || row.authorization_checked_at || "Не проверено"}</small>
+                {!disabled && <small>{row.checked_at || row.authorization_checked_at || "Не проверено"}</small>}
               </div>
-              <Badge tone={/подключ|готов/i.test(row.status) ? "success" : "neutral"}>{row.status}</Badge>
+              <Badge tone={!disabled && /подключ|готов/i.test(row.status) ? "success" : "neutral"}>
+                {disabled
+                  ? demo
+                    ? "Демонстрация"
+                    : row.authorization_checked_at
+                      ? "Есть сохранённые сведения"
+                      : "Нет сведений о проверке"
+                  : row.status}
+              </Badge>
             </div>
-            <p>{row.detail}</p>
+            <p>{disabled
+              ? demo
+                ? "Подключение к поставщику в этом режиме отключено."
+                : row.authorization_checked_at
+                  ? `Последняя сохранённая отметка: ${row.authorization_checked_at}. Текущий доступ здесь не проверяется.`
+                  : "В локальной копии нет отметки о проверке доступа."
+              : row.detail}</p>
             <div className="connection-actions">
               {row.url && (
                 <a href={row.url} target="_blank" rel="noreferrer">
                   Документация <ExternalLink size={13} />
                 </a>
               )}
-              {user.role === "admin" && (
+              {!disabled && user.role === "admin" && (
                 <B
-                  disabled={!!busy || disabled}
+                  disabled={!!busy}
                   onClick={() => sync(row.id)}
                   icon={<RefreshCw size={14} className={busy === row.id ? "spin" : ""} />}
                 >
