@@ -27,7 +27,8 @@ RECONCILE_INTERVAL = dt.timedelta(hours=24)
 RECONCILE_RETRY = dt.timedelta(hours=1)
 MAX_ID_CHECKS = 256
 MAX_RECONCILE_SECONDS = 240
-LIMITATIONS = ('API не передаёт километраж. Время возвращается без часового пояса; '
+LIMITATIONS = ('Пробег учитывается по полю Distance в километрах. При отсутствии корректного значения пробег неизвестен. '
+              'Время возвращается без часового пояса; '
               'используются календарные даты базы ТТ без сдвига, для интерфейса принят МСК. '
               'Нет документированного счётчика, пагинации и признака удаления. '
               'Даже запрос без фильтров пропускает некоторые доступные по ID заявки. '
@@ -122,6 +123,16 @@ def amount(value):
     if not math.isfinite(n):raise ValueError('ТрансТрейд: неконечная сумма.')
     return n
 
+def distance_km(raw):
+    value = raw.get('Distance', raw.get('distance'))
+    if isinstance(value, str):
+        value = value.strip()
+    try:
+        km = amount(value)
+    except ValueError:
+        return None
+    return km if km is not None and km >= 0 else None
+
 def timestamp(value, required=False):
     if not value and not required:return ''
     try:
@@ -143,11 +154,13 @@ def normalize(raw):
     elif 'доплата' in typ.lower():category='Доплата'
     status=str(raw.get('Status') or '')
     cancelled=status.casefold().strip().startswith(('отмен','аннулиров'))
+    km=distance_km(raw)
     r=dict(id=ident,provider_id=ident,number=str(raw.get('Number') or ''),date=start[:10],start=start,end=end,
            vehicle=vehicle(raw.get('TransportNumber')),category='Отмена' if cancelled else category,revenue=amount(raw.get('ClientSum')),
-           payout=amount(raw.get('WorkerSum')),km=None,hours=duration,provider_status=status,cancelled=cancelled,
+           payout=amount(raw.get('WorkerSum')),km=km,hours=duration,provider_status=status,cancelled=cancelled,
            source='ТрансТрейд API',origin='transtrade',sources={k:'ТрансТрейд API' for k in ('revenue','payout','hours')},
            timezone='Время базы ТТ (без смещения в API)',source_id=ident,created_by=None)
+    if km is not None:r['sources']['km']=r['source']
     for key,field in dict(client='Client',driver='Driver',carrier='Worker',type='AutoType',payment='ClientPayType',
                           payout_method='WorkerPayType',load_address='Load',unload_address='Unload',logist='User',
                           firm='Firm',cargo='Cargo',notes='Notes').items():r[key]=str(raw.get(field) or '')
@@ -227,7 +240,7 @@ def apply(c, raw_rows, start, end, recovered=None, *, full=False, checked_missin
     # Completeness is evaluated against business-content fingerprints on read.
     # A no-op poll must not erase the original attestation.
     result=dict(stats,status='success',start=start,end=end,synced_at=now,limitations=LIMITATIONS,complete=False,conflict_ids=conflict_ids,
-                cancelled=sum(r['cancelled'] for r in normalized),without_km=len(normalized),
+                cancelled=sum(r['cancelled'] for r in normalized),without_km=sum(r['km'] is None for r in normalized),
                 without_revenue=sum(r['revenue'] is None for r in normalized),without_payout=sum(r['payout'] is None for r in normalized))
     if full:
         result.update(received=len(normalized),scope='history')

@@ -19,6 +19,37 @@ def test_real_fields_null_km_and_finances():
     x=raw();x['ClientSum']='';x['EndDateTime']='';r=t.normalize(x)
     assert r['revenue'] is None and r['hours'] is None
 
+@pytest.mark.parametrize(('fields','expected'),[
+    ({'Distance':' 135,5 '},135.5),
+    ({'Distance':'0'},0),
+    ({'distance':112},112),
+    ({'Distance':None},None),
+    ({'Distance':' '},None),
+    ({'Distance':'неизвестно'},None),
+    ({'Distance':'NaN'},None),
+    ({'Distance':'Infinity'},None),
+    ({'Distance':-1},None),
+    ({'Distance':True},None),
+])
+def test_distance_normalization(fields,expected):
+    trip=t.normalize(raw(**fields))
+    assert trip['km']==expected
+    assert trip['sources'].get('km')==('ТрансТрейд API' if expected is not None else None)
+
+
+def test_distance_upsert_and_reports(c):
+    orders=[raw(Distance='135.5'),raw('2',Distance='0')]
+    assert apply(c,orders)['without_km']==0
+    assert apply(c,orders)['unchanged']==2
+    d=w.dataset(c)
+    assert analytics.report(d,{})['totals']['km']==135.5
+    assert {r['id']:r['km'] for r in w.dataset(c,charter_view=True)['trips']}=={'1':135.5,'2':0}
+    d['satellite']=[dict(vehicle=d['trips'][0]['vehicle'],date='2026-08-01',km=150)]
+    assert analytics.reconcile(d,{})[0]['delta_km']==-14.5
+
+    assert apply(c,[raw(),raw('2',Distance='0')])['without_km']==1
+    assert analytics.report(w.dataset(c),{})['totals']['km'] is None
+
 @pytest.mark.parametrize('change',[{'ID':''},{'BeginDateTime':''},{'ClientSum':'NaN'},{'WorkerSum':True}])
 def test_bad_row_rejected(change):
     with pytest.raises(ValueError):t.normalize(dict(raw(),**change))
