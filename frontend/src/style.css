@@ -3040,3 +3040,18 @@ button:not(:disabled):active,
     transition-duration: 100ms;
   }
 }
+
+.status-date-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.status-date-fields label {
+  flex: 1 1 145px;
+  min-width: 0;
+}
+.status-date-fields input {
+  width: 100%;
+  min-width: 0;
+}

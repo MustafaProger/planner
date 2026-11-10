@@ -321,6 +321,14 @@ def create_manual(kind):
         created=ws.create_records(c,kind,request.get_json(),user());audit(c,'create '+kind,str(created))
     return jsonify(created=created)
 
+@app.put('/api/manual/statuses')
+@auth(['admin','logist'])
+def replace_manual_statuses():
+    with LOCK,db() as c:
+        changed=ws.replace_statuses(c,request.get_json(),user())
+        if changed:audit(c,'replace statuses',str(changed))
+    return jsonify(changed=changed)
+
 @app.delete('/api/manual/<ident>')
 @auth(['admin','logist'])
 def delete_manual(ident):

@@ -445,6 +445,37 @@ def create_records(c,kind,b,u):
         existing[key]=r;created+=1
     return created
 
+def replace_statuses(c,b,u):
+    body(b)
+    days=b.get('days')
+    if not isinstance(days,dict) or not 1<=len(days)<=367:
+        raise ValueError('Выберите от 1 до 367 дат.')
+    for day,tokens in days.items():
+        if day!=iso(day) or not isinstance(tokens,list) or any(not isinstance(token,str) for token in tokens):
+            raise ValueError('Некорректные даты или версии статусов.')
+    write_lock(c)
+    record=prepare_record(c,'statuses',dict(b,date=next(iter(days))),u)
+    existing={day:[] for day in days}
+    for row in dataset(c)['statuses']:
+        if row['kind']==record['kind'] and row.get('entity_id')==record['entity_id'] and row['date'] in days:
+            existing[row['date']].append(row)
+    for day,rows in existing.items():
+        if sorted(days[day])!=sorted(row['delete_token'] for row in rows):
+            raise ConflictError('Статусы изменились. Проверьте обновлённые данные и сохраните снова.')
+    changed=0
+    for day,rows in existing.items():
+        if len(rows)==1 and not rows[0].get('related_ids') and all(
+            rows[0].get(key,'')==record[key] for key in ('reason','note')
+        ):
+            continue
+        for row in rows:
+            for ident in [row['id'],*row.get('related_ids',[])]:
+                c.execute('update records set deleted=1,revision=revision+1 where id=?',(ident,))
+        ident='manual-statuses:'+uuid.uuid4().hex
+        c.execute('insert into records(id,kind,body) values(?,?,?)',(ident,'statuses',dump(dict(record,date=day))))
+        changed+=1
+    return changed
+
 def edit_record(c,ident,b,u,delete=False):
     body(b);write_lock(c)
     old=c.execute('select * from records where id=? and deleted=0',(ident,)).fetchone()

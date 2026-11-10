@@ -1050,26 +1050,28 @@ function App() {
   function daysDetails(title, days) {
     setDrawer({ type: "days", title, days });
   }
-  async function saveStatus(day, reason, note) {
-    const cat = (
-      payload.data.directories?.[
-        calMode === "driver" ? "drivers" : "vehicles"
-      ] || []
-    ).find((r) => r.name === day.name);
-    if (!cat) throw Error("Сначала добавьте запись в справочник.");
-    await api("manual/statuses", {
-      method: "POST",
-      body: JSON.stringify({
-        date: day.date,
-        end_date: day.date,
-        kind: calMode,
-        entity_id: cat.id,
-        reason,
-        note,
-      }),
-    });
+  async function changeStatus(path, method, body) {
+    try {
+      await api(path, { method, body: JSON.stringify(body) });
+    } catch (error) {
+      if (error.status === 409) await refresh();
+      throw error;
+    }
     await refresh();
-    setDrawer(null);
+  }
+  async function saveStatus(day, dates, reason, note) {
+    const cat = workspace.directories[calMode === "driver" ? "drivers" : "vehicles"]
+      .find((r) => r.name === day.name && !r.archived && !r.merged_into);
+    if (!cat) throw Error("Для сохранения нужна активная запись в справочнике.");
+    const days = Object.fromEntries(dates.map((date) => [date, []]));
+    for (const row of workspace.statuses) {
+      if (row.kind === calMode && row.entity_id === cat.id && Object.hasOwn(days, row.date)) {
+        days[row.date].push(row.delete_token);
+      }
+    }
+    await changeStatus("manual/statuses", "PUT", {
+      days, kind: calMode, entity_id: cat.id, reason, note,
+    });
   }
   useLayoutEffect(() => {
     const update = () => {
@@ -2132,8 +2134,14 @@ function App() {
           {drawer.type === "day" && (
             <DayDetail
               day={drawer.day}
+              events={workspace.statuses.filter((row) =>
+                row.kind === calMode && row.entity === drawer.day.name && row.date === drawer.day.date
+              )}
+              onDelete={({ id, revision, delete_token }) =>
+                changeStatus(`manual/${encodeURIComponent(id)}`, "DELETE", { revision, delete_token })
+              }
               user={user}
-              reasons={p.directories.reasons}
+              reasons={workspace.directories.reasons}
               onSave={saveStatus}
             />
           )}
@@ -2249,11 +2257,10 @@ function Calendar({ p, filters, period, mode, onDay }) {
     >
       <div className="calendar-legend">
         {Object.entries(M.STATUS_COLORS)
-          .slice(0, 7)
           .map(([s, c]) => (
             <span key={s}>
               <i style={{ background: c }} />
-              {s}
+              {s === "Работа" ? s : `${M.calendarMark(s)} · ${s}`}
             </span>
           ))}
       </div>
@@ -2310,20 +2317,12 @@ function Calendar({ p, filters, period, mode, onDay }) {
                           style={{
                             "--status": M.STATUS_COLORS[d.status] || "#82939d",
                           }}
-                          title={`${date} · ${d.status}${d.events.length ? " · " + d.events.map((s) => s.reason).join(", ") : ""}`}
+                          title={`${date} · ${d.status}${d.events.length ? " · " + d.events.map((s) => M.statusName(s.reason)).join(", ") : ""}`}
                           aria-label={`${name} ${date} ${d.status}`}
                           onClick={() => onDay(d)}
                         >
-                          {d.status === "Работа"
-                            ? d.trips.length
-                            : d.status === "Не заполнено"
-                              ? "!"
-                              : d.status === "Ремонт / сервис"
-                                ? "Р"
-                                : d.status === "Выходной"
-                                  ? "В"
-                                  : "•"}
-                          {d.events.length > 0 && d.trips.length > 0 && (
+                          {d.status === "Работа" ? d.trips.length : M.calendarMark(d.status)}
+                          {d.events.length > 0 && d.other.length > 0 && (
                             <small>+</small>
                           )}
                         </button>
@@ -2356,20 +2355,44 @@ function Calendar({ p, filters, period, mode, onDay }) {
     </Section>
   );
 }
-function DayDetail({ day, user, reasons, onSave }) {
-  const [reason, setReason] = useState(""),
-    [note, setNote] = useState(""),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+function DayDetail({ day, events, user, reasons, onSave, onDelete }) {
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [mode, setMode] = useState("day");
+  const [from, setFrom] = useState(day.date);
+  const [to, setTo] = useState(day.date);
+  const [dates, setDates] = useState([day.date]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const selectedDates = mode === "range" ? M.daysBetween(from, to)
+    : mode === "dates" ? [...new Set(dates)] : [day.date];
+  const validDates = selectedDates.length > 0 && selectedDates.length <= 367
+    && selectedDates.every(M.validDay);
+  const status = M.calendarStatus(day.trips.length, { ...day, events });
+  const editable = user.role !== "viewer";
+  async function apply(action, success) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await action();
+      setMessage(success);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <div className="day-summary">
-        <Badge tone={day.status === "Не заполнено" ? "warning" : "success"}>
-          {day.status}
+        <Badge tone={status === "Не заполнено" ? "warning" : "success"}>
+          {status}
         </Badge>
         <span>
           <AnimatedMetric value={day.trips.length} format={fmt} integer /> заявок ·{" "}
-          <AnimatedMetric value={M.extraEventCount(day)} format={fmt} integer /> дополнительных записей
+          <AnimatedMetric value={M.extraEventCount({ ...day, events })} format={fmt} integer /> дополнительных записей
         </span>
       </div>
       {day.trips.length > 0 && (
@@ -2381,38 +2404,68 @@ function DayDetail({ day, user, reasons, onSave }) {
         </InfoNote>
       )}
       <h3>Установленные статусы</h3>
-      {day.events.length ? (
-        day.events.map((e) => (
+      {events.length ? (
+        events.map((e) => (
           <div className="event" key={e.id || e.reason}>
-            <b>{e.reason}</b>
+            <b>{M.statusName(e.reason)}</b>
             <p>{e.note || "Без комментария"}</p>
-            <a href="/planning/calendar">
-              Редактировать в журнале статусов <ExternalLink size={12} />
-            </a>
+            {editable && e.delete_token && (
+              <B size="small" disabled={busy} aria-label={`Удалить статус «${M.statusName(e.reason)}»`}
+                onClick={() => apply(() => onDelete(e), "Статус удалён.")}>
+                <span>Удалить</span>
+              </B>
+            )}
           </div>
         ))
       ) : (
         <p className="muted">Ручных статусов пока нет.</p>
       )}
-      {user.role !== "viewer" && (
+      {editable && (
         <form
-          className="form"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            try {
-              await onSave(day, reason, note);
-            } catch (e) {
-              setError(e.message);
-            } finally {
-              setBusy(false);
-            }
+          className="form calendar-status-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (busy || !reason || !validDates) return;
+            void apply(
+              () => onSave(day, selectedDates, reason, note),
+              `Статус сохранён. Дат: ${selectedDates.length}.`,
+            );
           }}
         >
-          <h3>Добавить статус</h3>
+          <h3>{events.length ? "Изменить статус" : "Установить статус"}</h3>
+          <label>
+            Даты
+            <select aria-label="Даты" value={mode} onChange={(event) => setMode(event.target.value)} disabled={busy}>
+              <option value="day">Выбранный день</option>
+              <option value="range">Период</option>
+              <option value="dates">Отдельные даты</option>
+            </select>
+          </label>
+          {mode === "range" && (
+            <div className="status-date-fields">
+              <label>Дата с<input type="date" required value={from} onChange={(event) => setFrom(event.target.value)} disabled={busy} /></label>
+              <label>Дата по<input type="date" required min={from} value={to} onChange={(event) => setTo(event.target.value)} disabled={busy} /></label>
+            </div>
+          )}
+          {mode === "dates" && (
+            <>
+              {dates.map((value, index) => (
+                <div className="status-date-fields" key={index}>
+                  <label>Дата {index + 1}<input type="date" required value={value} disabled={busy}
+                    onChange={(event) => setDates(dates.map((date, i) => i === index ? event.target.value : date))} /></label>
+                  <B size="small" disabled={busy || dates.length === 1} aria-label={`Убрать дату ${index + 1}`}
+                    onClick={() => setDates(dates.filter((_, i) => i !== index))}><span>Убрать</span></B>
+                </div>
+              ))}
+              <B disabled={busy || dates.length >= 367} onClick={() => setDates([...dates, ""])}>
+                <span>Добавить дату</span>
+              </B>
+            </>
+          )}
+          {!validDates && <p className="muted">Укажите от 1 до 367 дат в правильном порядке для периода.</p>}
           <label>
             Причина
-            <SelectMenu required ariaLabel="Причина" value={reason} onChange={(e) => setReason(e.target.value)} options={[
+            <SelectMenu required disabled={busy} ariaLabel="Причина" value={reason} onChange={(e) => setReason(e.target.value)} options={[
               { value: "", label: "Выберите причину" },
               ...reasons
                 .filter(
@@ -2434,18 +2487,17 @@ function DayDetail({ day, user, reasons, onSave }) {
               onChange={(e) => setNote(e.target.value)}
               maxLength={1000}
               rows={3}
+              disabled={busy}
             />
           </label>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <B variant="primary" type="submit" disabled={busy || !reason}>
-            Сохранить статус
+          <p className="muted">Сохранение заменит ручные статусы на выбранных датах. Заявки сохранятся.</p>
+          <B variant="primary" type="submit" disabled={busy || !reason || !validDates}>
+            <span>{busy ? "Сохранение…" : "Сохранить статус"}</span>
           </B>
         </form>
       )}
+      {message && <p role="status">{message}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
     </>
   );
 }

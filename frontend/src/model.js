@@ -4,6 +4,7 @@ export const STATUS_COLORS = {
   Работа: "#31856c",
   Выходной: "#689ac8",
   Больничный: "#b99350",
+  Отпуск: "#7865a1",
   "Ремонт / сервис": "#d58a58",
   "Без заявки": "#b2a47b",
   "Без водителя": "#a28eac",
@@ -274,7 +275,20 @@ function calendarIndex(p, f, from, to, mode) {
   return { dates, index };
 }
 
-function calendarStatus(working, { other, events }) {
+const CALENDAR_MARKS = {
+  Выходной: "В",
+  Больничный: "Б",
+  Отпуск: "О",
+  "Ремонт / сервис": "Р",
+  "Без заявки": "БЗ",
+  "Без водителя": "БВ",
+  "Другая работа": "ДР",
+  "Несколько статусов": "≡",
+  "Не заполнено": "!",
+};
+export const calendarMark = (status) => CALENDAR_MARKS[status] || status.slice(0, 2).toUpperCase();
+
+export function calendarStatus(working, { other, events }) {
   if (working) return "Работа";
   if (other.length) return "Другая работа";
   if (!events.length) return "Не заполнено";

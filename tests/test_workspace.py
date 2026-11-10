@@ -136,3 +136,35 @@ def test_http_workspace_auth_validation_revision_and_backup(tmp_path,monkeypatch
     assert client.post('/api/catalog/clients',json={'name':'Denied'},headers=h).status_code==403
     assert client.post('/api/manual/plans',json={'date':'2026-09-01','route':'R1','vehicle':'А123АА777','driver':'Иванов'},headers=h).status_code==403
     assert 'operations' not in client.get('/api/workspace/report?mode=economics').json
+
+
+def test_replace_calendar_statuses_checks_whole_batch_and_preserves_other_days(c,source):
+    car=w.dataset(c)['directories']['vehicles'][0]
+    first, gap, last='2026-08-01','2026-08-02','2026-08-04'
+    status=dict(kind='vehicle',entity_id=car['id'])
+    assert w.create_records(c,'trips',source['trips'][0],ADMIN)==1
+    original_trips=w.dataset(c)['trips']
+    for day,why in ((first,'Сервис'),(first,'Больничный'),(gap,'Выходной')):
+        w.create_records(c,'statuses',dict(status,date=day,reason=why),ADMIN)
+
+    def snapshot():
+        return w.dataset(c)['statuses']
+
+    before=snapshot()
+    tokens=[row['delete_token'] for row in before if row['date']==first]
+    change=dict(status,reason='Ремонт',note='ТО',days={last:[],first:tokens})
+    with pytest.raises(w.ConflictError):
+        w.replace_statuses(c,dict(change,days={last:[],first:tokens[:1]}),ADMIN)
+    with pytest.raises(PermissionError):
+        w.replace_statuses(c,change,dict(ADMIN,role='logist'))
+    assert snapshot()==before
+    assert w.replace_statuses(c,change,ADMIN)==2
+    after={row['date']:row for row in snapshot()}
+    assert len(snapshot())==3
+    assert after[gap]==next(row for row in before if row['date']==gap)
+    assert [(after[day]['reason'],after[day]['note']) for day in (first,last)]==[('Ремонт','ТО')]*2
+    assert w.dataset(c)['trips']==original_trips
+    retry=dict(change,days={day:[after[day]['delete_token']] for day in (first,last)})
+    assert w.replace_statuses(c,retry,ADMIN)==0
+    w.edit_record(c,after[last]['id'],after[last],ADMIN,delete=True)
+    assert {row['date'] for row in snapshot()}=={first,gap}
