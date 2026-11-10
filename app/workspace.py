@@ -56,6 +56,9 @@ def numeric(value, nullable=False):
     if not math.isfinite(result) or result<0:raise ValueError('Число должно быть конечным и неотрицательным.')
     return result
 def schema(c):
+    from app.rosneft_drivers import schema as driver_assignment_schema
+
+    driver_assignment_schema(c)
     c.executescript('''
       CREATE TABLE IF NOT EXISTS workspace_meta(key TEXT PRIMARY KEY,body TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS catalog(id TEXT PRIMARY KEY,kind TEXT NOT NULL,body TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1);

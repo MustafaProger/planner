@@ -32,6 +32,10 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
         # Match the existing role boundary for raw fuel operations and card data.
         if account['role'] == 'admin':
             result['fuel'] = demo['fuel'] if demo else fuel_operations(d, {}, data_dir)[0]
+            if not demo:
+                from app.rosneft_drivers import label_operations
+                with db() as c:
+                    label_operations(c, result['fuel'])
         else:
             result['fuel'] = []
             d['card_bindings'] = []

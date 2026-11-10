@@ -418,6 +418,37 @@ def rosneft_snapshot():
     from app.rosneft import snapshot, configured
     return jsonify(configured=configured(DATA), snapshot=snapshot(DATA))
 
+@app.route('/api/rosneft/driver-assignments', methods=['GET', 'PUT'])
+@auth(['admin'])
+def rosneft_driver_assignments():
+    from app.demo_data import enabled
+    from app.fuel_history import read
+    from app import rosneft_drivers
+
+    if enabled():
+        abort(404)
+    with db() as c:
+        c.execute('BEGIN IMMEDIATE' if request.method == 'PUT' else 'BEGIN')
+        cards = read(DATA, 'rosneft').get('cards', [])
+        if request.method == 'PUT':
+            body = request.get_json()
+            rosneft_drivers.assign(c, body, cards)
+            audit(c, 'assign rosneft driver', f"{body['card'][-4:]}: {body['driver_id']} {body['start']}")
+        history = rosneft_drivers.timeline(c)
+        drivers = rosneft_drivers.drivers(c)
+        return jsonify(
+            today=ws.today(),
+            cards=[dict(card=row['Num'], note=row['Rem'], history=[
+                dict(event, driver=drivers.get(event['driver_id'], {}).get('name', ''))
+                for event in history[row['Num']]
+            ]) for row in cards],
+            drivers=sorted(
+                [dict(id=ident, name=row['name']) for ident, row in drivers.items()
+                 if rosneft_drivers.selectable(row)], key=lambda row: row['name']
+            ),
+        )
+
+
 @app.post('/api/rosneft/sync')
 @auth(['admin'])
 def rosneft_sync():
@@ -425,7 +456,7 @@ def rosneft_sync():
     body = request.get_json()
     if not isinstance(body, dict):
         raise ValueError('Укажите период загрузки.')
-    result = sync(DATA, body.get('from'), body.get('to'))
+    result = sync(DATA, body.get('from'), body.get('to'), db_path=DB)
     with db() as c:
         audit(c, 'sync rosneft', f"{result['from']} — {result['to']}: {len(result['rows'])} операций")
     return jsonify(result)

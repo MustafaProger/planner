@@ -201,7 +201,8 @@ class RefreshService:
                         continue
                     elif key in ('neftm', 'rosneft'):
                         provider = neftm if key == 'neftm' else rosneft
-                        result = provider.sync(self.data_dir, state['from'], state['to'])
+                        options = {'db_path': self.db_path} if key == 'rosneft' else {}
+                        result = provider.sync(self.data_dir, state['from'], state['to'], **options)
                         message = f"Получено {len(result['rows'])} операций."
                     else:
                         current = monitoring_history.job_status(self.data_dir)

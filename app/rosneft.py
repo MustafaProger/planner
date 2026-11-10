@@ -117,7 +117,7 @@ def normalize(cards, operations, contract, start, end):
 
 
 @provider_lock('rosneft-sync')
-def sync(data_dir, start, end):
+def sync(data_dir, start, end, *, db_path=None):
     start, end = period(start, end)
     if not LOCK.acquire(blocking=False):
         raise ValueError('Обновление Роснефти уже выполняется.')
@@ -140,6 +140,9 @@ def sync(data_dir, start, end):
         from app.fuel_history import persist
         persist(data_dir,result)
         write_json(data_dir / 'rosneft-transactions.json', result)
+        if db_path is not None:
+            from app.rosneft_drivers import reconcile
+            reconcile(db_path, result)
         return result
     finally:
         LOCK.release()

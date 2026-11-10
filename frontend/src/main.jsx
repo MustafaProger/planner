@@ -2012,6 +2012,8 @@ function App() {
               user={user}
               save={save}
               details={setDrawer}
+              demo={payload.demo}
+              onRefresh={refresh}
             />
           )}
           {page === "routes" && <RoutesPage p={p} />}
@@ -2581,9 +2583,118 @@ const fuelCols = [
   { key: "product", label: "Топливо" },
   col("liters", "Объём, л"),
   col("amount", "Сумма", money),
-  { key: "allocation", label: "Привязка" },
+  { key: "driver", label: "Водитель" },
+  { key: "allocation", label: "Привязка к машине" },
 ];
-function FuelPage({ a, p, filters, settings, user, save, details }) {
+function RosneftDriverCards({ onRefresh }) {
+  const [data, setData] = useState(null);
+  const [number, setNumber] = useState("");
+  const [driver, setDriver] = useState("");
+  const [date, setDate] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    api("rosneft/driver-assignments", { signal: controller.signal })
+      .then(setData)
+      .catch((error) => {
+        if (!controller.signal.aborted) setMessage(error.message);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const selected = data?.cards.find((row) => row.card === number);
+  const last = selected?.history.at(-1);
+  const start = date || (last?.start > data?.today ? last.start : data?.today) || "";
+  async function assign(event) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      const updated = await api("rosneft/driver-assignments", {
+        method: "PUT",
+        body: JSON.stringify({ card: number, driver_id: driver, start, revision: last?.id ?? null }),
+      });
+      setData(updated);
+      setMessage("Водитель привязан к карте.");
+      await onRefresh();
+    } catch (error) {
+      setMessage(error.message);
+      if (error.status === 409) {
+        await api("rosneft/driver-assignments").then(setData).catch(() => {});
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+  const cards = (data?.cards || []).map(({ card, note, history }) => {
+    const latest = history.at(-1);
+    return {
+      card, note,
+      driver: latest?.driver || "",
+      start: latest?.start,
+      status: !latest?.driver ? "Требует выбора" :
+        latest.source === "auto" ? "По ФИО" : "Вручную",
+    };
+  });
+  return (
+    <Section title="Карты Роснефти и водители"
+      subtitle="После обновления Роснефти однозначное совпадение по ФИО действует со следующего дня. Ручной выбор имеет приоритет.">
+      {data && cards.length > 0 && (
+        <form className="inline-form" onSubmit={assign}>
+          <label>Карта
+            <select aria-label="Карта" className="rosneft-assignment-select" required value={number} disabled={busy} onChange={(e) => {
+              setNumber(e.target.value);
+              setDriver("");
+              setDate("");
+              setMessage("");
+            }}>
+              <option value="">Выберите карту</option>
+              {cards.map((row) => <option key={row.card} value={row.card}>{row.card}</option>)}
+            </select>
+          </label>
+          <label>Водитель
+            <select aria-label="Водитель" className="rosneft-assignment-select" required value={driver} disabled={busy} onChange={(e) => setDriver(e.target.value)}>
+              <option value="">Выберите водителя</option>
+              {data.drivers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
+            </select>
+          </label>
+          <label>Действует с
+            <input required type="date" value={start} min={last?.start} disabled={busy}
+              onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <B variant="primary" type="submit" disabled={busy || !selected || !driver}>Привязать</B>
+        </form>
+      )}
+      <div role="status">{message || (!data ? "Загрузка карт…" : "")}</div>
+      {data && (cards.length ? <DataTable title="Карты Роснефти" rows={cards} columns={[
+        { key: "card", label: "Карта" },
+        { key: "note", label: "Примечание Роснефти" },
+        { key: "driver", label: "Водитель" },
+        { key: "start", label: "Действует с" },
+        { key: "status", label: "Назначение" },
+      ]} /> : <InfoNote>Список карт появится после обновления Роснефти.</InfoNote>)}
+      {selected?.history.length > 0 && (
+        <DataTable title="История выбранной карты" rows={selected.history.map((row) => ({ ...row, status: row.source === "manual" ? "Вручную" : row.driver ? "По ФИО" : "Автопривязка снята" }))} columns={[
+          { key: "start", label: "Действует с" },
+          { key: "driver", label: "Водитель" },
+          { key: "status", label: "Назначение" },
+        ]} />
+      )}
+    </Section>
+  );
+}
+
+function FuelPage({ demo, onRefresh, ...props }) {
+  return (
+    <>
+      {props.user.role === "admin" && !demo && <RosneftDriverCards onRefresh={onRefresh} />}
+      <FuelReport {...props} />
+    </>
+  );
+}
+
+function FuelReport({ a, p, filters, settings, user, save, details }) {
   const [car, setCar] = useState(""),
     [norm, setNorm] = useState(""),
     [message, setMessage] = useState(""),
@@ -2596,14 +2707,20 @@ function FuelPage({ a, p, filters, settings, user, save, details }) {
       </InfoNote>
     );
   const scoped =
-    filters.drivers.length || filters.clients.length || filters.statuses.length;
+    filters.clients.length || filters.statuses.length;
   if (scoped)
     return (
       <InfoNote>
-        Заправки не связаны однозначно с выбранными водителями, клиентами или
-        статусами. Очистите эти фильтры, чтобы увидеть статистику по
+        Заправки не связаны однозначно с выбранными клиентами или статусами. Очистите эти фильтры, чтобы увидеть статистику по
         автомобилям.
       </InfoNote>
+    );
+  if (filters.drivers.length)
+    return (
+      <Section title="Операции по выбранным водителям">
+        <DataTable title="Заправки" columns={fuelCols}
+          rows={a.fuel.filter((row) => filters.drivers.includes(row.driver))} />
+      </Section>
     );
   const purchases = a.fuel.filter((r) => r.liters !== null),
     liters = M.sum(purchases, "liters"),

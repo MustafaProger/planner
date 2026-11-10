@@ -1379,6 +1379,9 @@ details summary::-webkit-details-marker {
   font-size: 11px;
   color: #8a97a6;
 }
+.rosneft-assignment-select {
+  max-width: min(18rem, 100%);
+}
 .inline-form [role="status"] {
   width: 100%;
   font-size: 12px;

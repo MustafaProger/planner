@@ -59,7 +59,7 @@ def test_failure_isolated_and_previous_success_retained(service, monkeypatch):
     monkeypatch.setattr(rosneft, 'configured', lambda _: True)
     calls = []
     monkeypatch.setattr(transtrade, 'sync', lambda *args: calls.append(('tt', args[2:])) or {'received': 5})
-    monkeypatch.setattr(rosneft, 'sync', lambda *args: calls.append(('rn', args[1:])) or {'rows': [1]})
+    monkeypatch.setattr(rosneft, 'sync', lambda *args, **kwargs: calls.append(('rn', args[1:])) or {'rows': [1]})
     service.start('2026-08-01', '2026-08-31')
     first = wait(service)
     assert first['status'] == 'success'
@@ -220,7 +220,7 @@ def test_history_failure_keeps_period_success_and_other_sources_run(service, mon
     monkeypatch.setattr(transtrade, 'configured', lambda _: True)
     monkeypatch.setattr(rosneft, 'configured', lambda _: True)
     monkeypatch.setattr(transtrade, 'sync', lambda *args: {'received': 7})
-    monkeypatch.setattr(rosneft, 'sync', lambda *args: {'rows': [1]})
+    monkeypatch.setattr(rosneft, 'sync', lambda *args, **kwargs: {'rows': [1]})
     service.start('2026-08-01', '2026-08-31')
     first = wait(service)
     def history(*args, **kwargs):

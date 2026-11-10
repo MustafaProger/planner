@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import pytest
 from flask import Flask, request, jsonify
 from app.charter import register
+from app.workspace import schema
 
 @pytest.fixture
 def client(tmp_path):
@@ -30,6 +31,8 @@ def client(tmp_path):
     def invalid(e):return jsonify(error=str(e)),400
     @app.errorhandler(PermissionError)
     def forbidden(e):return jsonify(error='forbidden'),403
+    with db() as c:
+        schema(c)
     d=dict(directories={'vehicles':[]},trips=[],plans=[],satellite=[],statuses=[],card_bindings=[],expenses=[])
     register(app,db,lambda:d,auth,lambda:role,lambda *a:None,threading.Lock(),tmp_path)
     return app.test_client(),role,db
