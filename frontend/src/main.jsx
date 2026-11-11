@@ -198,7 +198,7 @@ function VehicleCell({ name }) {
   );
 }
 
-async function api(path, opt = {}) {
+async function api(path, { asBlob = false, ...opt } = {}) {
   const signal = path === "logout"
     ? opt.signal
     : opt.signal
@@ -221,7 +221,7 @@ async function api(path, opt = {}) {
   }
   const token = r.headers.get("X-CSRF-Token");
   if (token) csrf = token;
-  return r.json();
+  return asBlob ? r.blob() : r.json();
 }
 const B = ({ children, ...props }) => (
   <Button size="large" {...props}>
@@ -430,10 +430,12 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
     </div>
   );
 }
-function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15 }) {
+function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15, downloadRows }) {
   const [search, setSearch] = useState(""),
     [sort, setSort] = useState(null),
     [page, setPage] = useState(0),
+    [downloading, setDownloading] = useState(false),
+    [downloadError, setDownloadError] = useState(""),
     vehicles = useContext(VehicleMapContext);
   useEffect(() => setPage(0), [rows, search]);
   const filtered = useMemo(() => {
@@ -463,6 +465,18 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
     safePage = Math.min(page, pages - 1);
   const pageRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const rowKeyCounts = new Map();
+  async function download() {
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await downloadRows(filtered, vehicles);
+    } catch (error) {
+      if (error.name !== "AbortError")
+        setDownloadError(error.status ? error.message : "Не удалось скачать Excel. Попробуйте ещё раз.");
+    } finally {
+      setDownloading(false);
+    }
+  }
   return (
     <div className="data-table">
       <div className="table-tools">
@@ -476,7 +490,14 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
           />
         </div>
         <span className="muted"><AnimatedMetric value={filtered.length} format={fmt} integer /> записей</span>
+        {downloadRows && (
+          <B size="medium" type="button" icon={<Download size={16} />}
+             onClick={download} disabled={!filtered.length || downloading}>
+            <span>{downloading ? "Готовим Excel…" : "Скачать Excel"}</span>
+          </B>
+        )}
       </div>
+      {downloadError && <p className="error" role="alert">{downloadError}</p>}
       <div className="table-scroll">
         <table>
           <thead>
@@ -2501,14 +2522,36 @@ function DayDetail({ day, events, user, reasons, onSave, onDelete }) {
     </>
   );
 }
+async function downloadIssues(rows, vehicles) {
+  const values = rows.map((row) => [
+    row.date, row.vehicle, vehicles.get(row.vehicle)?.carrier ?? row.carrier ?? "",
+    row.driver ?? "", row.kind, row.detail, row.status, row.comment,
+  ]);
+  const blob = await api("charter/deviations/export", {
+    method: "POST",
+    body: JSON.stringify(values),
+    asBlob: true,
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "Отклонения.xlsx";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
 function IssueTable({ issues, reviews, onRow }) {
   return (
     <DataTable
       rows={issues.map((r) => ({
         ...r,
         status: reviews[r.id]?.status || "Не проверено",
+        comment: reviews[r.id]?.comment ?? "",
       }))}
       title="Отклонения"
+      downloadRows={downloadIssues}
       columns={[
         { key: "date", label: "Дата" },
         { key: "vehicle", label: "Автомобиль", vehicle: true },

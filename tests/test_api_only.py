@@ -97,3 +97,25 @@ def test_charter_projection_preserves_catalog_merges_and_coverage(api_only):
         assert compact['trips'][0]['vehicle']=='А002АА77'
         assert compact['trips'][0]['revenue']==100 and compact['trips'][0]['km'] is None
         assert 'load_address' in full['trips'][0] and 'load_address' not in compact['trips'][0]
+
+
+def test_deviation_export_formats_only_submitted_rows(api_only):
+    import datetime as dt
+    import io
+    from openpyxl import load_workbook
+
+    path='/api/charter/deviations/export'
+    headers={'X-CSRF-Token':'test'}
+    row=['2026-11-05','Е825ОС95','ЧАРТЕР','Водитель','Сигнал','Основание','В работе','=1+1']
+    assert server.app.test_client().post(path,json=[row],headers=headers).status_code==401
+    assert api_only.post(path,json=[row]).status_code==403
+    assert api_only.post(path,json=[row[:-1]],headers=headers).status_code==400
+    response=api_only.post(path,json=[row],headers=headers)
+    assert response.status_code==200 and response.headers['Cache-Control']=='no-store'
+    assert response.mimetype.endswith('spreadsheetml.sheet')
+    book=load_workbook(io.BytesIO(response.data))
+    sheet=book['Отклонения']
+    assert sheet.freeze_panes=='A2' and sheet.auto_filter.ref=='A1:H2'
+    assert list(sheet.values)[1]==(dt.datetime(2026,11,5),*row[1:])
+    assert sheet['H2'].data_type=='s'
+    book.close()

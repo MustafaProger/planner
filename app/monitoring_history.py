@@ -217,6 +217,7 @@ def run(data_dir, matched, days, job, lock=None):
             job['status'] = 'partial' if job['failed'] else 'complete'
             job['message'] = 'Часть запросов не завершена. Нажмите «Продолжить загрузку».' if job['failed'] else 'Все порции получены. Отсутствующие показания отмечены отдельно.'
     except (AuthenticationError, RateLimitError) as error:
+        job['failure'] = 'provider_access'
         job['status'] = 'partial'
         job['message'] = str(error) + ' Полученные порции сохранены.'
     except Exception:

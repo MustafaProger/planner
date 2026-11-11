@@ -135,10 +135,38 @@ def test_partial_monitoring_resumes_missing_day_with_saved_cells(engine,monkeypa
     before=json.loads(path.read_text())['cells']['1:2026-08-31']
     restarted=autosync.Scheduler(engine.service,300)
     restarted._load()
+    waiting=restarted._history('monitoring')
+    assert waiting['pending_days']==1 and waiting['from'] is None
+    assert len(calls)==1
+    fixed=autosync.now()
+    monkeypatch.setattr(autosync,'now',lambda:fixed+dt.timedelta(hours=1))
     result=restarted._history('monitoring')
     assert result['pending_days']==0
     assert calls==[('2026-08-31','2026-08-31',False),('2026-08-31','2026-08-31',False)]
     assert json.loads(path.read_text())['cells']['1:2026-08-31']==before
+
+
+def test_monitoring_recent_gaps_take_priority_and_archive_errors_rotate(engine,monkeypatch):
+    monkeypatch.setenv('FLEET_SYNC_FROM','2025-01-01')
+    monkeypatch.setattr(monitoring_history,'mappings',lambda *_:[{'vehicleId':1,'vehicle':'CAR1'}])
+    recent_start='2026-08-02'
+    catchup.plan(engine.folder,engine.service.db_path,'monitoring',today=autosync.now().date(),names=['CAR1'])
+    catchup.mark_success(engine.folder,'monitoring','2026-08-03','2026-08-31',at=autosync.now())
+    attempts=[]
+    def pull(names,first,last,*,refresh):
+        assert first==last and not refresh
+        attempts.append(first)
+        if first=='2025-01-01':
+            raise autosync.IncompleteMonitoringDay('Часть истории')
+    monkeypatch.setattr(engine,'_monitoring_day',pull)
+    assert engine._history('monitoring')['from']=='2025-01-01'
+    with pytest.raises(autosync.IncompleteMonitoringDay):
+        engine._history('monitoring')
+    assert engine._history('monitoring')['from']=='2025-01-03'
+    assert attempts==[recent_start,'2025-01-01','2025-01-02']
+    ledger=json.loads((engine.folder/catchup.STATE_FILE).read_text())
+    assert '2025-01-01' not in ledger['sources']['monitoring']['days']
+    assert '2025-01-02' in ledger['sources']['monitoring']['days']
 
 
 def test_slow_source_history_does_not_block_another_sources_current_refresh(engine,monkeypatch):

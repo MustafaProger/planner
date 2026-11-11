@@ -85,6 +85,10 @@ def public_status(folder, expected=True):
         message=state.get('message',''), **{'from':now().date().replace(day=1).isoformat(),'to':now().date().isoformat()})
 
 
+class IncompleteMonitoringDay(ValueError):
+    pass
+
+
 class Scheduler:
     def __init__(self, service, interval):
         self.service, self.interval = service, interval
@@ -230,10 +234,10 @@ class Scheduler:
         return dict(message=f'Получено {count} записей за {start} — {end}.',received=count)
 
     def _history(self, source):
-        from app import transtrade, neftm, rosneft, monitoring_history, catchup
-        names = self.service.get_dataset()['vehicles'] if source=='monitoring' else ()
-        job = catchup.plan(self.folder,self.service.db_path,source,today=now().date(),names=names,
-                           limit_days=1 if source=='monitoring' else 7)
+        from app import transtrade, neftm, rosneft, catchup
+        if source == 'monitoring':
+            return self._monitoring_history()
+        job = catchup.plan(self.folder,self.service.db_path,source,today=now().date())
         with self.guard:
             previous=(self.state or {}).get('tasks',{}).get(source+':history',{})
             recent=stamp(previous.get('recent_checked_at'))
@@ -241,34 +245,25 @@ class Scheduler:
                 previous.update(pending_days=job['pending_days'],**{'from':job['from'],'to':job['to']})
                 self._save()
         recent_values={}
-        if source!='transtrade' and (recent is None or now()-recent>=dt.timedelta(hours=6 if source=='monitoring' else 24)
+        if source!='transtrade' and (recent is None or now()-recent>=dt.timedelta(hours=24)
                                     or previous.get('recent_day')!=(now().date()-dt.timedelta(days=1)).isoformat()):
-            # Providers can publish completed-day readings late. Re-read the
-            # recent window separately, so an old backlog cannot delay yesterday.
+            # Fuel providers can publish completed-day readings late.
             end=now().date()-dt.timedelta(days=1)
-            start=end if source=='monitoring' else end-dt.timedelta(days=6)
-            start=max(start,dt.date.fromisoformat(job['scope_start']))
+            start=max(end-dt.timedelta(days=6),dt.date.fromisoformat(job['scope_start']))
             if start>end:
                 return dict(message='Завершённых дней в выбранном охвате пока нет.',pending_days=0)
-            if source=='monitoring':
-                self._monitoring_day(names,start.isoformat(),end.isoformat(),refresh=True)
-            else:
-                {'neftm':neftm,'rosneft':rosneft}[source].sync(self.folder,start.isoformat(),end.isoformat())
+            {'neftm':neftm,'rosneft':rosneft}[source].sync(self.folder,start.isoformat(),end.isoformat())
             catchup.mark_success(self.folder,source,start.isoformat(),end.isoformat(),at=now())
             recent_values=dict(recent_checked_at=now().isoformat(),recent_day=end.isoformat())
-            job = catchup.plan(self.folder,self.service.db_path,source,today=now().date(),names=names,
-                               limit_days=1 if source=='monitoring' else 7)
+            job = catchup.plan(self.folder,self.service.db_path,source,today=now().date())
         first,last = job['from'],job['to']
         if first:
             if source=='transtrade':
                 transtrade.sync(self.folder,self.service.db_path,first,last,verify_days=False)
-            elif source in ('neftm','rosneft'):
-                {'neftm':neftm,'rosneft':rosneft}[source].sync(self.folder,first,last)
             else:
-                self._monitoring_day(names,first,last,refresh=False)
+                {'neftm':neftm,'rosneft':rosneft}[source].sync(self.folder,first,last)
             catchup.mark_success(self.folder,source,first,last,at=now())
-        after = catchup.plan(self.folder,self.service.db_path,source,today=now().date(),names=names,
-                             limit_days=1 if source=='monitoring' else 7)
+        after = catchup.plan(self.folder,self.service.db_path,source,today=now().date())
         message = f'Догружен период {first} — {last}.' if first else 'Пропущенных завершённых дней нет.'
         if source=='transtrade':
             result = transtrade.reconcile(self.folder,self.service.db_path)
@@ -277,6 +272,52 @@ class Scheduler:
             if result.get('status')=='success':
                 message += f" История ТТ: {result['processed']} заявок."
         return dict(message=message,pending_days=after['pending_days'],**recent_values,**{'from':after['from'],'to':after['to']})
+
+    def _monitoring_history(self):
+        from app import catchup
+        task = self.state['tasks']['monitoring:history']
+        names = self.service.get_dataset()['vehicles']
+        attempts = dict(task.get('day_attempts', {}))
+
+        def plan():
+            return catchup.plan(self.folder,self.service.db_path,'monitoring',today=now(),
+                                names=names,monitoring_attempts=attempts)
+
+        def checkpoint(queue, **fields):
+            with self.guard:
+                task.update(pending_days=queue['pending_days'], day_attempts=queue['monitoring_attempts'],
+                            **{'from':queue['from'],'to':queue['to']}, **fields)
+                self._save()
+
+        queue = plan()
+        attempts = queue['monitoring_attempts']
+        checkpoint(queue)
+        day = queue['from']
+        yesterday = queue['target_end']
+        checked = stamp(task.get('recent_checked_at')) if task.get('recent_day') == yesterday else None
+        tried = stamp(task.get('recent_attempt_at')) if task.get('recent_attempt_day') == yesterday else None
+        recheck = (queue['target_covered'] and (checked is None or now()-checked >= dt.timedelta(hours=6))
+                   and (tried is None or now()-tried >= dt.timedelta(hours=1)))
+        if recheck:
+            # Persist before I/O so a failing late-data refresh cannot preempt
+            # other dates every cycle, including after a worker restart.
+            checkpoint(queue, recent_attempt_at=now().isoformat(), recent_attempt_day=yesterday)
+            self._monitoring_day(names,yesterday,yesterday,refresh=True)
+            checkpoint(queue, recent_checked_at=now().isoformat(), recent_day=yesterday)
+        if day:
+            try:
+                self._monitoring_day(names,day,day,refresh=False)
+            except IncompleteMonitoringDay:
+                attempts[day] = now().isoformat()
+                checkpoint(plan())
+                raise
+            catchup.mark_success(self.folder,'monitoring',day,day,at=now())
+            queue = plan()
+            checkpoint(queue, **(dict(recent_checked_at=now().isoformat(), recent_day=day) if day==yesterday else {}))
+        message = (f'Догружена история за {day}.' if day else
+                   'Ожидаем повторной попытки по пропущенным дням.' if queue['pending_days'] else
+                   'Пропущенных завершённых дней нет.')
+        return dict(message=message, pending_days=queue['pending_days'], **{'from':queue['from'],'to':queue['to']})
 
     def _monitoring_day(self,names,first,last,*,refresh):
         from app import monitoring_history
@@ -291,8 +332,11 @@ class Scheduler:
             if current['status']!='running':break
         if self.stop_event.is_set():
             raise ValueError('Загрузка прервана остановкой; сохранённые порции будут использованы при продолжении.')
+        if current.get('failure') == 'provider_access':
+            # An account-wide failure is independent of the requested date.
+            raise ValueError(current['message'])
         if current['status']!='complete':
-            raise ValueError('Часть истории спутника пока не получена; загрузка продолжится автоматически.')
+            raise IncompleteMonitoringDay('Часть истории спутника пока не получена; загрузка продолжится автоматически.')
 
     def _beat(self):
         with self.guard:

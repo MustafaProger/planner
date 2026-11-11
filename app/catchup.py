@@ -265,8 +265,11 @@ def _monitoring(folder, names, cells, floor):
     return ids, covered
 
 
-def plan(data_dir, db_path, source, *, today=None, names=(), limit_days=7):
-    """Return the oldest missing contiguous closed interval, within one month.
+def plan(data_dir, db_path, source, *, today=None, names=(), limit_days=7, monitoring_attempts=None):
+    """Return the next missing closed interval, within one month.
+
+    The monitoring worker prioritizes recent gaps and rotates incomplete days
+    without marking them covered. Other callers use oldest-first selection.
 
     Every caller may merge independently saved source responses. This makes
     bootstrap and manual successful imports usable after worker restart too.
@@ -274,7 +277,9 @@ def plan(data_dir, db_path, source, *, today=None, names=(), limit_days=7):
     _source(source)
     if type(limit_days) is not int or not 1 <= limit_days <= 31:
         raise ValueError('Порция догрузки должна содержать от 1 до 31 дня.')
-    day = _day(today) if today is not None else dt.datetime.now(MSK).date()
+    monitoring_queue = source == 'monitoring' and monitoring_attempts is not None
+    clock = _stamp(today) if monitoring_queue else None
+    day = clock.date() if clock else _day(today) if today is not None else dt.datetime.now(MSK).date()
     yesterday = day-dt.timedelta(days=1)
     folder = Path(data_dir)
     with _locked(folder):
@@ -315,22 +320,39 @@ def plan(data_dir, db_path, source, *, today=None, names=(), limit_days=7):
             days.pop(key, None)
         first = last = None
         pending = 0
+        deferred = {}
+        choices = []
+        recent_start = day-dt.timedelta(days=30)
         maximum = 1 if source == 'monitoring' else limit_days
         for missing in _dates(floor, yesterday):
             key = missing.isoformat()
             if key in days:
                 continue
             pending += 1
+            if monitoring_queue:
+                attempt = monitoring_attempts.get(key)
+                if attempt:
+                    deferred[key] = attempt
+                    if clock-_stamp(attempt) < dt.timedelta(hours=1):
+                        continue
+                # Fresh gaps first; within each tier, give every date a turn
+                # before retrying the same incomplete dates.
+                choices.append((missing < recent_start, attempt or '', missing))
+                continue
             if first is None:
                 first = last = missing
             elif missing == last+dt.timedelta(days=1) and missing.month == first.month and (missing-first).days < maximum:
                 last = missing
+        if choices:
+            first = last = min(choices)[2]
         if before != json.dumps(state, sort_keys=True):
             state['updated_at'] = _stamp().isoformat()
             _write(folder, state)
         return {'scope_start': floor.isoformat(), 'target_end': yesterday.isoformat(),
                 'from': first.isoformat() if first else None,
-                'to': last.isoformat() if last else None, 'pending_days': pending}
+                'to': last.isoformat() if last else None, 'pending_days': pending,
+                **(dict(monitoring_attempts=deferred, target_covered=yesterday.isoformat() in days)
+                   if monitoring_queue else {})}
 
 
 def _read_range(source, start, end, at):

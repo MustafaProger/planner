@@ -9,7 +9,7 @@ REVIEW_STATES = ('Не проверено', 'В работе', 'Обоснова
 
 
 def register(app, db, dataset, auth, user, audit, lock, data_dir):
-    from flask import jsonify, request, session
+    from flask import jsonify, request, session, send_file
 
     def state(c):
         c.execute('CREATE TABLE IF NOT EXISTS charter_state (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, body TEXT NOT NULL)')
@@ -47,6 +47,16 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
         # Keep the CSRF secret outside the compressible response body.
         response.headers['X-CSRF-Token'] = session.get('csrf', '')
         return response
+
+    @app.post('/api/charter/deviations/export')
+    @auth()
+    def export_deviations():
+        from app.deviation_export import workbook
+        # The browser sends the rows already available in the signed-in table.
+        # This endpoint only formats those values; it does not query records.
+        return send_file(workbook(request.get_json(silent=True)), as_attachment=True,
+                         download_name='Отклонения.xlsx',
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.put('/api/charter/state')
     @auth(['admin', 'logist'])
