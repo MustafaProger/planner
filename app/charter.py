@@ -6,6 +6,10 @@ import os
 
 DEFAULTS = dict(movement_threshold=10, excess_km=30, excess_percent=10, fuel_norms={})
 REVIEW_STATES = ('Не проверено', 'В работе', 'Обосновано', 'Нарушение', 'Исправлено')
+CHARTER_PAGES = {
+    'overview', 'fleet', 'drivers', 'clients', 'compare', 'calendar', 'planner',
+    'control', 'fuel', 'routes', 'data', 'directories', 'connections', 'settings', 'users',
+}
 
 
 def register(app, db, dataset, auth, user, audit, lock, data_dir):

@@ -31,5 +31,5 @@ os.environ['FLEET_DEMO'] = '1' if DEMO else '0'
 from app import server
 from waitress import serve
 server.init()
-print('CharterStats preview: http://127.0.0.1:8776/charter/overview', flush=True)
+print('CharterStats preview: http://127.0.0.1:8776/overview', flush=True)
 serve(server.app, host='127.0.0.1', port=8776, threads=6)

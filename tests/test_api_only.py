@@ -46,7 +46,7 @@ def test_legacy_rows_not_used_and_database_preserved(api_only,monkeypatch):
 
 def test_charter_html_login_and_private_workspace(api_only, tmp_path):
     client=server.app.test_client()
-    login=client.get('/charter/planner')
+    login=client.get('/planner')
     assert login.status_code==200
     assert b'<form method="post">' in login.data
     assert b'<script' not in login.data
@@ -56,11 +56,19 @@ def test_charter_html_login_and_private_workspace(api_only, tmp_path):
 
     password=(tmp_path/'local-login.txt').read_text().splitlines()[1].split(': ',1)[1]
     credentials={'name':'Руководитель','password':password}
-    assert client.post('/charter/planner',data=credentials,headers={'Origin':'https://other.invalid'}).status_code==403
-    wrong=client.post('/charter/planner',data={**credentials,'password':'wrong'})
+    assert client.post('/planner',data=credentials,headers={'Origin':'https://other.invalid'}).status_code==403
+    wrong=client.post('/planner',data={**credentials,'password':'wrong'})
     assert wrong.status_code==401 and b'role="alert"' in wrong.data
     response=client.post('/charter/planner',data=credentials,headers={'Origin':'http://localhost'})
-    assert response.status_code==303 and response.location=='/charter/planner'
+    assert response.status_code==303 and response.location=='/planner'
+    assert client.get('/').location=='/overview'
+    for page in server.CHARTER_PAGES:
+        assert client.get('/'+page).status_code==200
+        legacy=client.get('/charter/'+page+'?period=month')
+        assert legacy.status_code==302 and legacy.location=='/'+page+'?period=month'
+    assert client.get('/charter/').location=='/overview'
+    assert client.get('/data/orders').location=='/data'
+    assert client.get('/charter/unknown').status_code==404
     shell=client.get(response.location)
     assert b'id="root"' in shell.data and shell.headers['Cache-Control']=='no-store'
     for path in (server.ROOT/'app/static/charter/assets').glob('*.js'):
@@ -76,7 +84,7 @@ def test_charter_html_login_and_private_workspace(api_only, tmp_path):
     assert client.post('/api/logout').status_code==403
     assert client.post('/api/logout',headers={'X-CSRF-Token':csrf}).status_code==200
     assert client.get('/api/charter?view=workspace').status_code==401
-    assert b'<form method="post">' in client.get('/charter/planner').data
+    assert b'<form method="post">' in client.get('/planner').data
 
 def test_charter_projection_preserves_catalog_merges_and_coverage(api_only):
     from app.coverage import ALGORITHM, fingerprint

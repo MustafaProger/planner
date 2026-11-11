@@ -12,6 +12,7 @@
     "build:ui": "npm run build --prefix frontend",
     "test:charter": "npm test --prefix frontend",
     "preview:charter": ".venv/bin/python scripts/preview_charter.py",
+    "preview:live": ".venv/bin/python scripts/preview_charter_live.py",
     "demo:seed": ".venv/bin/python scripts/seed_charter_demo.py",
     "preview:demo": ".venv/bin/python scripts/preview_charter.py --demo"
   },

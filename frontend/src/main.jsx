@@ -1,6 +1,7 @@
 import React, {
   createContext,
   startTransition,
+  useCallback,
   useContext,
   useState,
   useEffect,
@@ -49,6 +50,7 @@ import { Badge } from "./vendor/stageshow/controls/badge";
 import { FleetStatus } from "./fleet-status.jsx";
 import { RevenueReview } from "./revenue-review.jsx";
 import { AnimatedMetric } from "./animated-metric.jsx";
+import { RowBatches, ScrollRows, ScrollRowsContext, useScrollRows } from "./scroll-rows.jsx";
 import * as M from "./model";
 import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
@@ -123,6 +125,7 @@ const hints = {
 let csrf = "";
 let workspaceRequests = new AbortController();
 const VehicleMapContext = createContext(new Map());
+const livePreview = import.meta.env.MODE === "live-preview";
 const unfilteredPages = ["settings", "directories", "routes", "connections", "users"];
 const rankPages = ["fleet", "drivers", "clients"];
 
@@ -293,17 +296,42 @@ function PeriodPicker({ period, onChange }) {
     </div>}
   </div>;
 }
-function Multi({ id, label, items, value, onChange, open, onToggle }) {
+function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, fitViewport }) {
   const [search, setSearch] = useState("");
+  const root = useRef(null);
+  const panel = useRef(null);
   const searchRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!open || !fitViewport) return;
+    const place = () => {
+      const bounds = root.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - bounds.bottom;
+      root.current.dataset.placement = spaceBelow < panel.current.offsetHeight + 12 && bounds.top > spaceBelow
+        ? "above"
+        : "below";
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [open, fitViewport]);
   useEffect(() => {
-    if (open) requestAnimationFrame(() => searchRef.current?.focus());
-  }, [open]);
+    if (!open) return;
+    const frame = requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: true }));
+    const close = (event) => {
+      if (!root.current?.contains(event.target)) onDismiss?.();
+    };
+    if (onDismiss) document.addEventListener("pointerdown", close);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (onDismiss) document.removeEventListener("pointerdown", close);
+    };
+  }, [open, onDismiss]);
   const list = items
     .map((i) => (typeof i === "string" ? { value: i, label: i } : i))
     .filter((i) => i.label.toLowerCase().includes(search.toLowerCase()));
   return (
     <div
+      ref={root}
       className={"multi " + (value.length ? "is-active" : "")}
       data-open={open ? "true" : "false"}
       onKeyDown={(e) => {
@@ -314,6 +342,7 @@ function Multi({ id, label, items, value, onChange, open, onToggle }) {
       }}
     >
       <button
+        id={id}
         type="button"
         className="multi-trigger"
         aria-expanded={open}
@@ -324,6 +353,7 @@ function Multi({ id, label, items, value, onChange, open, onToggle }) {
         <ChevronDown size={14} />
       </button>
       <div
+        ref={panel}
         className="multi-pop"
         aria-hidden={!open}
         inert={open ? undefined : ""}
@@ -340,13 +370,14 @@ function Multi({ id, label, items, value, onChange, open, onToggle }) {
         </div>
         <div className="multi-actions">
           <button
+            type="button"
             onClick={() =>
               onChange([...new Set([...value, ...list.map((i) => i.value)])])
             }
           >
             Выбрать все
           </button>
-          <button onClick={() => onChange([])}>Очистить</button>
+          <button type="button" onClick={() => onChange([])}>Очистить</button>
         </div>
         <div className="multi-list">
           {list.map((i, index) => (
@@ -430,14 +461,14 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
     </div>
   );
 }
-function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15, downloadRows }) {
+function DataTable({ rows, columns, onRow, title = "Данные", downloadRows }) {
+  const loading = rows === null;
+  rows ??= EMPTY_ROWS;
   const [search, setSearch] = useState(""),
     [sort, setSort] = useState(null),
-    [page, setPage] = useState(0),
     [downloading, setDownloading] = useState(false),
     [downloadError, setDownloadError] = useState(""),
     vehicles = useContext(VehicleMapContext);
-  useEffect(() => setPage(0), [rows, search]);
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
     const matching = query ? rows.filter((r) =>
@@ -461,10 +492,45 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
       );
     });
   }, [rows, columns, search, sort, vehicles]);
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize)),
-    safePage = Math.min(page, pages - 1);
-  const pageRows = filtered.slice(safePage * pageSize, (safePage + 1) * pageSize);
-  const rowKeyCounts = new Map();
+  const selection = useMemo(() => ({ search, sort }), [search, sort]);
+  const [visible, sentinel] = useScrollRows(filtered.length, selection, TABLE_BATCH_SIZE, !search && !sort ? title : null);
+  const renderRows = useCallback((start, end) => {
+    const rowKeyCounts = new Map();
+    return filtered.slice(start, end).map((r, index) => {
+      const id = r.record_id ?? r.id;
+      const subject = r.name ?? r.vehicle ?? r.entity;
+      const identity = id != null
+        ? `id:${id}`
+        : r.date && subject != null
+          ? `day:${r.date}|${subject}|${r.reason ?? ""}`
+          : r.name != null ? `name:${r.name}|${r.reason ?? ""}` : `row:${index}`;
+      const occurrence = rowKeyCounts.get(identity) ?? 0;
+      rowKeyCounts.set(identity, occurrence + 1);
+      return (
+        <tr
+          key={`${identity}:${occurrence}`}
+          onClick={() => onRow?.(r)}
+          onKeyDown={(e) => {
+            if (onRow && e.key === "Enter") onRow(r);
+          }}
+          tabIndex={onRow ? 0 : undefined}
+          className={onRow ? "clickable" : ""}
+        >
+          {columns.map((c) => (
+            <td key={c.key} className={c.numeric ? "number" : ""}>
+              {c.vehicle ? (
+                <VehicleCell name={r[c.key]} />
+              ) : c.render ? (
+                c.render(r)
+              ) : (
+                (r[c.key] ?? "—")
+              )}
+            </td>
+          ))}
+        </tr>
+      );
+    });
+  }, [filtered, columns, onRow]);
   async function download() {
     setDownloading(true);
     setDownloadError("");
@@ -478,7 +544,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
     }
   }
   return (
-    <div className="data-table">
+    <div className="data-table" aria-busy={loading || undefined}>
       <div className="table-tools">
         <div className="search-input">
           <Search size={16} />
@@ -489,7 +555,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <span className="muted"><AnimatedMetric value={filtered.length} format={fmt} integer /> записей</span>
+        {!loading && <span className="muted">Всего <AnimatedMetric value={filtered.length} format={fmt} integer /></span>}
         {downloadRows && (
           <B size="medium" type="button" icon={<Download size={16} />}
              onClick={download} disabled={!filtered.length || downloading}>
@@ -535,64 +601,19 @@ function DataTable({ rows, columns, onRow, title = "Данные", pageSize = 15
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((r, index) => {
-              const id = r.record_id ?? r.id;
-              const subject = r.name ?? r.vehicle ?? r.entity;
-              const identity = id != null
-                ? `id:${id}`
-                : r.date && subject != null
-                  ? `day:${r.date}|${subject}|${r.reason ?? ""}`
-                  : r.name != null ? `name:${r.name}|${r.reason ?? ""}` : `row:${index}`;
-              const occurrence = rowKeyCounts.get(identity) ?? 0;
-              rowKeyCounts.set(identity, occurrence + 1);
-              return (
-                <tr
-                  key={`${identity}:${occurrence}`}
-                  onClick={() => onRow?.(r)}
-                  onKeyDown={(e) => {
-                    if (onRow && e.key === "Enter") onRow(r);
-                  }}
-                  tabIndex={onRow ? 0 : undefined}
-                  className={onRow ? "clickable" : ""}
-                >
-                  {columns.map((c) => (
-                    <td key={c.key} className={c.numeric ? "number" : ""}>
-                      {c.vehicle ? (
-                        <VehicleCell name={r[c.key]} />
-                      ) : c.render ? (
-                        c.render(r)
-                      ) : (
-                        (r[c.key] ?? "—")
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            <RowBatches visible={visible} batchSize={TABLE_BATCH_SIZE} render={renderRows} />
           </tbody>
         </table>
       </div>
-      {!filtered.length && <Empty />}
-      <div className="pagination">
-        <span>
-          {safePage + 1} / {pages}
-        </span>
-        <B
-          aria-label="Предыдущая страница"
-          disabled={safePage === 0}
-          onClick={() => setPage(safePage - 1)}
-          icon={<ChevronLeft size={16} />}
-        />
-        <B
-          aria-label="Следующая страница"
-          disabled={safePage + 1 >= pages}
-          onClick={() => setPage(safePage + 1)}
-          icon={<ChevronRight size={16} />}
-        />
-      </div>
+      {loading && <ScrollRows />}
+      {!loading && !filtered.length && <Empty />}
+      {visible < filtered.length && <ScrollRows sentinel={sentinel} />}
     </div>
   );
 }
+const EMPTY_ROWS = [];
+const TABLE_BATCH_SIZE = 30;
+const CALENDAR_BATCH_SIZE = 20;
 const col = (key, label, format = fmt, integer = false) => ({
   key,
   label,
@@ -866,7 +887,7 @@ function App() {
       setError("");
     } catch (e) {
       if (signal?.aborted) return;
-      if (e.status === 401 && location.pathname.startsWith("/charter/")) {
+      if (e.status === 401) {
         if (import.meta.env.DEV) location.assign("http://127.0.0.1:8776" + location.pathname);
         else location.reload();
         return;
@@ -906,6 +927,13 @@ function App() {
     }
   }
   useEffect(() => {
+    const previous = history.scrollRestoration;
+    history.scrollRestoration = "manual";
+    return () => {
+      history.scrollRestoration = previous;
+    };
+  }, []);
+  useEffect(() => {
     const pop = () => {
       selectPage(location.pathname.split("/").pop() || "overview");
     };
@@ -938,7 +966,7 @@ function App() {
     setDrawer(null);
   }
   function go(next) {
-    if (next !== page) history.pushState({}, "", `/charter/${next}`);
+    if (next !== page) history.pushState({}, "", `/${next}`);
     selectPage(next);
   }
   const workspace = useMemo(
@@ -956,6 +984,8 @@ function App() {
   const view = useReportView(request, busy);
   const pending = busy || view !== request;
   const { p, filters: reportFilters, period: reportPeriod, page: reportPage, settings, fuel } = view || {};
+  const rowLimits = useMemo(() => new Map(), [p, reportFilters, reportPeriod, settings, fuel]);
+  const scrollScope = useMemo(() => ({ page, limits: rowLimits }), [page, rowLimits]);
   const hasCurrentReport = reportPage === page;
   const a = useMemo(
     () => (p ? M.analyze(p, reportFilters, ...reportPeriod, settings, fuel) : null),
@@ -1213,7 +1243,7 @@ function App() {
         inert={adaptive && !mobile ? "" : undefined}
       >
         <a
-          href="/charter/overview"
+          href="/overview"
           className="wordmark"
           onClick={(e) => {
             e.preventDefault();
@@ -1246,7 +1276,7 @@ function App() {
                 </div>
               )}
               <a
-                href={"/charter/" + id}
+                href={"/" + id}
                 onClick={(e) => {
                   if (!e.metaKey && !e.ctrlKey) {
                     e.preventDefault();
@@ -1305,7 +1335,7 @@ function App() {
             Рабочее пространство <ChevronRight size={13} /> <b>{active[1]}</b>
           </span>
           <a
-            href="/charter/overview"
+            href="/overview"
             className="topbar-brand wordmark"
             onClick={(event) => {
               event.preventDefault();
@@ -1316,7 +1346,9 @@ function App() {
           </a>
           <div className="topbar-controls">
             <span className="environment">
-              {payload.demo
+              {livePreview
+                ? "Локальный просмотр"
+                : payload.demo
                 ? "ДЕМО"
                 : payload.local_preview
                   ? "Локальная копия"
@@ -1388,7 +1420,9 @@ function App() {
             </div>
             <div className="heading-meta">
               <Badge dot tone="neutral">
-                {payload.demo
+                {livePreview
+                  ? "Рабочий API · только чтение"
+                  : payload.demo
                   ? "Вымышленные данные"
                   : payload.local_preview
                     ? "Локальный снимок API"
@@ -1526,6 +1560,7 @@ function App() {
           </div>
           )}
           {hasCurrentReport && (
+          <ScrollRowsContext.Provider value={scrollScope}>
           <div className="report-results" inert={pending ? "" : undefined} aria-hidden={pending || undefined}>
           {page === "overview" && (
             <>
@@ -2064,7 +2099,8 @@ function App() {
             <ConnectionsPage
               user={user}
               period={reportPeriod}
-              disabled={!!payload.demo || !!payload.local_preview}
+              disabled={livePreview || !!payload.demo || !!payload.local_preview}
+              livePreview={livePreview}
               demo={!!payload.demo}
               onRefresh={refresh}
             />
@@ -2080,12 +2116,15 @@ function App() {
             <UsersPage p={p} />
           )}
           </div>
+          </ScrollRowsContext.Provider>
           )}
           </div>
           <footer className="page-footer">
             <span>
               CharterStats ·{" "}
-              {payload.demo
+              {livePreview
+                ? "Локальный просмотр · данные рабочего API"
+                : payload.demo
                 ? "Демонстрационные данные · подключения к провайдерам отключены"
                 : payload.local_preview
                   ? "Локальный предпросмотр · синхронизация отключена"
@@ -2250,7 +2289,6 @@ function CategoryBreakdown({ rows, onSelect }) {
 }
 function Calendar({ p, filters, period, mode, onDay }) {
   const [search, setSearch] = useState(""),
-    [offset, setOffset] = useState(0),
     days = useMemo(
       () => M.calendarRows(p, filters, ...period, mode),
       [p, filters, period, mode],
@@ -2265,12 +2303,51 @@ function Calendar({ p, filters, period, mode, onDay }) {
     return { names: [...names], index };
   }, [days]);
   const query = search.toLowerCase();
-  const matches = query ? names.filter((name) => name.toLowerCase().includes(query)) : names;
+  const matches = useMemo(() => query ? names.filter((name) => name.toLowerCase().includes(query)) : names, [names, query]);
   const dates = useMemo(() => M.daysBetween(...period).map((day) => ({
     day,
     weekday: weekday.format(new Date(day + "T12:00:00Z")),
   })), [period]);
-  useEffect(() => setOffset(0), [period, filters, mode, search]);
+  const selection = useMemo(() => ({ mode, search }), [mode, search]);
+  const [visible, sentinel] = useScrollRows(matches.length, selection, CALENDAR_BATCH_SIZE, !search ? "Календарь " + mode : null);
+  const renderRows = useCallback((start, end) =>
+    matches.slice(start, end).map((name) => (
+      <tr key={name}>
+        <td>
+          <strong>{name}</strong>
+          <small>
+            {
+              (mode === "vehicle" ? p.vehicleMap : p.driverMap).get(
+                name,
+              )?.carrier
+            }
+          </small>
+        </td>
+        {dates.map(({ day: date }) => {
+          const d = index.get(name + "|" + date);
+          return (
+            <td key={date}>
+              {d && (
+                <button
+                  className="calendar-cell"
+                  style={{
+                    "--status": M.STATUS_COLORS[d.status] || "#82939d",
+                  }}
+                  title={`${date} · ${d.status}${d.events.length ? " · " + d.events.map((s) => M.statusName(s.reason)).join(", ") : ""}`}
+                  aria-label={`${name} ${date} ${d.status}`}
+                  onClick={() => onDay(d)}
+                >
+                  {d.status === "Работа" ? d.trips.length : M.calendarMark(d.status)}
+                  {d.events.length > 0 && d.other.length > 0 && (
+                    <small>+</small>
+                  )}
+                </button>
+              )}
+            </td>
+          );
+        })}
+      </tr>
+    )), [matches, mode, p, dates, index, onDay]);
   return (
     <Section
       title="Календарь занятости"
@@ -2316,63 +2393,12 @@ function Calendar({ p, filters, period, mode, onDay }) {
             </tr>
           </thead>
           <tbody>
-            {matches.slice(offset, offset + 20).map((name) => (
-              <tr key={name}>
-                <td>
-                  <strong>{name}</strong>
-                  <small>
-                    {
-                      (mode === "vehicle" ? p.vehicleMap : p.driverMap).get(
-                        name,
-                      )?.carrier
-                    }
-                  </small>
-                </td>
-                {dates.map(({ day: date }) => {
-                  const d = index.get(name + "|" + date);
-                  return (
-                    <td key={date}>
-                      {d && (
-                        <button
-                          className="calendar-cell"
-                          style={{
-                            "--status": M.STATUS_COLORS[d.status] || "#82939d",
-                          }}
-                          title={`${date} · ${d.status}${d.events.length ? " · " + d.events.map((s) => M.statusName(s.reason)).join(", ") : ""}`}
-                          aria-label={`${name} ${date} ${d.status}`}
-                          onClick={() => onDay(d)}
-                        >
-                          {d.status === "Работа" ? d.trips.length : M.calendarMark(d.status)}
-                          {d.events.length > 0 && d.other.length > 0 && (
-                            <small>+</small>
-                          )}
-                        </button>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            <RowBatches visible={visible} batchSize={CALENDAR_BATCH_SIZE} render={renderRows} />
           </tbody>
         </table>
       </div>
       {!matches.length && <Empty />}
-      <div className="pagination">
-        <span>
-          {Math.min(offset + 1, matches.length)}–
-          {Math.min(offset + 20, matches.length)} из {matches.length}
-        </span>
-        <B
-          disabled={!offset}
-          onClick={() => setOffset(Math.max(0, offset - 20))}
-          icon={<ChevronLeft size={16} />}
-        />
-        <B
-          disabled={offset + 20 >= matches.length}
-          onClick={() => setOffset(offset + 20)}
-          icon={<ChevronRight size={16} />}
-        />
-      </div>
+      {visible < matches.length && <ScrollRows sentinel={sentinel} />}
     </Section>
   );
 }
@@ -3603,7 +3629,7 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
   );
 }
 
-function ConnectionsPage({ user, period, disabled, demo, onRefresh }) {
+function ConnectionsPage({ user, period, disabled, demo, livePreview, onRefresh }) {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -3632,7 +3658,9 @@ function ConnectionsPage({ user, period, disabled, demo, onRefresh }) {
         <InfoNote tone="warning">
           {demo
             ? "В демонстрационном режиме подключения отключены."
-            : "Это локальная копия. Проверка сети и обновление данных доступны на рабочем сайте. Даты в карточках относятся к сохранённым данным."}
+            : livePreview
+              ? "Показаны сохранённые статусы рабочего API. Проверка и обновление доступны на рабочем сайте."
+              : "Это локальная копия. Проверка сети и обновление данных доступны на рабочем сайте. Даты в карточках относятся к сохранённым данным."}
         </InfoNote>
       )}
       {!disabled && <div className="connections-head">
@@ -3682,7 +3710,7 @@ function ConnectionsPage({ user, period, disabled, demo, onRefresh }) {
                 ? "Подключение к поставщику в этом режиме отключено."
                 : row.authorization_checked_at
                   ? `Последняя сохранённая отметка: ${row.authorization_checked_at}. Текущий доступ здесь не проверяется.`
-                  : "В локальной копии нет отметки о проверке доступа."
+                : "Нет отметки о проверке доступа."
               : row.detail}</p>
             <div className="connection-actions">
               {row.url && (
@@ -3708,38 +3736,76 @@ function ConnectionsPage({ user, period, disabled, demo, onRefresh }) {
   );
 }
 
+const userRoles = [
+  { value: "logist", label: "Логист" },
+  { value: "viewer", label: "Наблюдатель" },
+  { value: "admin", label: "Руководитель" },
+];
+const auditActions = {
+  "create statuses": "Добавление статусов",
+  "replace statuses": "Изменение статусов",
+  "create plans": "Добавление назначений",
+  "edit record": "Изменение записи",
+  "delete record": "Удаление записи",
+  "add user": "Добавление пользователя",
+  "assign rosneft driver": "Назначение водителя на карту Роснефти",
+};
+const auditTime = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  dateStyle: "short",
+  timeStyle: "medium",
+});
+
 function UsersPage({ p }) {
-  const [users, setUsers] = useState([]);
-  const [audit, setAudit] = useState([]);
+  const [users, setUsers] = useState(null);
+  const [audit, setAudit] = useState(null);
   const [message, setMessage] = useState("");
   const [newRole, setNewRole] = useState("logist");
   const [userVehicles, setUserVehicles] = useState([]);
   const [userVehicleMenu, setUserVehicleMenu] = useState(false);
+  const dismissVehicleMenu = useCallback(() => setUserVehicleMenu(false), []);
+  const accounts = useMemo(() => users?.map((r) => ({
+    ...r,
+    role_label: userRoles.find(({ value }) => value === r.role)?.label ?? r.role,
+  })) ?? null, [users]);
+  const events = useMemo(() => {
+    const names = new Map(users?.map((r) => [r.id, r.name]));
+    return audit?.map((r) => ({
+      ...r,
+      actor: names.get(r.user_id) ?? r.user_id,
+      action_label: auditActions[r.action] ?? r.action,
+    })) ?? null;
+  }, [audit, users]);
   const load = () =>
     Promise.all([api("users"), api("audit")])
       .then(([userRows, auditRows]) => {
         setUsers(userRows);
         setAudit(auditRows);
       })
-      .catch((e) => setMessage(e.message));
+      .catch((e) => {
+        setUsers((rows) => rows ?? []);
+        setAudit((rows) => rows ?? []);
+        setMessage(e.message);
+      });
   useEffect(() => {
     load();
   }, []);
   return (
     <>
-      <Section title="Пользователи и роли" subtitle="Руководитель управляет доступами; сервер проверяет права для каждой записи">
+      <Section title="Пользователи и роли">
         <DataTable
-          rows={users}
+          rows={accounts}
           title="Пользователи"
           columns={[
             { key: "name", label: "Имя" },
-            { key: "role", label: "Роль" },
+            { key: "role_label", label: "Роль" },
             {
               key: "vehicles",
               label: "Назначенные автомобили",
               render: (r) => {
+                if (r.role === "admin") return "Все автомобили";
                 try {
-                  return JSON.parse(r.vehicles || "[]").join(", ") || "Все по роли";
+                  return JSON.parse(r.vehicles || "[]").join(", ") || "Не назначены";
                 } catch {
                   return "—";
                 }
@@ -3759,6 +3825,7 @@ function UsersPage({ p }) {
               form.reset();
               setNewRole("logist");
               setUserVehicles([]);
+              setUserVehicleMenu(false);
               setMessage("Пользователь добавлен");
               await load();
             } catch (e) {
@@ -3768,30 +3835,33 @@ function UsersPage({ p }) {
         >
           <label>Имя<input name="name" required /></label>
           <label>Пароль<input name="password" type="password" minLength={12} required autoComplete="new-password" /></label>
-          <label>
-            Роль
-            <SelectMenu name="role" ariaLabel="Роль" value={newRole} onChange={(e) => setNewRole(e.target.value)} options={[
-              { value: "logist", label: "Логист" },
-              { value: "viewer", label: "Наблюдатель" },
-              { value: "admin", label: "Руководитель" },
-            ]} />
-          </label>
-          <label>
-            Автомобили
-            <Multi id="user-vehicles" label="Выберите автомобили" items={p.vehicles.map((vehicle) => vehicle.name)} value={userVehicles} onChange={setUserVehicles} open={userVehicleMenu} onToggle={(_, next) => setUserVehicleMenu(next)} />
-          </label>
+          <div className="user-form-field">
+            <span>Роль</span>
+            <SelectMenu name="role" ariaLabel="Роль" value={newRole} onChange={(e) => setNewRole(e.target.value)} options={userRoles} />
+          </div>
+          <div className="user-form-field user-vehicle-field">
+            <label htmlFor="user-vehicles">Автомобили</label>
+            <Multi id="user-vehicles" label="Выберите автомобили" items={p.vehicles.map((vehicle) => vehicle.name)} value={userVehicles} onChange={setUserVehicles} open={userVehicleMenu} onToggle={(_, next) => setUserVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
+          </div>
           <B variant="primary" type="submit">Добавить пользователя</B>
         </form>
         {message && <span role="status">{message}</span>}
       </Section>
       <Section title="Журнал действий" subtitle="Последние 100 событий">
         <DataTable
-          rows={audit}
+          rows={events}
           title="Журнал"
           columns={[
-            { key: "at", label: "Время UTC" },
-            { key: "user_id", label: "Пользователь" },
-            { key: "action", label: "Действие" },
+            {
+              key: "at", label: "Время (МСК)", render: (r) => {
+                const timestamp = Date.parse(r.at);
+                return Number.isFinite(timestamp)
+                  ? <time dateTime={r.at}>{auditTime.format(timestamp)}</time>
+                  : (r.at || "—");
+              },
+            },
+            { key: "actor", label: "Пользователь" },
+            { key: "action_label", label: "Действие" },
             { key: "detail", label: "Детали" },
           ]}
         />

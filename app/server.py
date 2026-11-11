@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash,check_password_hash
 from app.normalization import vehicle
 from app.analytics import report,reconcile
 from app import workspace as ws
+from app.charter import CHARTER_PAGES
 ROOT=Path(__file__).resolve().parent.parent
 DATA=Path(os.environ.get('FLEET_DATA',ROOT/'data'));DATA.mkdir(exist_ok=True,parents=True);os.chmod(DATA,0o700)
 DB=DATA/'fleet.sqlite'
@@ -213,33 +214,40 @@ def conflict(e):return jsonify(error=str(e),conflict=True),409
 def bad(e):return jsonify(error=str(e)),400
 @app.errorhandler(413)
 def large(e):return jsonify(error='Файл больше 25 МБ'),413
-CHARTER_PAGES={'overview','fleet','drivers','clients','compare','calendar','planner','control','fuel','routes','data','directories','connections','settings','users'}
-
 def charter_login_form(error=None,status=200):
     response=make_response(render_template('charter_login.html',error=error),status)
     response.headers['Referrer-Policy']='same-origin'
     return response
 
+@app.route('/<page>',methods=['GET','POST'])
 def charter_page(page):
     if page not in CHARTER_PAGES:abort(404)
     if request.method=='POST':
         error,status=authenticate(request.form)
         if error:return charter_login_form(error,status)
-        return redirect('/charter/'+page,code=303)
+        return redirect('/'+page,code=303)
     if not user():return charter_login_form()
     return send_from_directory(app.static_folder,'charter/index.html')
 
 @app.route('/',methods=['GET','POST'])
 def index():
-    if request.method!='POST' and user():return redirect('/charter/overview')
+    if request.method!='POST' and user():return redirect('/overview')
     return charter_page('overview')
+
+@app.get('/charter',strict_slashes=False)
+def old_charter_root():return old_charter_page('overview')
+
+def old_charter_page(page):
+    if page not in CHARTER_PAGES:abort(404)
+    query=request.query_string.decode('latin-1')
+    return redirect('/'+page+('?' + query if query else ''),code=302)
 
 @app.post('/charter/<page>')
 def charter_login(page):return charter_page(page)
 
 @app.get('/<section>/<page>')
 def page(section,page):
-    if section=='charter':return charter_page(page)
+    if section=='charter':return old_charter_page(page)
     if section=='integrations' and page=='axenta':return redirect('/integrations/monitoring',code=302)
     # Old bookmarks now enter the matching area of the unified CharterStats shell.
     legacy={
@@ -260,11 +268,8 @@ def page(section,page):
         ('control','evidence'):'data',('settings','connections'):'connections',
         ('settings','users'):'users',('help','guide'):'settings',
     }
-    if (section,page) in legacy:return redirect('/charter/'+legacy[(section,page)],code=302)
-    pages={'analytics':{'dashboard','statistics','comparison','reconcile','planreport','downtime','economics'},'planning':{'calendar','planner'},'data':{'orders','directories','connections','users','quality','coverage','fuelcards','expenses'},'integrations':{'neftm','monitoring','rosneft','transtrade'},'control':{'quality','coverage','fuelcards','expenses','evidence'},'settings':{'connections','users'},'help':{'guide'}}
-    pages['data'].update({'monitoringdata','neftmdata','rosneftdata'})
-    if page not in pages.get(section,set()):abort(404)
-    return send_from_directory(app.static_folder,'index.html')
+    if (section,page) in legacy:return old_charter_page(legacy[(section,page)])
+    abort(404)
 @app.get('/bootstrap/<token>')
 def bootstrap(token):
     if not app.config['ALLOW_BOOTSTRAP']:abort(404)

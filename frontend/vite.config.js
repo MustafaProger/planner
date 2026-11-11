@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: "/static/charter/",
+  base: command === "build" ? "/static/charter/" : "/",
   build: {
     outDir: "../app/static/charter",
     emptyOutDir: true,
@@ -16,4 +16,4 @@ export default defineConfig({
     },
   },
   server: { proxy: { "/api": "http://127.0.0.1:8776" } },
-});
+}));
