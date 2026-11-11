@@ -529,6 +529,8 @@ export function timeline(a, unit = "day") {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, rs]) => ({ name, ...financial(rs), rows: rs }));
 }
+export const UNFILLED_DAY_ISSUE = "Не заполненный день";
+
 const deviationId = (kind, day) =>
   `${kind}|${day.vehicle}|${day.date}${day.ref ? "|" + day.ref : ""}`;
 
@@ -536,7 +538,7 @@ function visitDeviations(p, a, settings, fuel, push) {
   for (const d of a.days) {
     if (d.status === "Не заполнено")
       push(
-        "Не заполненный день",
+        UNFILLED_DAY_ISSUE,
         d,
         "Нет заявки и вручную установленного статуса",
       );

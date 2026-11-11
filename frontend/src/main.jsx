@@ -2589,7 +2589,9 @@ function Review({ issue, value, user, onSave }) {
             value={comment}
             maxLength={2000}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Что проверили и чем объясняется отклонение"
+            placeholder={issue.kind === M.UNFILLED_DAY_ISSUE
+              ? "Укажите, почему день остался незаполненным"
+              : "Что проверили и чем объясняется отклонение"}
             required={["Обосновано", "Нарушение", "Исправлено"].includes(
               status,
             )}
@@ -2602,7 +2604,7 @@ function Review({ issue, value, user, onSave }) {
         )}
         {can && (
           <B variant="primary" type="submit" disabled={busy}>
-            Сохранить решение
+            <span>Сохранить решение</span>
           </B>
         )}
       </form>
