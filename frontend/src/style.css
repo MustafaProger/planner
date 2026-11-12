@@ -3240,7 +3240,7 @@ button:not(:disabled):active,
   display: contents;
 }
 /* Record editors share the compact drawer and remain usable on narrow screens. */
-.record-form .plan-fields { display: grid; gap: 14px; min-width: 0; }
+.record-form .plan-fields { display: grid; gap: 14px; min-width: 0; border: 0; padding: 0; margin: 0; }
 .record-form label { display: grid; gap: 6px; min-width: 0; }
 .record-form input:not([type="checkbox"]), .record-form select, .record-form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .record-form label:has(input[type="checkbox"]) { display: flex; align-items: center; }

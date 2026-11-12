@@ -90,6 +90,9 @@ def test_capability_positive_then_revoke(context, monkeypatch, role, key):
 def test_record_details_and_fuel_dependency(context):
     admin, ids=context
     assert server.app.test_client().get('/api/records/tt').status_code==401
+    with server.db() as c:
+        c.execute('insert into records(id,kind,body) values(?,?,?)', ('archived-excel','trips',ws.dump(dict(origin='excel'))))
+    assert admin.get('/api/records/archived-excel').status_code==404
     row=admin.get('/api/records/tt').json
     assert row['revision']==1 and row['record_id']=='tt' and row['vehicle']=='А001АА77'
     account=dict(name='Карты',password='isolated-test-password',role='viewer',vehicles=[],permissions={'fuel.write':True,'fuel.read':False})

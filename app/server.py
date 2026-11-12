@@ -210,9 +210,10 @@ def tariff_quote():
 @auth()
 def record_details(ident):
     with db() as c:
-        row = c.execute('select * from records where id=? and deleted=0', (ident,)).fetchone()
+        row = c.execute("select * from records where id=? and kind='trips' and deleted=0", (ident,)).fetchone()
         if not row: abort(404)
         result = ws.resolve_row(json.loads(row['body']), ws.catalogs(c))
+        if result.get('origin') == 'excel': abort(404)
         result.pop('legacy_snapshot', None)
         result.update(record_id=ident, revision=row['revision'])
     return jsonify(result)
