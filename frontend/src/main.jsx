@@ -3961,8 +3961,8 @@ function UserForm({ account, ownAccount, vehicleNames, rules, onSaved }) {
       </div>
       <PermissionMatrix rules={rules} role={role} overrides={overrides} onChange={setOverrides} disabled={saving} />
       <div className="form-actions">
-        <B variant="primary" type="submit" disabled={saving}>
-          {account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}
+        <B className="user-primary-action" variant="primary" type="submit" disabled={saving}>
+          <span>{account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}</span>
         </B>
       </div>
       {error && <span role="alert" className="error">{error}</span>}
@@ -4027,8 +4027,8 @@ function UsersPage({ p, user, onAccountSaved }) {
   return (
     <>
       <Section title="Пользователи и роли" className="users-section"
-        action={!livePreview && <B variant="primary" size="small" disabled={!rules} onClick={() => setEditing({ account: null })}>
-          Добавить пользователя
+        action={!livePreview && <B className="user-primary-action" variant="primary" disabled={!rules} onClick={() => setEditing({ account: null })}>
+          <span>Добавить пользователя</span>
         </B>}
       >
         <DataTable

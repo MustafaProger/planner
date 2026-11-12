@@ -3075,8 +3075,13 @@ button:not(:disabled):active,
   flex-wrap: wrap;
   gap: 12px;
 }
-.users-section .section-head > button {
+.users-section .section-head > .user-primary-action {
   margin-inline-start: auto;
+}
+.ss-button.user-primary-action {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 .user-permissions {
   border: 1px solid #dce3eb;
