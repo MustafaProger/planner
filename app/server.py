@@ -5,7 +5,7 @@ from flask.sessions import SecureCookieSessionInterface
 from werkzeug.security import generate_password_hash,check_password_hash
 from app.normalization import vehicle
 from app.analytics import report,reconcile
-from app import workspace as ws
+from app import activity, permissions, workspace as ws
 from app.charter import CHARTER_PAGES
 ROOT=Path(__file__).resolve().parent.parent
 DATA=Path(os.environ.get('FLEET_DATA',ROOT/'data'));DATA.mkdir(exist_ok=True,parents=True);os.chmod(DATA,0o700)
@@ -51,6 +51,13 @@ def init():
         c.execute('begin immediate')
         if 'session_version' not in {r['name'] for r in c.execute('pragma table_info(users)')}:
             c.execute('alter table users add column session_version text')
+        if 'permissions' not in {r['name'] for r in c.execute('pragma table_info(users)')}:
+            c.execute("alter table users add column permissions text not null default '{}'")
+        audit_columns = {r['name'] for r in c.execute('pragma table_info(audit)')}
+        if 'actor_name' not in audit_columns:
+            c.execute('alter table audit add column actor_name text')
+        if 'changes' not in audit_columns:
+            c.execute('alter table audit add column changes text')
         initial_source=None
         if not c.execute('select 1 from snapshot').fetchone():
             # API-only installations start with an empty workspace.
@@ -74,16 +81,28 @@ def init():
             ws.initialize(c,original,c.execute('select * from manual').fetchall())
     os.chmod(DB,0o600)
     if app.config['ALLOW_BOOTSTRAP'] and not (DATA/'bootstrap.used').exists() and not (DATA/'bootstrap.token').exists():(DATA/'bootstrap.token').write_text(secrets.token_urlsafe(32));os.chmod(DATA/'bootstrap.token',0o600)
-def audit(c,action,detail):c.execute('insert into audit(at,user_id,action,detail) values(?,?,?,?)',(dt.datetime.now(dt.timezone.utc).isoformat(),session.get('uid'),action,detail))
+def audit(c, action, detail, changes=None):
+    uid = session.get('uid')
+    actor = user()
+    c.execute(
+        'insert into audit(at,user_id,action,detail,actor_name,changes) values(?,?,?,?,?,?)',
+        (dt.datetime.now(dt.timezone.utc).isoformat(), uid, action, detail,
+         actor['name'] if actor else None, json.dumps(changes, ensure_ascii=False) if changes is not None else None),
+    )
+
+
 def user():
     uid=session.get('uid')
     if uid is None:return None
     if getattr(g,'fleet_user',None) and g.fleet_user['id']==uid:return g.fleet_user
     with db() as c:
-        r=c.execute('select id,name,role,vehicles,session_version from users where id=?',(uid,)).fetchone()
+        r=c.execute('select id,name,role,vehicles,session_version,permissions from users where id=?',(uid,)).fetchone()
         if not r or r['session_version'] != session.get('account_version'):return None
         u=dict(r)
         u.pop('session_version')
+        overrides = json.loads(u.pop('permissions'))
+        if overrides:
+            u['permissions'] = overrides
         vehicles=json.loads(u['vehicles'])
         if vehicles:
             cats=ws.catalogs(c)
@@ -91,13 +110,14 @@ def user():
     u['vehicles']=vehicles
     g.fleet_user=u
     return u
-def auth(roles=None):
+def auth(roles=None, *, permission=None):
     def decorator(fn):
         @functools.wraps(fn)
         def wrapped(*args,**kwargs):
             u=user()
             if not u:return jsonify(error='Войдите в приложение'),401
             if roles and u['role'] not in roles:return jsonify(error='Недостаточно прав'),403
+            if permission and not permissions.allowed(u, permission):raise PermissionError()
             if request.method not in ('GET','HEAD') and request.headers.get('X-CSRF-Token')!=session.get('csrf'):return jsonify(error='Обновите страницу: проверка сессии'),403
             return fn(*args,**kwargs)
         return wrapped
@@ -129,7 +149,7 @@ def forbidden(e):return jsonify(error='Недостаточно прав для 
 def workspace_report():
     from app.reports import build
     result=build(dataset(),request.args,DATA)
-    if user()['role']!='admin':result.pop('operations',None)
+    if not permissions.allowed(user(), 'fuel.read'):result.pop('operations',None)
     return jsonify(result)
 
 @app.get('/api/workspace/report/details')
@@ -142,26 +162,40 @@ def workspace_report_details():
 
 @app.post('/api/catalog/<kind>')
 @app.put('/api/catalog/<kind>/<ident>')
-@auth(['admin'])
+@auth(permission='catalog.write')
 def catalog_save(kind,ident=None):
     with LOCK,db() as c:
-        result=ws.save_catalog(c,kind,request.get_json(),ident)
-        audit(c,'catalog '+kind,result)
+        c.execute('begin immediate')
+        before = activity.row_body(c, 'catalog', ident)
+        result = ws.save_catalog(c, kind, request.get_json(), ident)
+        after = activity.row_body(c, 'catalog', result)
+        audit(c, 'catalog '+kind, after['name'], activity.changes(before, after))
     return jsonify(id=result)
 
 @app.post('/api/catalog/<kind>/merge')
-@auth(['admin'])
+@auth(permission='catalog.write')
 def catalog_merge(kind):
     b=request.get_json();ws.body(b)
     with LOCK,db() as c:
-        ws.merge_catalog(c,kind,b.get('source'),b.get('target'));audit(c,'merge '+kind,str(b.get('source'))+' → '+str(b.get('target')))
+        c.execute('begin immediate')
+        cats = ws.catalogs(c)
+        source = ws.lookup(cats, kind, b.get('source')) if kind in ('vehicles','drivers') else None
+        ws.merge_catalog(c, kind, b.get('source'), b.get('target'))
+        target = ws.lookup(cats, kind, b.get('target'), True)
+        before = dict(archived=source.get('archived', False))
+        after = dict(archived=True, merged_into=target['name'])
+        audit(c, 'merge '+kind, source['name'], activity.changes(before, after))
     return jsonify(ok=True)
 
 @app.post('/api/tariffs')
-@auth(['admin'])
+@auth(permission='catalog.write')
 def tariff_save():
     with LOCK,db() as c:
-        result=ws.save_tariff(c,request.get_json());audit(c,'tariff',result)
+        result = ws.save_tariff(c, request.get_json())
+        row = c.execute('select * from tariffs where id=?', (result,)).fetchone()
+        route = ws.lookup(ws.catalogs(c), 'routes', row['route_id'])
+        after = dict(json.loads(row['body']), effective_from=row['effective_from'])
+        audit(c, 'tariff', route['name'], activity.changes(None, after))
     return jsonify(id=result)
 
 @app.get('/api/tariffs/quote')
@@ -173,22 +207,35 @@ def tariff_quote():
         return jsonify(ws.current_rate(c,route['id'],ws.iso(request.args.get('date'))))
 
 @app.put('/api/records/<ident>')
-@auth(['admin','logist'])
+@auth()
 def record_save(ident):
     with LOCK,db() as c:
-        ws.edit_record(c,ident,request.get_json(),user());audit(c,'edit record',ident)
+        kind, before, after = ws.edit_record(c, ident, request.get_json(), user())
+        audit(c, 'edit record', activity.record_subject(kind, after), activity.describe_record(kind, before, after))
     return jsonify(ok=True)
+
+def extra_snapshot(c, kind, ident):
+    row = activity.row_body(c, kind, ident)
+    if row and 'card' in row:
+        row['card'] = '•••• ' + row['card'][-4:]
+    return row
+
 
 @app.post('/api/workspace/<kind>')
 @app.put('/api/workspace/<kind>/<ident>')
 @auth(['admin'])
 def extra_save(kind,ident=None):
+    if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
     with LOCK,db() as c:
-        result=ws.save_extra(c,kind,request.get_json(),user(),ident);audit(c,kind,result)
+        c.execute('begin immediate')
+        before = extra_snapshot(c, kind, ident)
+        result = ws.save_extra(c, kind, request.get_json(), user(), ident)
+        after = extra_snapshot(c, kind, result)
+        audit(c, kind, after.get('vehicle', kind), activity.changes(before, after))
     return jsonify(id=result)
 
 @app.get('/api/workspace/coverage/preview')
-@auth(['admin'])
+@auth(permission='coverage.write')
 def coverage_preview():
     from app.coverage import preview
     start=ws.iso(request.args.get('start'));end=ws.iso(request.args.get('end'))
@@ -200,8 +247,10 @@ def coverage_preview():
 def extra_delete(kind,ident):
     if kind not in ('coverage','card_bindings','expenses'):abort(404)
     with LOCK,db() as c:
-        ws.delete_extra(c,kind,ident,request.get_json(silent=True) or {},user())
-        audit(c,'remove '+kind,ident)
+        c.execute('begin immediate')
+        before = extra_snapshot(c, kind, ident)
+        ws.delete_extra(c, kind, ident, request.get_json(silent=True) or {}, user())
+        audit(c, 'remove '+kind, before.get('vehicle', kind), activity.changes(before, None))
     return jsonify(ok=True)
 
 @app.after_request
@@ -315,7 +364,7 @@ def who():return jsonify(user=user(),csrf=session.get('csrf'))
 @auth()
 def data():
     d=dataset()
-    if user()['role']!='admin':d['card_bindings']=[]
+    if not permissions.allowed(user(), 'fuel.read'):d['card_bindings']=[]
     return jsonify(d)
 @app.get('/api/report')
 @auth()
@@ -333,34 +382,56 @@ def get_reconcile_details():
 def validate_day(v):return dt.date.fromisoformat(v).isoformat()
 def allowed_car(u,car):return u['role']=='admin' or car in u['vehicles']
 @app.post('/api/manual/<kind>')
-@auth(['admin','logist'])
+@auth()
 def create_manual(kind):
     if kind not in ('statuses','plans','trips'):abort(404)
     with LOCK,db() as c:
-        created=ws.create_records(c,kind,request.get_json(),user());audit(c,'create '+kind,str(created))
+        details = []
+        created = ws.create_records(c, kind, request.get_json(), user(), created_rows=details)
+        if created:
+            changes = [change for row in details for change in activity.describe_record(kind, None, row)]
+            audit(c, 'create '+kind, f'Записей: {created}', changes)
     return jsonify(created=created)
 
 @app.put('/api/manual/statuses')
-@auth(['admin','logist'])
+@auth()
 def replace_manual_statuses():
     with LOCK,db() as c:
-        changed=ws.replace_statuses(c,request.get_json(),user())
-        if changed:audit(c,'replace statuses',str(changed))
+        changes = []
+        changed = ws.replace_statuses(c, request.get_json(), user(), changes=changes)
+        if changed:audit(c, 'replace statuses', f'Дат: {changed}', changes)
     return jsonify(changed=changed)
 
 @app.delete('/api/manual/<ident>')
-@auth(['admin','logist'])
+@auth()
 def delete_manual(ident):
     with LOCK,db() as c:
-        ws.edit_record(c,ident,request.get_json(silent=True) or {},user(),delete=True);audit(c,'delete record',ident)
+        kind, before, after = ws.edit_record(c, ident, request.get_json(silent=True) or {}, user(), delete=True)
+        audit(c, 'delete record', activity.record_subject(kind, before), activity.describe_record(kind, before, after))
     return jsonify(ok=True)
 
 @app.get('/api/users')
 @auth(['admin'])
 def users():
     with db() as c:
-        rows = [dict(r) for r in c.execute('select id,name,role,vehicles from users')]
+        rows = [dict(r) for r in c.execute('select id,name,role,vehicles,permissions from users')]
+    for row in rows:
+        row['permissions'] = json.loads(row['permissions'])
     return jsonify(rows)
+
+
+@app.get('/api/users/permissions')
+@auth(['admin'])
+def permission_catalog():
+    return jsonify(permissions.describe())
+
+
+def account_snapshot(row):
+    account = dict(name=row['name'], role=row['role'], vehicles=json.loads(row['vehicles']),
+                   permissions=json.loads(row['permissions']))
+    rights = permissions.effective(account)
+    account.pop('permissions')
+    return {**account, **rights}
 
 
 def user_fields(c, body, *, current=None):
@@ -384,7 +455,9 @@ def user_fields(c, body, *, current=None):
             known.update(json.loads(current['vehicles'] or '[]'))
         if any(not isinstance(car, str) or car not in known for car in cars):
             raise ValueError('Неизвестная машина')
-    return name.strip(), role, json.dumps(cars), password
+    current_overrides = json.loads(current['permissions']) if current and role == current['role'] else {}
+    overrides = permissions.validate_overrides(role, body.get('permissions', current_overrides))
+    return name.strip(), role, json.dumps(list(dict.fromkeys(cars))), password, json.dumps(overrides)
 
 
 def check_user_manager(c):
@@ -402,16 +475,18 @@ def add_user():
         with db() as c:
             c.execute('begin immediate')
             check_user_manager(c)
-            name, role, cars, password = user_fields(c, request.get_json())
+            name, role, cars, password, overrides = user_fields(c, request.get_json())
             next_id = c.execute("""
                 select max(coalesce((select max(id) from users), 0),
                            coalesce((select max(user_id) from audit), 0),
                            coalesce((select cast(body as integer) from workspace_meta
                                      where key='last_deleted_user_id'), 0)) + 1
             """).fetchone()[0]
-            c.execute('insert into users(id,name,password,role,vehicles,session_version) values(?,?,?,?,?,?)',
-                      (next_id, name, generate_password_hash(password), role, cars, secrets.token_hex(16)))
-            audit(c, 'add user', name)
+            c.execute('insert into users(id,name,password,role,vehicles,session_version,permissions) values(?,?,?,?,?,?,?)',
+                      (next_id, name, generate_password_hash(password), role, cars, secrets.token_hex(16), overrides))
+            after = account_snapshot(dict(name=name, role=role, vehicles=cars, permissions=overrides))
+            fields = ('name', 'role', 'vehicles', *json.loads(overrides))
+            audit(c, 'add user', name, activity.changes(None, after, fields=fields))
     except sqlite3.IntegrityError as error:
         raise ValueError('Пользователь уже существует') from error
     return jsonify(ok=True)
@@ -428,15 +503,20 @@ def update_user(uid):
             current = c.execute('select * from users where id=?', (uid,)).fetchone()
             if current is None:
                 return jsonify(error='Пользователь не найден'), 404
-            name, role, cars, password = user_fields(c, request.get_json(), current=current)
+            name, role, cars, password, overrides = user_fields(c, request.get_json(), current=current)
             if own_account and role != 'admin':
                 raise ws.ConflictError('Нельзя изменить роль своей учётной записи')
             password_hash = generate_password_hash(password) if password else current['password']
             version = secrets.token_hex(16) if password else current['session_version']
-            c.execute('update users set name=?,role=?,vehicles=?,password=?,session_version=? where id=?',
-                      (name, role, cars, password_hash, version, uid))
-            detail = name if name == current['name'] else f"{current['name']} → {name}"
-            audit(c, 'edit user', detail)
+            c.execute('update users set name=?,role=?,vehicles=?,password=?,session_version=?,permissions=? where id=?',
+                      (name, role, cars, password_hash, version, overrides, uid))
+            before = account_snapshot(current)
+            after = account_snapshot(dict(name=name, role=role, vehicles=cars, permissions=overrides))
+            changes = activity.changes(before, after)
+            if password:
+                changes.append(dict(field='password', before=None, after='Пароль изменён'))
+            if changes:
+                audit(c, 'edit user', name, changes)
     except sqlite3.IntegrityError as error:
         raise ValueError('Пользователь уже существует') from error
     if own_account and password:
@@ -452,7 +532,7 @@ def delete_user(uid):
     with db() as c:
         c.execute('begin immediate')
         check_user_manager(c)
-        target = c.execute('select name from users where id=?', (uid,)).fetchone()
+        target = c.execute('select name,role,vehicles,permissions from users where id=?', (uid,)).fetchone()
         if target is None:
             return jsonify(error='Пользователь не найден'), 404
         # Keep deleted IDs out of the allocator so audit and record authors stay distinct.
@@ -461,14 +541,31 @@ def delete_user(uid):
             on conflict(key) do update set body=max(cast(body as integer), cast(excluded.body as integer))
         """, (str(uid),))
         c.execute('delete from users where id=?', (uid,))
-        audit(c, 'delete user', target['name'])
+        before = account_snapshot(target)
+        fields = ('name', 'role', 'vehicles', *json.loads(target['permissions']))
+        audit(c, 'delete user', target['name'], activity.changes(before, None, fields=fields))
     return jsonify(ok=True)
 
 
 @app.get('/api/audit')
 @auth(['admin'])
 def get_audit():
-    with db() as c:return jsonify([dict(r) for r in c.execute('select * from audit order by id desc limit 100')])
+    with db() as c:
+        rows = c.execute('''
+            select id,at,user_id,action,detail,actor_name,changes is not null as has_changes
+            from audit order by id desc limit 100
+        ''')
+        return jsonify([dict(row) for row in rows])
+
+
+@app.get('/api/audit/<int:ident>')
+@auth(['admin'])
+def audit_details(ident):
+    with db() as c:
+        row = c.execute('select changes from audit where id=?', (ident,)).fetchone()
+    if row is None:
+        return jsonify(error='Запись журнала не найдена'), 404
+    return jsonify(changes=json.loads(row['changes']) if row['changes'] is not None else None)
 @app.get('/api/connections')
 @auth()
 def connections():
@@ -477,7 +574,7 @@ def connections():
     rows=json.loads(p.read_text()) if p.exists() else [{k:v for k,v in s.items() if k!='probe'} for s in SOURCES]
     return jsonify(with_authorization(rows,DATA))
 @app.post('/api/connections/check')
-@auth(['admin'])
+@auth(permission='connections.run')
 def check_connections():
     from app.connections import check_all,with_authorization
     results=with_authorization(check_all(),DATA)
@@ -493,7 +590,7 @@ def transtrade_status():
     return jsonify(configured=configured(DATA),snapshot=state,reconciliation=history,limitations=LIMITATIONS,periods=json.loads(r[0]) if r else [])
 
 @app.post('/api/transtrade/reconcile')
-@auth(['admin'])
+@auth(permission='connections.run')
 def transtrade_reconcile():
     from app.transtrade import reconcile
     ws.body(request.get_json())
@@ -504,7 +601,7 @@ def transtrade_reconcile():
     return jsonify(result)
 
 @app.post('/api/transtrade/sync')
-@auth(['admin'])
+@auth(permission='connections.run')
 def transtrade_sync():
     from app.transtrade import sync
     body=request.get_json();ws.body(body)
@@ -513,35 +610,35 @@ def transtrade_sync():
     return jsonify(result)
 
 @app.get('/api/neftm')
-@auth(['admin'])
+@auth(permission='fuel.read')
 def neftm_snapshot():
     from app.neftm import snapshot
     return jsonify(configured=(DATA/'neftm-api.key').exists(),snapshot=snapshot(DATA))
 
 @app.get('/api/fuel-history/<provider>')
-@auth(['admin'])
+@auth(permission='fuel.read')
 def fuel_period_snapshot(provider):
     from app.fuel_history import snapshot_for_period
     return jsonify(snapshot_for_period(DATA,provider,request.args.get('from'),request.args.get('to')))
 
 @app.post('/api/neftm/sync')
-@auth(['admin'])
+@auth(permission='connections.run')
 def neftm_sync():
     from app.neftm import sync
     body=request.get_json()
     if not isinstance(body,dict):raise ValueError('Укажите период загрузки.')
     result=sync(DATA,body.get('from'),body.get('to'))
     with db() as c:audit(c,'sync neftm',f"{result['from']} — {result['to']}: {len(result['rows'])} транзакций")
-    return jsonify(result)
+    return fuel_sync_response(result)
 
 @app.get('/api/rosneft')
-@auth(['admin'])
+@auth(permission='fuel.read')
 def rosneft_snapshot():
     from app.rosneft import snapshot, configured
     return jsonify(configured=configured(DATA), snapshot=snapshot(DATA))
 
 @app.route('/api/rosneft/driver-assignments', methods=['GET', 'PUT'])
-@auth(['admin'])
+@auth(permission='fuel.read')
 def rosneft_driver_assignments():
     from app.demo_data import enabled
     from app.fuel_history import read
@@ -554,8 +651,15 @@ def rosneft_driver_assignments():
         cards = read(DATA, 'rosneft').get('cards', [])
         if request.method == 'PUT':
             body = request.get_json()
+            if not permissions.allowed(user(), 'fuel.write'):raise PermissionError()
+            previous = rosneft_drivers.timeline(c)
             rosneft_drivers.assign(c, body, cards)
-            audit(c, 'assign rosneft driver', f"{body['card'][-4:]}: {body['driver_id']} {body['start']}")
+            card = body['card']
+            old = previous[card][-1] if previous[card] else {}
+            drivers = rosneft_drivers.drivers(c)
+            before = dict(driver=drivers.get(old.get('driver_id'), {}).get('name'), start=old.get('start'))
+            after = dict(driver=drivers[body['driver_id']]['name'], start=body['start'])
+            audit(c, 'assign rosneft driver', 'Карта •••• '+card[-4:], activity.changes(before, after))
         history = rosneft_drivers.timeline(c)
         drivers = rosneft_drivers.drivers(c)
         return jsonify(
@@ -572,7 +676,7 @@ def rosneft_driver_assignments():
 
 
 @app.post('/api/rosneft/sync')
-@auth(['admin'])
+@auth(permission='connections.run')
 def rosneft_sync():
     from app.rosneft import sync
     body = request.get_json()
@@ -581,7 +685,14 @@ def rosneft_sync():
     result = sync(DATA, body.get('from'), body.get('to'), db_path=DB)
     with db() as c:
         audit(c, 'sync rosneft', f"{result['from']} — {result['to']}: {len(result['rows'])} операций")
-    return jsonify(result)
+    return fuel_sync_response(result)
+
+
+def fuel_sync_response(result):
+    if permissions.allowed(user(), 'fuel.read'):
+        return jsonify(result)
+    return jsonify({'from': result['from'], 'to': result['to'], 'received': len(result['rows'])})
+
 
 @app.get('/api/monitoring')
 @auth(['admin'])
@@ -590,7 +701,7 @@ def monitoring_snapshot():
     return jsonify(configured=configured(DATA),snapshot=snapshot(DATA))
 
 @app.post('/api/monitoring/sync')
-@auth(['admin'])
+@auth(permission='connections.run')
 def monitoring_sync():
     from app.monitoring import sync
     result=sync(DATA)
@@ -606,7 +717,7 @@ def monitoring_history():
     return jsonify(rows=rows,mappings=mappings(DATA,names),job=job_status(DATA))
 
 @app.post('/api/monitoring/history/sync')
-@auth(['admin'])
+@auth(permission='connections.run')
 def monitoring_history_sync():
     from app.monitoring_history import start
     body=request.get_json()

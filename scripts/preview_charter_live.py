@@ -1,4 +1,5 @@
 """Serve the local frontend with read-only requests to the production API."""
+import re
 import secrets
 import subprocess
 import sys
@@ -17,7 +18,7 @@ BUILD = ROOT / '.local' / 'charter-live-ui'
 UPSTREAM = 'https://charterstats.ru'
 COOKIE = 'charter_live_preview'
 SESSION_AGE = 12 * 60 * 60
-READ_PATHS = {'charter', 'users', 'audit', 'connections', 'rosneft/driver-assignments', 'tariffs/quote'}
+READ_PATHS = {'charter', 'users', 'users/permissions', 'audit', 'connections', 'rosneft/driver-assignments', 'tariffs/quote'}
 app = Flask(__name__, static_folder=None, template_folder=str(ROOT / 'app/templates'))
 app.config.update(TRUSTED_HOSTS=['127.0.0.1', 'localhost'], MAX_CONTENT_LENGTH=16 * 1024)
 sessions = {}
@@ -124,7 +125,7 @@ def logout():
 def api(path):
     if request.method not in ('GET', 'HEAD'):
         return jsonify(error='Локальный просмотр рабочего API доступен только для чтения.'), 403
-    if path not in READ_PATHS:
+    if path not in READ_PATHS and not re.fullmatch(r'audit/[0-9]+', path):
         abort(404)
     cookies = upstream_session()
     if not cookies:

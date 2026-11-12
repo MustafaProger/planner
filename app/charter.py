@@ -4,6 +4,8 @@ import json
 import math
 import os
 
+from app import activity, permissions
+
 DEFAULTS = dict(movement_threshold=10, excess_km=30, excess_percent=10, fuel_norms={})
 REVIEW_STATES = ('Не проверено', 'В работе', 'Обосновано', 'Нарушение', 'Исправлено')
 CHARTER_PAGES = {
@@ -34,7 +36,7 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
         demo = facts(data_dir) if enabled() else None
         result['demo'] = dict(version=demo['version'], period=demo['period'], summary=demo['summary']) if demo else None
         # Match the existing role boundary for raw fuel operations and card data.
-        if account['role'] == 'admin':
+        if permissions.allowed(account, 'fuel.read'):
             result['fuel'] = demo['fuel'] if demo else fuel_operations(d, {}, data_dir)[0]
             if not demo:
                 from app.rosneft_drivers import label_operations
@@ -45,7 +47,7 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
             d['card_bindings'] = []
         if not compact:
             return jsonify(result)
-        result['user'] = account
+        result['user'] = dict(account, permissions=permissions.effective(account))
         body = app.json.dumps(result, ensure_ascii=False, sort_keys=False, separators=(',', ':'))
         response = app.response_class(body, mimetype='application/json')
         # Keep the CSRF secret outside the compressible response body.
@@ -63,20 +65,23 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
                          mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
     @app.put('/api/charter/state')
-    @auth(['admin', 'logist'])
+    @auth()
     def charter_save():
         b = request.get_json()
         if not isinstance(b, dict):
             raise ValueError('Ожидается объект настроек или проверки.')
         u = user()
+        kind = b.get('kind')
+        if kind not in ('settings', 'review'):
+            raise ValueError('Неизвестное действие.')
+        if not permissions.allowed(u, 'settings.write' if kind == 'settings' else 'reviews.write'):
+            raise PermissionError()
         with lock, db() as c:
             c.execute('BEGIN IMMEDIATE')
             s = state(c)
             if type(b.get('revision')) is not int or b['revision'] != s['revision']:
                 return jsonify(error='Данные изменены в другой вкладке. Обновите страницу.'), 409
-            if b.get('kind') == 'settings':
-                if u['role'] != 'admin':
-                    raise PermissionError()
+            if kind == 'settings':
                 value = b.get('settings', {})
                 if not isinstance(value, dict):
                     raise ValueError('Проверьте настройки.')
@@ -93,8 +98,14 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
                     if not isinstance(name, str) or len(name) > 200 or isinstance(n, bool) or not isinstance(n, (int, float)) or not math.isfinite(n) or not 0 < n <= 200:
                         raise ValueError('Норма должна быть больше нуля и не больше 200 л/100 км.')
                 settings['fuel_norms'] = norms
+                def settings_fields(values):
+                    return {**{key: value for key, value in values.items() if key != 'fuel_norms'},
+                            **{f'fuel_norms:{name}': value for name, value in values.get('fuel_norms', {}).items()}}
+
+                changes = activity.changes(settings_fields(s['settings']), settings_fields(settings))
+                detail = 'Пороги и нормы расхода'
                 s['settings'] = settings
-            elif b.get('kind') == 'review':
+            else:
                 review = b.get('review', {})
                 if not isinstance(review, dict):
                     raise ValueError('Проверьте запись.')
@@ -102,8 +113,11 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
                 car = review.get('vehicle', '')
                 if not isinstance(key, str) or not 1 <= len(key) <= 500:
                     raise ValueError('Не указано отклонение.')
-                if u['role'] != 'admin' and car not in u['vehicles']:
-                    raise PermissionError()
+                if u['role'] != 'admin':
+                    # Review IDs are generated as kind|vehicle|day, optionally with a source reference.
+                    parts = key.split('|', 3)
+                    if len(parts) < 3 or parts[1] != car or car not in u['vehicles']:
+                        raise PermissionError()
                 status = review.get('status')
                 comment = review.get('comment', '')
                 if status not in REVIEW_STATES or not isinstance(comment, str) or len(comment) > 2000:
@@ -113,9 +127,9 @@ def register(app, db, dataset, auth, user, audit, lock, data_dir):
                 old = s['reviews'].get(key, {})
                 event = dict(status=status, comment=comment, author=u['name'], at=dt.datetime.now(dt.timezone.utc).isoformat())
                 s['reviews'][key] = dict(event, vehicle=car, history=[*old.get('history', []), event])
-            else:
-                raise ValueError('Неизвестное действие.')
+                changes = activity.changes(old, event, fields=('status', 'comment'))
+                detail = key.replace('|', ' · ', 2)
             revision = s.pop('revision') + 1
             c.execute('INSERT INTO charter_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,body=excluded.body', (revision, json.dumps(s, ensure_ascii=False)))
-            audit(c, 'charter ' + b['kind'], json.dumps(b, ensure_ascii=False))
+            audit(c, 'charter ' + kind, detail, changes)
         return jsonify(revision=revision, **s)

@@ -470,7 +470,7 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
     </div>
   );
 }
-function DataTable({ rows, columns, onRow, title = "Данные", downloadRows }) {
+function DataTable({ rows, columns, onRow, title = "Данные", downloadRows, className = "" }) {
   const loading = rows === null;
   rows ??= EMPTY_ROWS;
   const [search, setSearch] = useState(""),
@@ -526,7 +526,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", downloadRows 
           className={onRow ? "clickable" : ""}
         >
           {columns.map((c) => (
-            <td key={c.key} className={c.numeric ? "number" : ""}>
+            <td key={c.key} className={c.align === "end" ? "table-action-cell" : c.numeric ? "number" : ""}>
               {c.vehicle ? (
                 <VehicleCell name={r[c.key]} />
               ) : c.render ? (
@@ -553,7 +553,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", downloadRows 
     }
   }
   return (
-    <div className="data-table" aria-busy={loading || undefined}>
+    <div className={`data-table ${className}`} aria-busy={loading || undefined}>
       <div className="table-tools">
         <div className="search-input">
           <Search size={16} />
@@ -578,7 +578,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", downloadRows 
           <thead>
             <tr>
               {columns.map((c) => c.sortable === false ? (
-                <th key={c.key}>{c.label}</th>
+                <th key={c.key} className={c.align === "end" ? "table-action-cell" : undefined}>{c.label}</th>
               ) : (
                 <th
                   key={c.key}
@@ -2124,7 +2124,7 @@ function App() {
             />
           )}
           {page === "users" && user.role === "admin" && (
-            <UsersPage p={p} user={user} onRename={(name) => setPayload((current) => ({ ...current, user: { ...current.user, name } }))} />
+            <UsersPage p={p} user={user} onAccountSaved={refresh} />
           )}
           </div>
           </ScrollRowsContext.Provider>
@@ -2205,6 +2205,11 @@ function App() {
           {drawer.type === "day" && (
             <DayDetail
               day={drawer.day}
+              inScope={user.role === "admin" || (calMode === "vehicle"
+                ? user.vehicles.includes(drawer.day.name)
+                : [...workspace.plans, ...workspace.trips].some((row) =>
+                    row.driver === drawer.day.name && user.vehicles.includes(row.vehicle)
+                  ))}
               events={workspace.statuses.filter((row) =>
                 row.kind === calMode && row.entity === drawer.day.name && row.date === drawer.day.date
               )}
@@ -2265,6 +2270,7 @@ function App() {
             <PlanForm
               p={p}
               row={drawer.row}
+              user={user}
               onSaved={async () => {
                 await refresh();
                 setDrawer(null);
@@ -2413,7 +2419,7 @@ function Calendar({ p, filters, period, mode, onDay }) {
     </Section>
   );
 }
-function DayDetail({ day, events, user, reasons, onSave, onDelete }) {
+function DayDetail({ day, events, user, inScope, reasons, onSave, onDelete }) {
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [mode, setMode] = useState("day");
@@ -2428,7 +2434,8 @@ function DayDetail({ day, events, user, reasons, onSave, onDelete }) {
   const validDates = selectedDates.length > 0 && selectedDates.length <= 367
     && selectedDates.every(M.validDay);
   const status = M.calendarStatus(day.trips.length, { ...day, events });
-  const editable = user.role !== "viewer";
+  const editable = inScope && hasPermission(user, "statuses.write");
+  const removable = inScope && hasPermission(user, "statuses.delete");
   async function apply(action, success) {
     setBusy(true);
     setError("");
@@ -2467,7 +2474,7 @@ function DayDetail({ day, events, user, reasons, onSave, onDelete }) {
           <div className="event" key={e.id || e.reason}>
             <b>{M.statusName(e.reason)}</b>
             <p>{e.note || "Без комментария"}</p>
-            {editable && e.delete_token && (
+            {removable && e.delete_token && (
               <B size="small" disabled={busy} aria-label={`Удалить статус «${M.statusName(e.reason)}»`}
                 onClick={() => apply(() => onDelete(e), "Статус удалён.")}>
                 <span>Удалить</span>
@@ -2623,9 +2630,8 @@ function Review({ issue, value, user, onSave }) {
     [comment, setComment] = useState(value?.comment || ""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const can =
-    user.role === "admin" ||
-    (user.role === "logist" && user.vehicles.includes(issue.vehicle));
+  const can = hasPermission(user, "reviews.write") &&
+    (user.role === "admin" || user.vehicles.includes(issue.vehicle));
   return (
     <>
       <div className="detail-facts">
@@ -2720,7 +2726,7 @@ const fuelCols = [
   { key: "driver", label: "Водитель" },
   { key: "allocation", label: "Привязка к машине" },
 ];
-function RosneftDriverCards({ onRefresh }) {
+function RosneftDriverCards({ onRefresh, editable }) {
   const [data, setData] = useState(null);
   const [number, setNumber] = useState("");
   const [driver, setDriver] = useState("");
@@ -2742,6 +2748,7 @@ function RosneftDriverCards({ onRefresh }) {
   const start = date || (last?.start > data?.today ? last.start : data?.today) || "";
   async function assign(event) {
     event.preventDefault();
+    if (!editable || busy) return;
     setBusy(true);
     setMessage("");
     try {
@@ -2788,16 +2795,16 @@ function RosneftDriverCards({ onRefresh }) {
             </select>
           </label>
           <label>Водитель
-            <select aria-label="Водитель" className="rosneft-assignment-select" required value={driver} disabled={busy} onChange={(e) => setDriver(e.target.value)}>
+            <select aria-label="Водитель" className="rosneft-assignment-select" required value={driver} disabled={!editable || busy} onChange={(e) => setDriver(e.target.value)}>
               <option value="">Выберите водителя</option>
               {data.drivers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
             </select>
           </label>
           <label>Действует с
-            <input required type="date" value={start} min={last?.start} disabled={busy}
+            <input required type="date" value={start} min={last?.start} disabled={!editable || busy}
               onChange={(e) => setDate(e.target.value)} />
           </label>
-          <B variant="primary" type="submit" disabled={busy || !selected || !driver}>Привязать</B>
+          <B variant="primary" type="submit" disabled={!editable || busy || !selected || !driver}>Привязать</B>
         </form>
       )}
       <div role="status">{message || (!data ? "Загрузка карт…" : "")}</div>
@@ -2822,7 +2829,9 @@ function RosneftDriverCards({ onRefresh }) {
 function FuelPage({ demo, onRefresh, ...props }) {
   return (
     <>
-      {props.user.role === "admin" && !demo && <RosneftDriverCards onRefresh={onRefresh} />}
+      {hasPermission(props.user, "fuel.read") && !demo && (
+        <RosneftDriverCards onRefresh={onRefresh} editable={hasPermission(props.user, "fuel.write")} />
+      )}
       <FuelReport {...props} />
     </>
   );
@@ -2833,11 +2842,10 @@ function FuelReport({ a, p, filters, settings, user, save, details }) {
     [norm, setNorm] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  if (user.role !== "admin")
+  if (!hasPermission(user, "fuel.read"))
     return (
       <InfoNote>
-        Исходные операции топливных карт доступны руководителю. Для просмотра
-        обратитесь к ответственному сотруднику.
+        Для просмотра исходных операций топливных карт нужно соответствующее полномочие.
       </InfoNote>
     );
   const scoped =
@@ -2956,7 +2964,7 @@ function FuelReport({ a, p, filters, settings, user, save, details }) {
         остатки в баке или надёжный датчик. Отсутствующие сутки ГЛОНАСС не
         заменяются нулями; норматив относится только к доступному пробегу.
       </InfoNote>
-      <Section
+      {hasPermission(user, "settings.write") && <Section
         title="Норма автомобиля"
         subtitle="Норма сохраняется в настройках приложения"
       >
@@ -3005,7 +3013,7 @@ function FuelReport({ a, p, filters, settings, user, save, details }) {
           </B>
           <span role="status">{message}</span>
         </form>
-      </Section>
+      </Section>}
       <Section
         title="Операции топливных карт"
         subtitle="Время и АЗС не передаются в текущей нормализованной сводке; доступны в исходных данных"
@@ -3256,7 +3264,7 @@ function Directories({ p, onChoose, user, refresh }) {
           </Card>
         );
       })}
-      {user.role === "admin" && <AssignmentEditor p={p} refresh={refresh} />}
+      {hasPermission(user, "catalog.write") && <AssignmentEditor p={p} refresh={refresh} />}
       <a className="text-link" href="/data/directories">
         Редактировать справочники <ExternalLink size={14} />
       </a>
@@ -3284,7 +3292,7 @@ function PlannerPage({ p, period, filters, user, onOpen }) {
           Отменённые назначения, записи без маршрута и спорные повторы не входят
           в плановые итоги. Тариф фиксируется на дату назначения.
         </InfoNote>
-        {user.role !== "viewer" && (
+        {hasPermission(user, "plans.write") && (
           <B
             className="planner-primary-action"
             variant="primary"
@@ -3315,7 +3323,11 @@ function PlannerPage({ p, period, filters, user, onOpen }) {
         <DataTable
           rows={rows}
           title="Планировщик"
-          onRow={user.role === "viewer" ? undefined : onOpen}
+          onRow={hasPermission(user, "plans.write") || hasPermission(user, "plans.delete")
+            ? (row) => {
+                if (user.role === "admin" || user.vehicles.includes(row.vehicle)) onOpen(row);
+              }
+            : undefined}
           columns={[
             { key: "date", label: "Дата" },
             { key: "vehicle", label: "Автомобиль", vehicle: true },
@@ -3345,8 +3357,9 @@ function PlannerPage({ p, period, filters, user, onOpen }) {
   );
 }
 
-function PlanForm({ p, row, onSaved }) {
+function PlanForm({ p, row, user, onSaved }) {
   const editing = !!row;
+  const editable = hasPermission(user, "plans.write");
   const today = new Date().toLocaleDateString("sv-SE");
   const [dateValue, setDateValue] = useState(row?.date || today);
   const [routeId, setRouteId] = useState(row?.route_id || "");
@@ -3385,6 +3398,7 @@ function PlanForm({ p, row, onSaved }) {
       className="form plan-form"
       onSubmit={async (event) => {
         event.preventDefault();
+        if (!editable || busy) return;
         setBusy(true);
         setMessage("");
         try {
@@ -3407,66 +3421,68 @@ function PlanForm({ p, row, onSaved }) {
         }
       }}
     >
-      <label>
-        Дата
-        <input
-          name="date"
-          type="date"
-          required
-          value={dateValue}
-          onChange={(e) => setDateValue(e.target.value)}
-        />
-      </label>
-      {!editing && (
+      <fieldset className="plan-fields" disabled={!editable}>
         <label>
-          По
-          <input name="end_date" type="date" required defaultValue={dateValue} />
+          Дата
+          <input
+            name="date"
+            type="date"
+            required
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+          />
         </label>
-      )}
-      <label>
-        Автомобиль / ресурс
-        <SelectMenu name="vehicle_id" ariaLabel="Автомобиль / ресурс" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} options={[
-          { value: "", label: "Не выбран" },
-          ...active("vehicles").map((item) => ({ value: item.id, label: item.name })),
-        ]} />
-      </label>
-      <label>
-        Водитель
-        <SelectMenu name="driver_id" ariaLabel="Водитель" value={driverId} onChange={(event) => setDriverId(event.target.value)} options={[
-          { value: "", label: "Не выбран" },
-          ...active("drivers").map((item) => ({ value: item.id, label: item.name })),
-        ]} />
-      </label>
-      <label>
-        Маршрут
-        <SelectMenu name="route_id" ariaLabel="Маршрут" value={routeId} onChange={(event) => setRouteId(event.target.value)} options={[
-          { value: "", label: "Не выбран" },
-          ...active("routes").map((item) => ({ value: item.id, label: item.name })),
-        ]} />
-      </label>
-      <label>
-        Номер смены / рейса
-        <input name="slot" defaultValue={row?.slot || ""} maxLength={100} />
-      </label>
-      <label>
-        Комментарий
-        <textarea name="note" defaultValue={row?.note || ""} rows={3} maxLength={1000} />
-      </label>
-      {!editing && (
-        <fieldset className="weekday-field">
-          <legend>Дни недели</legend>
-          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label, index) => (
-            <label key={label}>
-              <input type="checkbox" name="weekdays" value={index} defaultChecked />
-              {label}
-            </label>
-          ))}
-        </fieldset>
-      )}
+        {!editing && (
+          <label>
+            По
+            <input name="end_date" type="date" required defaultValue={dateValue} />
+          </label>
+        )}
+        <label>
+          Автомобиль / ресурс
+          <SelectMenu disabled={!editable} name="vehicle_id" ariaLabel="Автомобиль / ресурс" value={vehicleId} onChange={(event) => setVehicleId(event.target.value)} options={[
+            { value: "", label: "Не выбран" },
+            ...active("vehicles").filter((item) => user.role === "admin" || user.vehicles.includes(item.name)).map((item) => ({ value: item.id, label: item.name })),
+          ]} />
+        </label>
+        <label>
+          Водитель
+          <SelectMenu disabled={!editable} name="driver_id" ariaLabel="Водитель" value={driverId} onChange={(event) => setDriverId(event.target.value)} options={[
+            { value: "", label: "Не выбран" },
+            ...active("drivers").map((item) => ({ value: item.id, label: item.name })),
+          ]} />
+        </label>
+        <label>
+          Маршрут
+          <SelectMenu disabled={!editable} name="route_id" ariaLabel="Маршрут" value={routeId} onChange={(event) => setRouteId(event.target.value)} options={[
+            { value: "", label: "Не выбран" },
+            ...active("routes").map((item) => ({ value: item.id, label: item.name })),
+          ]} />
+        </label>
+        <label>
+          Номер смены / рейса
+          <input name="slot" defaultValue={row?.slot || ""} maxLength={100} />
+        </label>
+        <label>
+          Комментарий
+          <textarea name="note" defaultValue={row?.note || ""} rows={3} maxLength={1000} />
+        </label>
+        {!editing && (
+          <fieldset className="weekday-field">
+            <legend>Дни недели</legend>
+            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label, index) => (
+              <label key={label}>
+                <input type="checkbox" name="weekdays" value={index} defaultChecked />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+        )}
+      </fieldset>
       {quote && <InfoNote>{quote}</InfoNote>}
       {message && <p className="error" role="alert">{message}</p>}
       <div className="form-actions">
-        {editing && (
+        {editing && hasPermission(user, "plans.delete") && (
           <B
             type="button"
             disabled={busy}
@@ -3491,9 +3507,9 @@ function PlanForm({ p, row, onSaved }) {
             Убрать назначение
           </B>
         )}
-        <button className="plan-submit" type="submit" disabled={busy}>
+        {editable && <button className="plan-submit" type="submit" disabled={busy}>
           {editing ? "Сохранить" : "Создать назначения"}
-        </button>
+        </button>}
       </div>
     </form>
   );
@@ -3636,7 +3652,7 @@ function ConnectionsPage({ user, period, disabled, demo, livePreview, onRefresh 
         <p className="muted">
           Проверка сети не отправляет логины и пароли и не доказывает доступ к данным.
         </p>
-        {user.role === "admin" && (
+        {hasPermission(user, "connections.run") && (
           <B
             disabled={!!busy}
             onClick={async () => {
@@ -3687,7 +3703,7 @@ function ConnectionsPage({ user, period, disabled, demo, livePreview, onRefresh 
                   Документация <ExternalLink size={13} />
                 </a>
               )}
-              {!disabled && user.role === "admin" && (
+              {!disabled && hasPermission(user, "connections.run") && (
                 <B
                   disabled={!!busy}
                   onClick={() => sync(row.id)}
@@ -3702,6 +3718,12 @@ function ConnectionsPage({ user, period, disabled, demo, livePreview, onRefresh 
       </div>
       {message && <p className="success-message" role="status">{message}</p>}
     </>
+  );
+}
+
+function hasPermission(user, key) {
+  return user.permissions?.[key] ?? (
+    user.role === "admin" || (user.role === "logist" && /^(plans|statuses|trips|reviews)\.(write|delete)$/.test(key))
   );
 }
 
@@ -3720,7 +3742,116 @@ const auditActions = {
   "edit user": "Редактирование пользователя",
   "delete user": "Удаление пользователя",
   "assign rosneft driver": "Назначение водителя на карту Роснефти",
+  "create trips": "Добавление ручных заявок",
+  "charter review": "Решение по отклонению",
+  "charter settings": "Настройки и нормы расхода",
+  "check connections": "Проверка подключений",
+  "reconcile transtrade": "Сверка истории ТрансТрейда",
+  "sync transtrade": "Обновление ТрансТрейда",
+  "sync neftm": "Обновление Нефтьмагистрали",
+  "sync rosneft": "Обновление Роснефти",
+  "sync monitoring": "Обновление мониторинга",
+  "sync monitoring history": "Обновление истории мониторинга",
+  tariff: "Добавление тарифа",
+  coverage: "Подтверждение полноты данных",
+  "remove coverage": "Удаление подтверждения полноты",
+  card_bindings: "Изменение привязки топливной карты",
+  "remove card_bindings": "Удаление привязки топливной карты",
+  expenses: "Изменение расхода",
+  "remove expenses": "Удаление расхода",
+  actual_shift: "Сохранение фактической смены",
+  delete_actual_shift: "Удаление фактической смены",
 };
+const directoryLabels = {
+  vehicles: "Автомобили", drivers: "Водители", routes: "Маршруты", companies: "Компании",
+  clients: "Клиенты", carriers: "Исполнители", transport_types: "Типы транспорта",
+  payment_methods: "Способы оплаты", reasons: "Причины статусов",
+};
+const auditFields = {
+  name: "Имя", role: "Роль", vehicles: "Назначенные автомобили", password: "Пароль",
+  date: "Дата", vehicle: "Автомобиль", driver: "Водитель", route: "Маршрут", state: "Состояние",
+  status: "Статус", comment: "Комментарий", note: "Комментарий", slot: "Номер смены",
+  reason: "Причина", entity: "Объект", start: "Начало", end: "Окончание", id: "Номер заявки",
+  client: "Клиент", carrier: "Исполнитель", category: "Категория", revenue: "Выручка",
+  type: "Тип транспорта", payment: "Способ оплаты", payout_method: "Способ выплаты",
+  payout: "Выплата", km: "Пробег, км", hours: "Часы", tariff_id: "Тариф",
+  partner_payout: "Выплата партнёру", rate: "Ставка", partner_rate: "Ставка партнёра",
+  effective_from: "Действует с", amount: "Сумма", card: "Карта", provider: "Поставщик",
+  archived: "В архиве", aliases: "Варианты названия", brand: "Марка", company: "Компания",
+  resource_type: "Тип ресурса", carrier_id: "Исполнитель", transport_type_id: "Тип транспорта",
+  partner: "Партнёр", placeholder: "Условная запись", group: "Группа",
+  inactive_route: "Маршрут не выполняется", merged_into: "Объединено с",
+  complete: "Полнота подтверждена", source: "Источник", source_ref: "Подтверждающий документ",
+  scope: "Область", checked_at: "Подтверждено", checked_by: "Кем подтверждено",
+  movement_threshold: "Порог движения, км", excess_km: "Допустимый перепробег, км",
+  excess_percent: "Допустимый перепробег, %", vehicle_id: "Запись автомобиля в справочнике",
+};
+
+function auditAction(action) {
+  if (auditActions[action]) return auditActions[action];
+  const [operation, kind] = action.split(" ");
+  if (operation === "catalog") return `Справочник · ${directoryLabels[kind] ?? kind}`;
+  if (operation === "merge") return `Объединение · ${directoryLabels[kind] ?? kind}`;
+  return action;
+}
+
+function auditValue(value, field) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return field.includes(".") ? (value ? "Разрешено" : "Запрещено") : (value ? "Да" : "Нет");
+  if (field === "role") return userRoles.find(({ value: role }) => role === value)?.label ?? value;
+  if (Array.isArray(value)) return value.length ? value.map((item) => auditValue(item, field)).join(", ") : "—";
+  if (field === "state") return ({
+    scheduled: "Назначен", unassigned: "Не назначен ресурс / водитель", no_route: "Нет маршрута",
+    cancelled: "Отменён", review: "Требует проверки",
+  })[value] ?? value;
+  return String(value);
+}
+
+function AuditDetails({ event, rules }) {
+  const [changes, setChanges] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!event.has_changes) return;
+    const controller = new AbortController();
+    api(`audit/${event.id}`, { signal: controller.signal })
+      .then((result) => setChanges(result.changes))
+      .catch((e) => {
+        if (e.name !== "AbortError") setError(e.message);
+      });
+    return () => controller.abort();
+  }, [event]);
+  const fieldLabel = (key) => {
+    if (key.startsWith("fuel_norms:")) return `Норма расхода · ${key.slice("fuel_norms:".length)}`;
+    return auditFields[key] ?? rules.find((rule) => rule.key === key)?.label ?? key;
+  };
+  return (
+    <>
+      <div className="detail-facts">
+        <span>Пользователь<b>{event.actor}</b></span>
+        <span>Время (МСК)<b>{event.displayTime}</b></span>
+      </div>
+      {event.detail && <p className="audit-note">{event.detail}</p>}
+      {error && <p role="alert" className="error">{error}</p>}
+      {event.has_changes && !changes && !error && <p role="status">Загружаем изменения…</p>}
+      {changes?.length > 0 && (
+        <table className="audit-diff">
+          <thead><tr><th>Поле</th><th>Было</th><th>Стало</th></tr></thead>
+          <tbody>
+            {changes.map(({ field, before, after, subject }, index) => (
+              <tr key={index}>
+                <th scope="row">{fieldLabel(field)}{subject && <small>{subject}</small>}</th>
+                <td>{auditValue(before, field)}</td>
+                <td>{auditValue(after, field)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {changes?.length === 0 && <p className="muted">Значения полей совпадают.</p>}
+      {!event.has_changes && <p className="muted">Для этой записи сохранено только описание действия.</p>}
+    </>
+  );
+}
 const auditTime = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "Europe/Moscow",
   dateStyle: "short",
@@ -3736,24 +3867,64 @@ function assignedVehicles(account) {
   }
 }
 
-function UserForm({ account, ownAccount, vehicleNames, onSaved }) {
+function PermissionMatrix({ rules, role, overrides, onChange, disabled }) {
+  const groups = [...new Set(rules.map(({ group }) => group))];
+  const readFuel = overrides["fuel.read"] ?? role === "admin";
+  return (
+    <details className="user-permissions">
+      <summary>Полномочия</summary>
+      <p className="muted">
+        Роль задаёт начальный набор. Для логиста и наблюдателя рабочие действия ограничены назначенными автомобилями.
+      </p>
+      <table>
+        <thead><tr><th>Действие</th><th>Доступ</th></tr></thead>
+        {groups.map((group) => (
+          <tbody key={group}>
+            <tr><th colSpan={2} scope="rowgroup">{group}</th></tr>
+            {rules.filter((rule) => rule.group === group).map(({ key, label, manager_only, defaults }) => {
+              const available = (!manager_only || role === "admin") && (key !== "fuel.write" || readFuel);
+              const checked = available && (overrides[key] ?? defaults[role]);
+              return (
+                <tr key={key}>
+                  <th scope="row">{label}</th>
+                  <td>
+                    <input type="checkbox" aria-label={label} checked={checked} disabled={disabled || !available}
+                      onChange={(event) => onChange({ ...overrides, [key]: event.target.checked })} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        ))}
+      </table>
+      <div className="form-actions">
+        <B size="small" disabled={disabled || !Object.keys(overrides).length} onClick={() => onChange({})}>
+          Вернуть права по роли
+        </B>
+      </div>
+    </details>
+  );
+}
+
+function UserForm({ account, ownAccount, vehicleNames, rules, onSaved }) {
   const [role, setRole] = useState(account?.role ?? "logist");
   const [vehicles, setVehicles] = useState(() => assignedVehicles(account));
+  const [overrides, setOverrides] = useState(account?.permissions ?? {});
   const [vehicleMenu, setVehicleMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const dismissVehicleMenu = useCallback(() => setVehicleMenu(false), []);
-  const vehicleId = account ? "edit-user-vehicles" : "user-vehicles";
+  const vehicleId = "user-form-vehicles";
   const choices = [...new Set([...vehicleNames, ...assignedVehicles(account)])];
 
   return (
     <form
-      className={account ? "form user-edit-form" : "inline-form user-form"}
+      className="form user-edit-form"
       onSubmit={async (event) => {
         event.preventDefault();
         if (saving) return;
         const form = event.currentTarget;
-        const body = { ...Object.fromEntries(new FormData(form)), vehicles };
+        const body = { ...Object.fromEntries(new FormData(form)), role, vehicles, permissions: overrides };
         setSaving(true);
         setError("");
         try {
@@ -3761,13 +3932,7 @@ function UserForm({ account, ownAccount, vehicleNames, onSaved }) {
             method: account ? "PUT" : "POST",
             body: JSON.stringify(body),
           });
-          if (!account) {
-            form.reset();
-            setRole("logist");
-            setVehicles([]);
-            setVehicleMenu(false);
-          }
-          await onSaved(body.name.trim());
+          await onSaved();
         } catch (e) {
           setError(e.message);
         } finally {
@@ -3783,25 +3948,35 @@ function UserForm({ account, ownAccount, vehicleNames, onSaved }) {
       </label>
       <div className="user-form-field">
         <span>Роль</span>
-        <SelectMenu name="role" ariaLabel="Роль" value={role} onChange={(e) => setRole(e.target.value)} options={userRoles} disabled={ownAccount} />
+        <SelectMenu ariaLabel="Роль" value={role} onChange={(event) => {
+          const next = event.target.value;
+          if (next === role) return;
+          setRole(next);
+          setOverrides(next === account?.role ? account.permissions ?? {} : {});
+        }} options={userRoles} disabled={ownAccount || saving} />
       </div>
       <div className="user-form-field user-vehicle-field">
         <label htmlFor={vehicleId}>Автомобили</label>
         <Multi id={vehicleId} label="Выберите автомобили" items={choices} value={vehicles} onChange={setVehicles} open={vehicleMenu} onToggle={(_, next) => setVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
       </div>
-      <B variant="primary" type="submit" disabled={saving}>
-        {account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}
-      </B>
+      <PermissionMatrix rules={rules} role={role} overrides={overrides} onChange={setOverrides} disabled={saving} />
+      <div className="form-actions">
+        <B variant="primary" type="submit" disabled={saving}>
+          {account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}
+        </B>
+      </div>
       {error && <span role="alert" className="error">{error}</span>}
     </form>
   );
 }
 
-function UsersPage({ p, user, onRename }) {
+function UsersPage({ p, user, onAccountSaved }) {
   const [users, setUsers] = useState(null);
   const [audit, setAudit] = useState(null);
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState(null);
+  const [rules, setRules] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const vehicleNames = p.vehicles.map(({ name }) => name);
   const accounts = useMemo(() => users?.map((r) => ({
@@ -3812,15 +3987,20 @@ function UsersPage({ p, user, onRename }) {
     const names = new Map(users?.map((r) => [r.id, r.name]));
     return audit?.map((r) => ({
       ...r,
-      actor: names.get(r.user_id) ?? r.user_id,
-      action_label: auditActions[r.action] ?? r.action,
+      actor: r.actor_name ?? names.get(r.user_id) ?? (r.user_id ? `Пользователь № ${r.user_id}` : "Система"),
+      action_label: auditAction(r.action),
+      displayTime: Number.isFinite(Date.parse(r.at)) ? auditTime.format(new Date(r.at)) : (r.at || "—"),
     })) ?? null;
   }, [audit, users]);
   const load = () =>
-    Promise.all([api("users"), api("audit")])
-      .then(([userRows, auditRows]) => {
+    Promise.all([api("users"), api("audit"), api("users/permissions").catch((error) => {
+      if (livePreview && error.status === 404) return [];
+      throw error;
+    })])
+      .then(([userRows, auditRows, permissionRules]) => {
         setUsers(userRows);
         setAudit(auditRows);
+        setRules(permissionRules);
       })
       .catch((e) => {
         setUsers((rows) => rows ?? []);
@@ -3846,8 +4026,13 @@ function UsersPage({ p, user, onRename }) {
   }
   return (
     <>
-      <Section title="Пользователи и роли">
+      <Section title="Пользователи и роли" className="users-section"
+        action={!livePreview && <B variant="primary" size="small" disabled={!rules} onClick={() => setEditing({ account: null })}>
+          Добавить пользователя
+        </B>}
+      >
         <DataTable
+          className="user-accounts-table"
           rows={accounts}
           title="Пользователи"
           columns={[
@@ -3858,13 +4043,14 @@ function UsersPage({ p, user, onRename }) {
               label: "Назначенные автомобили",
               render: (r) => r.role === "admin" ? "Все автомобили" : assignedVehicles(r).join(", ") || "Не назначены",
             },
-            {
+            ...(!livePreview ? [{
               key: "actions",
               label: "Действия",
               sortable: false,
+              align: "end",
               render: (account) => (
                 <div className="user-row-actions">
-                  <B size="small" aria-label={`Редактировать пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => setEditing(account)}>
+                  <B size="small" aria-label={`Редактировать пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => setEditing({ account })}>
                     Редактировать
                   </B>
                   {account.id !== user.id && (
@@ -3874,23 +4060,21 @@ function UsersPage({ p, user, onRename }) {
                   )}
                 </div>
               ),
-            },
+            }] : []),
           ]}
         />
-        <UserForm vehicleNames={vehicleNames} onSaved={async () => {
-          setMessage("Пользователь добавлен");
-          await load();
-        }} />
-        {message && <span role="status">{message}</span>}
+        {message && <p role="status">{message}</p>}
       </Section>
       {editing && (
-        <Drawer title="Редактирование пользователя" size="compact" onClose={() => setEditing(null)}>
-          <UserForm account={editing} ownAccount={editing.id === user.id} vehicleNames={vehicleNames} onSaved={async (name) => {
-            if (editing.id === user.id) onRename(name);
-            setEditing(null);
-            setMessage("Изменения сохранены");
-            await load();
-          }} />
+        <Drawer title={editing.account ? "Редактирование пользователя" : "Добавление пользователя"}
+          size="compact" onClose={() => setEditing(null)}>
+          <UserForm account={editing.account} ownAccount={editing.account?.id === user.id}
+            vehicleNames={vehicleNames} rules={rules} onSaved={async () => {
+              setEditing(null);
+              setMessage(editing.account ? "Изменения сохранены" : "Пользователь добавлен");
+              await load();
+              if (editing.account?.id === user.id) await onAccountSaved();
+            }} />
         </Drawer>
       )}
       <Section title="Журнал действий" subtitle="Последние 100 событий">
@@ -3899,19 +4083,25 @@ function UsersPage({ p, user, onRename }) {
           title="Журнал"
           columns={[
             {
-              key: "at", label: "Время (МСК)", render: (r) => {
-                const timestamp = Date.parse(r.at);
-                return Number.isFinite(timestamp)
-                  ? <time dateTime={r.at}>{auditTime.format(timestamp)}</time>
-                  : (r.at || "—");
-              },
+              key: "at", label: "Время (МСК)", render: (r) => <time dateTime={r.at}>{r.displayTime}</time>,
             },
             { key: "actor", label: "Пользователь" },
             { key: "action_label", label: "Действие" },
-            { key: "detail", label: "Детали" },
+            { key: "detail", label: "Объект" },
+            {
+              key: "actions", label: "Детали", sortable: false, align: "end",
+              render: (event) => <B size="small" onClick={() => setSelectedEvent(event)}>
+                Подробности
+              </B>,
+            },
           ]}
         />
       </Section>
+      {selectedEvent && (
+        <Drawer title={selectedEvent.action_label} size="compact" onClose={() => setSelectedEvent(null)}>
+          <AuditDetails event={selectedEvent} rules={rules ?? []} />
+        </Drawer>
+      )}
     </>
   );
 }
@@ -3955,7 +4145,7 @@ function Settings({ settings, save, user }) {
                 min={0}
                 max={max}
                 step="0.1"
-                disabled={user.role !== "admin"}
+                disabled={!hasPermission(user, "settings.write")}
                 onChange={(e) =>
                   setDraft({
                     ...draft,
@@ -3969,7 +4159,7 @@ function Settings({ settings, save, user }) {
             Сигнал перепробега: превышены оба порога. При нулевом ТТ применяется
             только порог в километрах. Сравнение требует одинакового интервала.
           </p>
-          {user.role === "admin" && (
+          {hasPermission(user, "settings.write") && (
             <B type="submit" variant="primary" disabled={busy}>
               Сохранить настройки
             </B>

@@ -56,18 +56,21 @@ def test_state_roles_csrf_validation_and_conflicts(client):
 def test_review_history_and_assigned_vehicle(client):
     c,role,db=client
     role['role']='logist'
-    b={'kind':'review','revision':0,'review':{'id':'x','vehicle':'А002АА77','status':'В работе','comment':''}}
+    ident = 'Не заполнено|А001АА77|2026-11-12'
+    b={'kind':'review','revision':0,'review':{'id':ident,'vehicle':'А002АА77','status':'В работе','comment':''}}
     assert c.put('/api/charter/state',json=b,headers=H).status_code==403
     b['review']['vehicle']='А001АА77'
+    forged = {**b, 'review': {**b['review'], 'id': ident.replace('А001АА77', 'А002АА77')}}
+    assert c.put('/api/charter/state', json=forged, headers=H).status_code==403
     assert c.put('/api/charter/state',json=b,headers=H).json['revision']==1
     b.update(revision=1);b['review']['status']='Обосновано'
     assert c.put('/api/charter/state',json=b,headers=H).status_code==400
     b['review']['comment']='Перегон на сервис'
     assert c.put('/api/charter/state',json=b,headers=H).status_code==200
     state=c.get('/api/charter').json['state']
-    assert len(state['reviews']['x']['history'])==2
-    assert state['reviews']['x']['history'][0]['status']=='В работе'
-    assert state['reviews']['x']['history'][1]['author']=='Тест'
+    assert len(state['reviews'][ident]['history'])==2
+    assert state['reviews'][ident]['history'][0]['status']=='В работе'
+    assert state['reviews'][ident]['history'][1]['author']=='Тест'
 
 def test_explicit_catalog_links_survive_legacy_form_and_reject_unknown_targets():
     from app import workspace as w

@@ -200,3 +200,85 @@ def test_user_edit_and_removal_enforce_access_and_revoke_sessions(api_only):
     assert target.get('/api/data').status_code == 401
     actions = [row['action'] for row in api_only.get('/api/audit').json]
     assert actions == ['add user', 'delete user', 'edit user', 'edit user', 'add user']
+
+
+def test_permissions_apply_to_existing_session_and_vehicle_scope(api_only):
+    headers = {'X-CSRF-Token': 'test'}
+    with server.db() as c:
+        ws.add_catalog(c, 'vehicles', 'А001АА77')
+        ws.add_catalog(c, 'vehicles', 'А002АА77')
+    account = dict(name='Сотрудник', password='isolated-test-password', role='viewer',
+                   vehicles=['А001АА77'])
+    assert api_only.post('/api/users', headers=headers, json={
+        **account, 'permissions': {'settings.write': True},
+    }).status_code == 400
+    assert api_only.post('/api/users', headers=headers, json={
+        **account, 'permissions': {'statuses.write': True},
+    }).status_code == 200
+    employee = server.app.test_client()
+    assert employee.post('/api/login', json=account).status_code == 200
+    employee_headers = {'X-CSRF-Token': employee.get('/api/session').json['csrf']}
+    assert employee.get('/api/users/permissions').status_code == 403
+    day = '2026-11-12'
+    status = dict(kind='vehicle', entity='А001АА77', reason='Ремонт', days={day: []})
+    assert employee.put('/api/manual/statuses', headers=employee_headers,
+                        json={**status, 'entity': 'А002АА77'}).status_code == 403
+    assert employee.put('/api/manual/statuses', headers=employee_headers, json=status).status_code == 200
+    row = server.dataset()['statuses'][0]
+    assert employee.delete('/api/manual/'+row['id'], headers=employee_headers,
+                           json=row).status_code == 403
+
+    second = {**status, 'reason': 'Сервис', 'days': {day: [row['delete_token']]}}
+    assert employee.put('/api/manual/statuses', headers=employee_headers, json=second).status_code == 200
+    record = next(row for row in api_only.get('/api/users').json if row['name'] == account['name'])
+    assert api_only.put(f"/api/users/{record['id']}", headers=headers, json={
+        **account, 'password': '', 'permissions': {},
+    }).status_code == 200
+    assert employee.put('/api/manual/statuses', headers=employee_headers, json=status).status_code == 403
+    assert api_only.delete(f"/api/users/{record['id']}", headers=headers).status_code == 200
+
+    events = api_only.get('/api/audit').json
+    edit = next(event for event in events if event['action'] == 'edit user')
+    diff = api_only.get(f"/api/audit/{edit['id']}").json['changes']
+    assert diff == [dict(field='statuses.write', before=True, after=False, subject=None)]
+    replacements = [event for event in events if event['action'] == 'replace statuses']
+    assert replacements[0]['actor_name'] == account['name']
+    assert employee.get(f"/api/audit/{replacements[0]['id']}").status_code == 401
+    diff = api_only.get(f"/api/audit/{replacements[0]['id']}").json['changes']
+    assert diff == [dict(field='reason', before=['Ремонт'], after=['Сервис'],
+                        subject=f'{day} · А001АА77')]
+
+
+def test_audit_keeps_legacy_description_and_omits_password_values(api_only):
+    headers = {'X-CSRF-Token': 'test'}
+    with server.db() as c:
+        c.execute("insert into audit(at,user_id,action,detail) values('2026-11-12',1,'legacy','Старое событие')")
+    response = api_only.put('/api/users/1', headers=headers, json={
+        'name': 'Новое имя', 'role': 'admin', 'password': 'isolated-test-password',
+    })
+    assert response.status_code == 200
+    current, legacy = api_only.get('/api/audit').json
+    assert current['actor_name'] == 'Руководитель'
+    detail = api_only.get(f"/api/audit/{current['id']}").json['changes']
+    assert dict(field='name', before='Руководитель', after='Новое имя', subject=None) in detail
+    assert dict(field='password', before=None, after='Пароль изменён') in detail
+    assert legacy['detail'] == 'Старое событие' and not legacy['has_changes']
+    assert api_only.get(f"/api/audit/{legacy['id']}").json == {'changes': None}
+
+
+def test_fuel_read_permission_covers_sync_response(api_only, monkeypatch):
+    from app import neftm
+
+    headers = {'X-CSRF-Token': 'test'}
+    assert api_only.put('/api/users/1', headers=headers, json={
+        'name': 'Руководитель', 'role': 'admin', 'permissions': {'fuel.read': False},
+    }).status_code == 200
+    assert api_only.get('/api/neftm').status_code == 403
+    assert api_only.get('/api/rosneft/driver-assignments').status_code == 403
+    workspace = api_only.get('/api/charter?view=workspace').json
+    assert workspace['fuel'] == [] and not workspace['user']['permissions']['fuel.write']
+    monkeypatch.setattr(neftm, 'sync', lambda *_: {
+        'from': '2026-11-12', 'to': '2026-11-12', 'rows': [{'card': 'sample-card'}],
+    })
+    response = api_only.post('/api/neftm/sync', headers=headers, json={})
+    assert response.json == {'from': '2026-11-12', 'to': '2026-11-12', 'received': 1}

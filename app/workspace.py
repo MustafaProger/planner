@@ -9,6 +9,8 @@ import re
 import sqlite3
 import uuid
 
+from app import activity, permissions
+
 KINDS = ('vehicles', 'drivers', 'routes', 'companies', 'clients', 'carriers',
          'transport_types', 'payment_methods', 'reasons')
 REASONS = ['Отпуск','Больничный','Выходной','Сервис','Ремонт','Нет заявки','Пересменка','БезВодителя','Другое']
@@ -363,7 +365,6 @@ def save_tariff(c,b):
 
 def can_edit(u,r,kind):
     if u['role']=='admin':return True
-    if u['role']!='logist':return False
     return r.get('vehicle') in u['vehicles'] if kind in ('plans','trips') else r.get('kind')=='vehicle' and r.get('entity') in u['vehicles']
 
 def prepare_record(c,kind,b,u,old=None):
@@ -424,15 +425,17 @@ def prepare_record(c,kind,b,u,old=None):
     else:raise ValueError('Неизвестный вид записи.')
     return r
 
-def create_records(c,kind,b,u):
+def create_records(c,kind,b,u,*,created_rows=None):
     body(b)
     if kind not in ('plans','statuses','trips'):raise ValueError('Неизвестный вид записи.')
+    if not permissions.allowed(u, kind+'.write'):raise PermissionError()
     if kind=='trips':b=dict(b,date=str(b.get('start',''))[:10],end_date=str(b.get('start',''))[:10])
     a=dt.date.fromisoformat(iso(b.get('date')));z=dt.date.fromisoformat(iso(b.get('end_date',b.get('date'))))
     if not 0<=(z-a).days<=366:raise ValueError('Период должен быть от 1 до 367 дней.')
     weekdays=b.get('weekdays',list(range(7)))
     if not isinstance(weekdays,list) or any(type(x)!=int or not 0<=x<=6 for x in weekdays):raise ValueError('Некорректные дни недели.')
     if not weekdays:raise ValueError('Выберите хотя бы один день недели.')
+    write_lock(c)
     existing={natural(kind,r):r for r in dataset(c)[kind]}
     created=0
     for i in range((z-a).days+1):
@@ -443,9 +446,11 @@ def create_records(c,kind,b,u):
         ident=uid('manual-'+kind,key)
         c.execute('insert into records(id,kind,body) values(?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body,deleted=0,revision=records.revision+1',(ident,kind,dump(r)))
         existing[key]=r;created+=1
+        if created_rows is not None:created_rows.append(r)
     return created
 
-def replace_statuses(c,b,u):
+def replace_statuses(c,b,u,*,changes=None):
+    if not permissions.allowed(u, 'statuses.write'):raise PermissionError()
     body(b)
     days=b.get('days')
     if not isinstance(days,dict) or not 1<=len(days)<=367:
@@ -473,6 +478,11 @@ def replace_statuses(c,b,u):
                 c.execute('update records set deleted=1,revision=revision+1 where id=?',(ident,))
         ident='manual-statuses:'+uuid.uuid4().hex
         c.execute('insert into records(id,kind,body) values(?,?,?)',(ident,'statuses',dump(dict(record,date=day))))
+        if changes is not None:
+            before = {key: [row.get(key, '') for row in rows] or None for key in ('reason', 'note')}
+            after = {key: [record[key]] for key in ('reason', 'note')}
+            subject = f"{day} · {record['entity']}"
+            changes.extend(activity.changes(before, after, subject=subject))
         changed+=1
     return changed
 
@@ -482,8 +492,9 @@ def edit_record(c,ident,b,u,delete=False):
     if not old or old['kind'] not in ('plans','statuses','trips'):
         raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
     row=resolve_row(json.loads(old['body']),catalogs(c));kind=old['kind']
+    before = dict(row)
     if kind=='trips' and row.get('origin')!='manual':
-        if u['role']!='admin':raise PermissionError()
+        if not permissions.allowed(u, 'trips.classify'):raise PermissionError()
         if delete:raise ValueError('Исходная заявка не удаляется из приложения.')
         require_revision(b.get('revision'),old['revision'])
         category=b.get('category')
@@ -491,8 +502,9 @@ def edit_record(c,ident,b,u,delete=False):
         row.setdefault('original_category',row['category'])
         row.update(category=category,category_override=category)
     else:
+        if not permissions.allowed(u, kind+('.delete' if delete else '.write')):raise PermissionError()
         allowed=can_edit(u,row,kind)
-        if kind=='statuses' and row.get('kind')=='driver' and u['role']=='logist':
+        if kind=='statuses' and row.get('kind')=='driver' and u['role']!='admin':
             d=dataset(c);allowed=any(r.get('driver_id')==row.get('entity_id') and r.get('vehicle') in u['vehicles'] for r in d['trips']+d['plans'])
         if not allowed:raise PermissionError()
         require_revision(b.get('revision'),old['revision'])
@@ -507,7 +519,7 @@ def edit_record(c,ident,b,u,delete=False):
             for member,revision in members:
                 if c.execute('update records set deleted=1,revision=revision+1 where id=? and revision=? and deleted=0',(member,revision)).rowcount!=1:
                     raise ConflictError('Запись изменена. Перечитайте данные.')
-            return
+            return kind, before, None
         previous=row
         row=prepare_record(c,kind,b,u,row);row['user_edited']=True
         for key in ('origin','source','source_id','created_by'):row[key]=previous.get(key,row.get(key))
@@ -515,11 +527,14 @@ def edit_record(c,ident,b,u,delete=False):
             if other['record_id']!=ident and natural(kind,other)==natural(kind,row) and row.get('state')!='cancelled':raise ValueError('Такое назначение/статус уже есть. Для отдельного рейса укажите номер смены.')
     if c.execute('update records set body=?,revision=revision+1 where id=? and revision=? and deleted=0',(dump(row),ident,old['revision'])).rowcount!=1:
         raise ConflictError('Запись изменена. Перечитайте данные.')
+    return kind, before, row
+
+EXTRA_PERMISSIONS = {'coverage': 'coverage.write', 'card_bindings': 'fuel.write', 'expenses': 'expenses.write'}
 
 def save_extra(c,kind,b,u,ident=None):
     body(b)
     if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
-    if u['role']!='admin':raise PermissionError()
+    if not permissions.allowed(u, EXTRA_PERMISSIONS[kind]):raise PermissionError()
     write_lock(c)
     old=c.execute('select * from '+kind+' where id=? and deleted=0',(ident,)).fetchone() if ident else None
     if ident and not old:raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
@@ -564,7 +579,7 @@ def save_extra(c,kind,b,u,ident=None):
 def delete_extra(c,kind,ident,b,u):
     body(b)
     if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
-    if u['role']!='admin':raise PermissionError()
+    if not permissions.allowed(u, EXTRA_PERMISSIONS[kind]):raise PermissionError()
     write_lock(c)
     old=c.execute('select revision from '+kind+' where id=? and deleted=0',(ident,)).fetchone()
     if not old:raise ConflictError('Запись изменена или удалена. Перечитайте данные.')
