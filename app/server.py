@@ -32,8 +32,14 @@ app=Flask(__name__,static_folder='static');app.config.update(MAX_CONTENT_LENGTH=
 
 class FleetSessionInterface(SecureCookieSessionInterface):
     def save_session(self, app, session, response):
-        if request.endpoint != 'static':
-            super().save_session(app, session, response)
+        if request.endpoint == 'static':
+            return
+        # Background reads should not keep a permanent browser session alive.
+        if (request.endpoint == 'charter_data' and request.method == 'GET'
+                and request.args.get('view') == 'workspace'
+                and request.args.get('refresh') == 'background' and not session.modified):
+            return
+        super().save_session(app, session, response)
 
 app.session_interface=FleetSessionInterface()
 app.config['SESSION_COOKIE_SECURE']=os.environ.get('FLEET_SECURE_COOKIE')=='1'

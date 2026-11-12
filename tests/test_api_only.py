@@ -81,6 +81,12 @@ def test_charter_html_login_and_private_workspace(api_only, tmp_path):
     csrf=workspace.headers['X-CSRF-Token']
     assert csrf and csrf.encode() not in workspace.data
     assert workspace.headers['Cache-Control']=='no-store'
+    assert 'Set-Cookie' in workspace.headers
+    background=client.get('/api/charter?view=workspace&refresh=background')
+    assert background.json==workspace.json
+    assert background.headers['X-CSRF-Token']==csrf
+    assert background.headers['Cache-Control']=='no-store'
+    assert 'Set-Cookie' not in background.headers
     assert client.post('/api/logout').status_code==403
     assert client.post('/api/logout',headers={'X-CSRF-Token':csrf}).status_code==200
     assert client.get('/api/charter?view=workspace').status_code==401

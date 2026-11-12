@@ -9,9 +9,9 @@ export function useScrollRows(total, selection, batchSize, rememberKey) {
   const remembered = (cacheKey && scope.limits.get(cacheKey)) || batchSize;
   const [batch, setBatch] = useState(() => ({ selection, scope, total, visible: remembered }));
   const reset = batch.selection !== selection || batch.scope !== scope || batch.total !== total;
-  const initial = batch.scope !== scope || (!batch.total && batch.selection === selection)
-    ? remembered
-    : batchSize;
+  let initial = batchSize;
+  if (batch.scope !== scope || !batch.total) initial = remembered;
+  else if (batch.selection === selection) initial = batch.visible;
   if (reset) setBatch({ selection, scope, total, visible: initial });
   const visible = Math.min(total, reset ? initial : batch.visible);
 

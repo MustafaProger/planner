@@ -135,6 +135,7 @@ const VehicleMapContext = createContext(new Map());
 const livePreview = import.meta.env.MODE === "live-preview";
 const unfilteredPages = ["settings", "directories", "routes", "connections", "users"];
 const rankPages = ["fleet", "drivers", "clients"];
+const WORKSPACE_REFRESH_INTERVAL = 5 * 60_000;
 
 function useReportView(request, busy) {
   const [view, setView] = useState(null);
@@ -828,6 +829,8 @@ function App() {
   const menuButtonRef = useRef(null);
   const scrollPositions = useRef(new Map());
   const restorePage = useRef(null);
+  const refreshRequest = useRef(null);
+  const lastRefreshAttempt = useRef(0);
   const [navCapsule, setNavCapsule] = useState({ y: 0, height: 40, visible: false });
   const [payload, setPayload] = useState(null),
     [error, setError] = useState(""),
@@ -845,6 +848,7 @@ function App() {
     [busy, setBusy] = useState(true),
     [drawer, setDrawer] = useState(null);
   const user = payload?.user;
+  const autoRefresh = !!payload && !payload.demo && (!payload.local_preview || livePreview);
   const saved = useMemo(() => {
     try {
       return JSON.parse(sessionStorage.getItem("charter-filters") || "null");
@@ -920,15 +924,31 @@ function App() {
     open: openMulti === id,
     onToggle: (key, nextOpen) => setOpenMulti(nextOpen ? key : null),
   });
-  async function refresh(signal) {
-    setBusy(true);
+  async function refresh({ background = false } = {}) {
+    if (workspaceRequests.signal.aborted || (background && refreshRequest.current)) return;
+    refreshRequest.current?.abort();
+    const controller = new AbortController();
+    refreshRequest.current = controller;
+    lastRefreshAttempt.current = Date.now();
+    if (!background) setBusy(true);
     try {
-      const result = await api("charter?view=workspace", { signal });
-      if (signal?.aborted) return;
-      setPayload(result);
+      const path = "charter?view=workspace" + (background ? "&refresh=background" : "");
+      const signal = background
+        ? AbortSignal.any([controller.signal, AbortSignal.timeout(60_000)])
+        : controller.signal;
+      const result = await api(path, { signal });
+      if (controller.signal.aborted) return;
+      const receivedAt = new Date().toISOString();
+      setPayload((current) => ({
+        ...result,
+        state: current?.state.revision > result.state.revision ? current.state : result.state,
+        receivedAt,
+        lastForegroundRead: (current?.lastForegroundRead ?? 0) + (background ? 0 : 1),
+        background,
+      }));
       if (
-        !period ||
-        (!payload && saved?.dataset !== (result.demo?.version || "snapshot"))
+        !background &&
+        (!period || (!payload && saved?.dataset !== (result.demo?.version || "snapshot")))
       ) {
         let last = "";
         for (const { date } of result.data.trips)
@@ -940,32 +960,54 @@ function App() {
       }
       setError("");
     } catch (e) {
-      if (signal?.aborted) return;
+      if (controller.signal.aborted) return;
       if (e.status === 401) {
         if (import.meta.env.DEV) location.assign("http://127.0.0.1:8776" + location.pathname);
         else location.reload();
         return;
       }
-      setError(e.message);
+      setError(background ? "Не удалось автоматически перечитать данные." : e.message);
     } finally {
-      if (!signal?.aborted) setBusy(false);
+      if (refreshRequest.current === controller) {
+        refreshRequest.current = null;
+        if (!controller.signal.aborted && !background) setBusy(false);
+      }
     }
   }
   useEffect(() => {
-    const controller = new AbortController();
-    refresh(controller.signal);
+    refresh();
     const restore = (event) => {
       if (event.persisted) location.reload();
     };
     window.addEventListener("pageshow", restore);
     return () => {
-      controller.abort();
+      refreshRequest.current?.abort();
       window.removeEventListener("pageshow", restore);
     };
   }, []);
+  useEffect(() => {
+    if (!autoRefresh) return;
+    let timer;
+    const schedule = () => {
+      clearTimeout(timer);
+      if (document.hidden) return;
+      const remaining = lastRefreshAttempt.current + WORKSPACE_REFRESH_INTERVAL - Date.now();
+      if (remaining <= 0) {
+        void refresh({ background: true });
+      }
+      timer = setTimeout(schedule, remaining > 0 ? remaining : WORKSPACE_REFRESH_INTERVAL);
+    };
+    schedule();
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", schedule);
+    };
+  }, [autoRefresh]);
   async function logout() {
     setLogoutBusy(true);
     setLogoutError("");
+    refreshRequest.current?.abort();
     workspaceRequests.abort();
     try {
       await api("logout", { method: "POST" });
@@ -978,6 +1020,7 @@ function App() {
       workspaceRequests = new AbortController();
       setLogoutError(error.message);
       setLogoutBusy(false);
+      setBusy(false);
     }
   }
   useEffect(() => {
@@ -1036,9 +1079,11 @@ function App() {
     fuel: payload?.fuel,
   }), [workspace, filters, period, page, payload?.state.settings, payload?.fuel]);
   const view = useReportView(request, busy);
-  const pending = busy || view !== request;
+  const backgroundUpdate = payload?.background &&
+    view?.page === page && view?.period === period && view?.filters === filters;
+  const pending = busy || (view !== request && !backgroundUpdate);
   const { p, filters: reportFilters, period: reportPeriod, page: reportPage, settings, fuel } = view || {};
-  const rowLimits = useMemo(() => new Map(), [p, reportFilters, reportPeriod, settings, fuel]);
+  const rowLimits = useMemo(() => new Map(), [reportFilters, reportPeriod]);
   const scrollScope = useMemo(() => ({ page, limits: rowLimits }), [page, rowLimits]);
   const hasCurrentReport = reportPage === page;
   const showDelayedSkeleton = useReportSkeleton(pending && hasCurrentReport);
@@ -1143,12 +1188,12 @@ function App() {
       next[1 - index] = M.addDays(value, index === 0 ? 729 : -729);
     setPeriod(next, value);
   }
-  async function save(body) {
+  async function save(body, revision = payload.state.revision) {
     const state = await api("charter/state", {
       method: "PUT",
-      body: JSON.stringify({ ...body, revision: payload.state.revision }),
+      body: JSON.stringify({ ...body, revision }),
     });
-    setPayload((old) => ({ ...old, state }));
+    setPayload((old) => old.state.revision > state.revision ? old : { ...old, state });
     return state;
   }
   function details(title, rows) {
@@ -1474,7 +1519,7 @@ function App() {
               <h1>{title}</h1>
               <p>{hints[page]}</p>
             </div>
-            <div className="heading-meta">
+            <div className="heading-meta" data-auto-refresh={autoRefresh || undefined}>
               <Badge dot tone="neutral">
                 {livePreview
                   ? "Рабочий API · только чтение"
@@ -1485,9 +1530,11 @@ function App() {
                     : "Данные приложения"}
               </Badge>
               <small>
-                {workspace.meta?.imported_at
-                  ? "Обновление: " + stamp(workspace.meta.imported_at) + " МСК"
-                  : "Дата обновления источника не указана"}
+                {autoRefresh
+                  ? <>Данные получены <time dateTime={payload.receivedAt}>{stamp(payload.receivedAt)} МСК</time></>
+                  : workspace.meta?.imported_at
+                    ? "Обновление: " + stamp(workspace.meta.imported_at) + " МСК"
+                    : "Дата обновления источника не указана"}
               </small>
             </div>
           </div>
@@ -2169,6 +2216,7 @@ function App() {
           )}
           {page === "settings" && (
             <Settings
+              revision={payload.state.revision}
               settings={payload.state.settings}
               save={save}
               user={user}
@@ -2269,6 +2317,7 @@ function App() {
                 user={user}
                 reasons={workspace.directories.reasons}
                 onSave={saveStatus}
+                lastForegroundRead={payload.lastForegroundRead}
               />
             )}
             {drawer.type === "issues" && (
@@ -2282,11 +2331,13 @@ function App() {
             )}
             {drawer.type === "review" && (
               <Review
+                key={drawer.issue.id}
                 issue={drawer.issue}
                 value={payload.state.reviews[drawer.issue.id]}
                 user={user}
-                onSave={async (r) => {
-                  await save({ kind: "review", review: r });
+                revision={payload.state.revision}
+                onSave={async (r, revision) => {
+                  await save({ kind: "review", review: r }, revision);
                   closeDrawer();
                 }}
               />
@@ -2470,7 +2521,12 @@ function Calendar({ p, filters, period, mode, onDay }) {
     </Section>
   );
 }
-function DayDetail({ day, events, user, inScope, reasons, onSave, onDelete }) {
+function DayDetail({ day, events, user, inScope, reasons, onSave, onDelete, lastForegroundRead }) {
+  // Keep the calendar's optimistic tokens from the last deliberate read.
+  const saveFromSnapshot = useRef(onSave);
+  useEffect(() => {
+    saveFromSnapshot.current = onSave;
+  }, [lastForegroundRead]);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [mode, setMode] = useState("day");
@@ -2543,7 +2599,7 @@ function DayDetail({ day, events, user, inScope, reasons, onSave, onDelete }) {
             event.preventDefault();
             if (busy || !reason || !validDates) return;
             void apply(
-              () => onSave(day, selectedDates, reason, note),
+              () => saveFromSnapshot.current(day, selectedDates, reason, note),
               `Статус сохранён. Дат: ${selectedDates.length}.`,
             );
           }}
@@ -2676,7 +2732,8 @@ function IssueTable({ issues, reviews, onRow }) {
     />
   );
 }
-function Review({ issue, value, user, onSave }) {
+function Review({ issue, value, user, onSave, revision }) {
+  const [initialRevision] = useState(revision);
   const [status, setStatus] = useState(value?.status || "Не проверено"),
     [comment, setComment] = useState(value?.comment || ""),
     [error, setError] = useState(""),
@@ -2706,7 +2763,7 @@ function Review({ issue, value, user, onSave }) {
           e.preventDefault();
           setBusy(true);
           try {
-            await onSave({ ...issue, status, comment });
+            await onSave({ ...issue, status, comment }, initialRevision);
           } catch (e) {
             setError(e.message);
           } finally {
@@ -4198,8 +4255,8 @@ function UsersPage({ p, user, onAccountSaved }) {
   );
 }
 
-function Settings({ settings, save, user }) {
-  const [draft, setDraft] = useState(settings),
+function Settings({ settings, save, user, revision }) {
+  const [edit, setEdit] = useState(null),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -4212,9 +4269,11 @@ function Settings({ settings, save, user }) {
           className="form settings-form"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (busy) return;
             setBusy(true);
             try {
-              await save({ kind: "settings", settings: draft });
+              await save({ kind: "settings", settings: edit?.settings ?? settings }, edit?.revision ?? revision);
+              setEdit(null);
               setMessage("Настройки сохранены");
             } catch (e) {
               setMessage(e.message);
@@ -4232,16 +4291,19 @@ function Settings({ settings, save, user }) {
               {label}
               <input
                 type="number"
-                value={draft[key]}
+                value={(edit?.settings ?? settings)[key]}
                 required
                 min={0}
                 max={max}
                 step="0.1"
-                disabled={!hasPermission(user, "settings.write")}
+                disabled={busy || !hasPermission(user, "settings.write")}
                 onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    [key]: e.target.value === "" ? "" : Number(e.target.value),
+                  setEdit({
+                    revision: edit?.revision ?? revision,
+                    settings: {
+                      ...(edit?.settings ?? settings),
+                      [key]: e.target.value === "" ? "" : Number(e.target.value),
+                    },
                   })
                 }
               />

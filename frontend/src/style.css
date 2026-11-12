@@ -1683,7 +1683,18 @@ details summary::-webkit-details-marker {
   .kpi-value {
     font-size: 27px;
   }
+  .page-heading:has(.heading-meta[data-auto-refresh]) {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
   .heading-meta {
+    display: none;
+  }
+  .heading-meta[data-auto-refresh] {
+    display: block;
+    flex-basis: 100%;
+  }
+  .heading-meta[data-auto-refresh] > .ss-badge {
     display: none;
   }
   .work-strip {
