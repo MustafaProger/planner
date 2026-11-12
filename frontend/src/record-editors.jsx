@@ -10,7 +10,7 @@ function Field({ label, name, value, type = "text", required = false, ...props }
 function Choice({ label, name, value, items, required = false, ...props }) {
   return <label>{label}<select aria-label={label} name={name} defaultValue={value || ""} required={required} {...props}><option value="">Выберите</option>{items.map(r => <option key={r.id ?? r} value={r.id ?? r}>{r.name ?? r}</option>)}</select></label>;
 }
-function Note({ value }) { return <label>Комментарий<textarea name="note" defaultValue={value || ""} maxLength={1000} /></label>; }
+function Note({ value }) { return <label>Комментарий<textarea aria-label="Комментарий" name="note" defaultValue={value || ""} maxLength={1000} /></label>; }
 
 // Use the application's request/session helper and the same table and drawer primitives.
 export function createRecordEditors({ api, hasPermission, Section, DataTable, Drawer }) {
@@ -117,7 +117,7 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
     const title = { coverage: "Полнота данных", expenses: "Расходы", card_bindings: "Привязки карт к автомобилям" }[kind];
     const fields = kind === "coverage" ? [["source", "Источник"], ["start", "С"], ["end", "По"], ["state", "Состояние"]] : kind === "expenses" ? [["date", "Дата"], ["vehicle", "Автомобиль"], ["category", "Вид расхода"], ["amount", "Сумма, ₽"]] : [["provider", "Поставщик"], ["card", "Карта"], ["vehicle", "Автомобиль"], ["start", "С"], ["end", "По"]];
     return <Section title={title} action={editable && <button className="record-action" onClick={() => setEditor({})}>Добавить</button>}>
-      <DataTable title={title} rows={p[kind] || []} columns={[...fields.map(([key, label]) => ({ key, label })), { key: "note", label: "Комментарий" }, ...(editable ? [{ key: "actions", label: "Действия", render: row => <button className="text-link" onClick={() => setEditor({ row })}>Изменить</button> }] : [])]} />
+      <DataTable title={title} rows={p[kind] || []} columns={[...fields.map(([key, label]) => ({ key, label, ...(["source", "provider"].includes(key) ? { render: r => ({ trips: "Заявки", plans: "Назначения", rosneft: "Роснефть", neftm: "Нефтьмагистраль" })[r[key]] || r[key] } : {}) })), { key: "note", label: "Комментарий" }, ...(editable ? [{ key: "actions", label: "Действия", render: row => <button className="text-link" onClick={() => setEditor({ row })}>Изменить</button> }] : [])]} />
       {editor && <Drawer title={title} size="compact" onClose={() => setEditor(null)}><ExtraEditor kind={kind} row={editor.row} p={p} period={period} onSaved={async () => { await refresh(); setEditor(null); }} /></Drawer>}
     </Section>;
   }
@@ -128,7 +128,7 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
       await api("catalog/" + kind + (row ? "/" + row.id : ""), { method: row ? "PUT" : "POST", body: JSON.stringify({ ...r, ...body, ...flags, aliases: body.aliases.split("\n").map(s => s.trim()).filter(Boolean) }) }); await onSaved();
     }}>
       <Field label="Название" name="name" value={r.name} maxLength={200} required />
-      <label>Другие названия, по одному в строке<textarea name="aliases" defaultValue={(r.aliases || []).join("\n")} /></label>
+      <label>Другие названия, по одному в строке<textarea aria-label="Другие названия, по одному в строке" name="aliases" defaultValue={(r.aliases || []).join("\n")} /></label>
       {kind === "vehicles" && <><Choice label="Тип ресурса" name="resource_type" value={r.resource_type || "vehicle"} items={[{ id: "vehicle", name: "Автомобиль" }, { id: "partner", name: "Партнёр" }, { id: "service", name: "Сервис" }, { id: "placeholder", name: "Не определён" }]} required /><Field label="Марка" name="brand" value={r.brand} /><Choice label="Тип транспорта" name="transport_type_id" value={r.transport_type_id} items={active(p, "transport_types")} /></>}
       {["vehicles", "drivers"].includes(kind) && <><Choice label="Компания" name="company" value={r.company} items={active(p, "companies").map(c => ({ id: c.name, name: c.name }))} /><Choice label="Исполнитель" name="carrier_id" value={r.carrier_id} items={active(p, "carriers")} /></>}
       {kind === "drivers" && <label><input type="checkbox" name="partner" defaultChecked={r.partner} />Водитель партнёра</label>}
