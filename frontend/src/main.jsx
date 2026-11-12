@@ -52,6 +52,7 @@ import { RevenueReview } from "./revenue-review.jsx";
 import { AnimatedMetric } from "./animated-metric.jsx";
 import { RowBatches, ScrollRows, ScrollRowsContext, useScrollRows } from "./scroll-rows.jsx";
 import * as M from "./model";
+import { createRecordEditors } from "./record-editors.jsx";
 import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
 const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
@@ -761,6 +762,8 @@ function Drawer({ title, children, onClose, size = "wide", className = "" }) {
     </dialog>
   );
 }
+const { TripEditor, ExtraRecords, CatalogManager } = createRecordEditors({ api, hasPermission, Section, DataTable, Drawer });
+
 function App() {
   const navRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -2074,6 +2077,8 @@ function App() {
               period={reportPeriod}
               filters={reportFilters}
               onTrips={(title, rows) => details(title, rows)}
+              user={user} refresh={refresh}
+              onNewTrip={() => setDrawer({ type: "trip-edit", title: "Новая ручная заявка" })}
             />
           )}
           {page === "directories" && (
@@ -2144,7 +2149,7 @@ function App() {
               <DataTable
                 title="Исходные заявки"
                 rows={drawer.rows}
-                columns={tripCols}
+                columns={[...tripCols, ...(hasPermission(user, "trips.write") || hasPermission(user, "trips.delete") || hasPermission(user, "trips.classify") ? [{ key: "actions", label: "Действия", render: r => (user.role === "admin" || user.vehicles.includes(r.vehicle)) && <button className="text-link" onClick={() => setDrawer({ type: "trip-edit", title: "Заявка " + r.id, row: r })}>Открыть редактор</button> }] : [])]}
               />
               <button
                 className="text-link"
@@ -2157,6 +2162,7 @@ function App() {
               </button>
             </>
           )}
+          {drawer.type === "trip-edit" && <TripEditor p={p} row={drawer.row} user={user} onSaved={async () => { await refresh(); setDrawer(null); }} />}
           {drawer.type === "days" && (
             <DataTable
               title="Даты статусов"
@@ -2807,22 +2813,79 @@ function RosneftDriverCards({ onRefresh, editable }) {
   );
 }
 
+function FuelNorms({ p, settings, user, save }) {
+  const [car, setCar] = useState(""),
+    [norm, setNorm] = useState(""),
+    [message, setMessage] = useState(""),
+    [busy, setBusy] = useState(false);
+  return <>
+      {hasPermission(user, "settings.write") && <Section
+        title="Норма автомобиля"
+        subtitle="Норма сохраняется в настройках приложения"
+      >
+        <form
+          className="inline-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            try {
+              await save({
+                kind: "settings",
+                settings: {
+                  ...settings,
+                  fuel_norms: { ...settings.fuel_norms, [car]: Number(norm) },
+                },
+              });
+              setMessage("Норма сохранена");
+            } catch (e) {
+              setMessage(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <label>
+            Автомобиль
+            <SelectMenu required ariaLabel="Автомобиль" value={car} onChange={(e) => {
+                setCar(e.target.value);
+                setNorm(settings.fuel_norms[e.target.value] || "");
+              }} options={[{ value: "", label: "Выберите" }, ...p.vehicles.map((v) => ({ value: v.name, label: v.name }))]} />
+          </label>
+          <label>
+            Литров на 100 км
+            <input
+              type="number"
+              required
+              min="0.1"
+              max="200"
+              step="0.1"
+              value={norm}
+              onChange={(e) => setNorm(e.target.value)}
+            />
+          </label>
+          <B variant="primary" type="submit" disabled={busy}>
+            Сохранить
+          </B>
+          <span role="status">{message}</span>
+        </form>
+      </Section>}
+  </>;
+}
+
 function FuelPage({ demo, onRefresh, ...props }) {
   return (
     <>
       {hasPermission(props.user, "fuel.read") && !demo && (
         <RosneftDriverCards onRefresh={onRefresh} editable={hasPermission(props.user, "fuel.write")} />
       )}
+      <FuelNorms {...props} />
+      <ExtraRecords kind="card_bindings" p={props.p} user={props.user} refresh={onRefresh} />
       <FuelReport {...props} />
     </>
   );
 }
 
 function FuelReport({ a, p, filters, settings, user, save, details }) {
-  const [car, setCar] = useState(""),
-    [norm, setNorm] = useState(""),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
   if (!hasPermission(user, "fuel.read"))
     return (
       <InfoNote>
@@ -2945,64 +3008,13 @@ function FuelReport({ a, p, filters, settings, user, save, details }) {
         остатки в баке или надёжный датчик. Отсутствующие сутки ГЛОНАСС не
         заменяются нулями; норматив относится только к доступному пробегу.
       </InfoNote>
-      {hasPermission(user, "settings.write") && <Section
-        title="Норма автомобиля"
-        subtitle="Норма сохраняется в настройках приложения"
-      >
-        <form
-          className="inline-form"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setBusy(true);
-            try {
-              await save({
-                kind: "settings",
-                settings: {
-                  ...settings,
-                  fuel_norms: { ...settings.fuel_norms, [car]: Number(norm) },
-                },
-              });
-              setMessage("Норма сохранена");
-            } catch (e) {
-              setMessage(e.message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <label>
-            Автомобиль
-            <SelectMenu required ariaLabel="Автомобиль" value={car} onChange={(e) => {
-                setCar(e.target.value);
-                setNorm(settings.fuel_norms[e.target.value] || "");
-              }} options={[{ value: "", label: "Выберите" }, ...p.vehicles.map((v) => ({ value: v.name, label: v.name }))]} />
-          </label>
-          <label>
-            Литров на 100 км
-            <input
-              type="number"
-              required
-              min="0.1"
-              max="200"
-              step="0.1"
-              value={norm}
-              onChange={(e) => setNorm(e.target.value)}
-            />
-          </label>
-          <B variant="primary" type="submit" disabled={busy}>
-            Сохранить
-          </B>
-          <span role="status">{message}</span>
-        </form>
-      </Section>}
+
       <Section
         title="Операции топливных карт"
         subtitle="Время и АЗС не передаются в текущей нормализованной сводке; доступны в исходных данных"
       >
         <DataTable title="Заправки" rows={a.fuel} columns={fuelCols} />
-        <a className="text-link" href="/data/fuelcards">
-          История привязок карт <ExternalLink size={14} />
-        </a>
+
       </Section>
     </>
   );
@@ -3246,9 +3258,7 @@ function Directories({ p, onChoose, user, refresh }) {
         );
       })}
       {hasPermission(user, "catalog.write") && <AssignmentEditor p={p} refresh={refresh} />}
-      <a className="text-link" href="/data/directories">
-        Редактировать справочники <ExternalLink size={14} />
-      </a>
+      <CatalogManager p={p} user={user} refresh={refresh} />
     </>
   );
 }
@@ -3496,7 +3506,7 @@ function PlanForm({ p, row, user, onSaved }) {
   );
 }
 
-function SourceDataPage({ p, fuel, period, filters, onTrips }) {
+function SourceDataPage({ p, fuel, period, filters, onTrips, user, refresh, onNewTrip }) {
   const [tab, setTab] = useState("orders");
   const inPeriod = (row) => row.date >= period[0] && row.date <= period[1];
   const trips = p.trips.filter((r) => inPeriod(r) && M.matches(r, filters, p));
@@ -3523,12 +3533,16 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
           ["statuses", "Статусы"],
           ["satellite", "Спутник"],
           ["fuel", "Топливо"],
+          ...(hasPermission(user, "coverage.write") ? [["coverage", "Полнота"]] : []),
+          ...(hasPermission(user, "expenses.write") ? [["expenses", "Расходы"]] : []),
         ]}
         value={tab}
         onChange={setTab}
       />
+      {tab === "coverage" && <ExtraRecords kind="coverage" p={p} user={user} period={period} refresh={refresh} />}
+      {tab === "expenses" && <ExtraRecords kind="expenses" p={p} user={user} period={period} refresh={refresh} />}
       {tab === "orders" && (
-        <Section title="Заявки ТрансТрейд и ручные записи" subtitle="Фактическая работа; исходные записи не заменяются планом">
+        <Section title="Заявки ТрансТрейд и ручные записи" subtitle="Фактическая работа; исходные записи не заменяются планом" action={hasPermission(user, "trips.write") && <button className="record-action" onClick={onNewTrip}>Добавить ручную заявку</button>}>
           <DataTable
             rows={trips}
             columns={tripCols}

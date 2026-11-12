@@ -3239,3 +3239,15 @@ button:not(:disabled):active,
 .plan-fields {
   display: contents;
 }
+/* Record editors share the compact drawer and remain usable on narrow screens. */
+.record-form .plan-fields { display: grid; gap: 14px; min-width: 0; }
+.record-form label { display: grid; gap: 6px; min-width: 0; }
+.record-form input:not([type="checkbox"]), .record-form select, .record-form textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.record-form label:has(input[type="checkbox"]) { display: flex; align-items: center; }
+.record-form .form-actions { display: flex; gap: 12px; justify-content: flex-end; }
+.record-delete { color: #b42318; padding: 10px 14px; border: 1px solid #f0b9b5; border-radius: 8px; background: #fff; }
+
+.record-action { min-height: 36px; padding: 9px 14px; border: 1px solid #3974c4; border-radius: 8px; background: #3974c4; color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.record-action:hover:not(:disabled) { background: #2e65ac; }
+.record-action:disabled { opacity: .5; cursor: default; }
+.record-action:focus-visible { outline: 2px solid #3974c4; outline-offset: 3px; }

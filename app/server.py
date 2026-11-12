@@ -206,6 +206,17 @@ def tariff_quote():
         if not route:raise ValueError('Маршрут не найден.')
         return jsonify(ws.current_rate(c,route['id'],ws.iso(request.args.get('date'))))
 
+@app.get('/api/records/<ident>')
+@auth()
+def record_details(ident):
+    with db() as c:
+        row = c.execute('select * from records where id=? and deleted=0', (ident,)).fetchone()
+        if not row: abort(404)
+        result = ws.resolve_row(json.loads(row['body']), ws.catalogs(c))
+        result.pop('legacy_snapshot', None)
+        result.update(record_id=ident, revision=row['revision'])
+    return jsonify(result)
+
 @app.put('/api/records/<ident>')
 @auth()
 def record_save(ident):

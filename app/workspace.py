@@ -495,6 +495,7 @@ def edit_record(c,ident,b,u,delete=False):
     before = dict(row)
     if kind=='trips' and row.get('origin')!='manual':
         if not permissions.allowed(u, 'trips.classify'):raise PermissionError()
+        if not can_edit(u,row,kind):raise PermissionError()
         if delete:raise ValueError('Исходная заявка не удаляется из приложения.')
         require_revision(b.get('revision'),old['revision'])
         category=b.get('category')
