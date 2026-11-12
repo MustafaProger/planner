@@ -48,6 +48,9 @@ def db():
 def init():
     with db() as c:
         c.executescript('CREATE TABLE IF NOT EXISTS snapshot(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT); CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT UNIQUE,password TEXT,role TEXT,vehicles TEXT); CREATE TABLE IF NOT EXISTS manual(id TEXT PRIMARY KEY,kind TEXT,body TEXT,created_by INTEGER,deleted INTEGER DEFAULT 0); CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT,user_id INTEGER,action TEXT,detail TEXT);')
+        c.execute('begin immediate')
+        if 'session_version' not in {r['name'] for r in c.execute('pragma table_info(users)')}:
+            c.execute('alter table users add column session_version text')
         initial_source=None
         if not c.execute('select 1 from snapshot').fetchone():
             # API-only installations start with an empty workspace.
@@ -77,9 +80,10 @@ def user():
     if uid is None:return None
     if getattr(g,'fleet_user',None) and g.fleet_user['id']==uid:return g.fleet_user
     with db() as c:
-        r=c.execute('select id,name,role,vehicles from users where id=?',(uid,)).fetchone()
-        if not r:return None
+        r=c.execute('select id,name,role,vehicles,session_version from users where id=?',(uid,)).fetchone()
+        if not r or r['session_version'] != session.get('account_version'):return None
         u=dict(r)
+        u.pop('session_version')
         vehicles=json.loads(u['vehicles'])
         if vehicles:
             cats=ws.catalogs(c)
@@ -275,7 +279,11 @@ def bootstrap(token):
     if not app.config['ALLOW_BOOTSTRAP']:abort(404)
     p=DATA/'bootstrap.token'
     if request.remote_addr!='127.0.0.1' or not p.exists() or not secrets.compare_digest(token,p.read_text()):abort(403)
-    session.clear();session.update(uid=1,csrf=secrets.token_hex(24));session.permanent=True;p.unlink();(DATA/'bootstrap.used').touch(mode=0o600);return redirect('/')
+    with db() as c:
+        account = c.execute("select * from users where id=1 and role='admin'").fetchone()
+    if account is None:abort(403)
+    start_user_session(account)
+    p.unlink();(DATA/'bootstrap.used').touch(mode=0o600);return redirect('/')
 FAILURES={}
 @app.post('/api/login')
 def login():
@@ -290,8 +298,14 @@ def authenticate(b):
     if not hasattr(b,'get') or not isinstance(b.get('name'),str):return 'Укажите логин и пароль',400
     with db() as c:u=c.execute('select * from users where name=?',(b.get('name'),)).fetchone()
     if not u or not check_password_hash(u['password'],str(b.get('password',''))):FAILURES[ip]=history+[now];return 'Неверный логин или пароль',401
-    session.clear();session.update(uid=u['id'],csrf=secrets.token_hex(24));session.permanent=True
+    start_user_session(u)
     return None,200
+
+def start_user_session(account):
+    session.clear()
+    session.update(uid=account['id'], csrf=secrets.token_hex(24),
+                   account_version=account['session_version'])
+    session.permanent=True
 @app.post('/api/logout')
 @auth()
 def logout():session.clear();return jsonify(ok=True)
@@ -344,34 +358,113 @@ def delete_manual(ident):
 @app.get('/api/users')
 @auth(['admin'])
 def users():
-    with db() as c:rows=[dict(r) for r in c.execute('select id,name,role,vehicles from users')]
+    with db() as c:
+        rows = [dict(r) for r in c.execute('select id,name,role,vehicles from users')]
     return jsonify(rows)
+
+
+def user_fields(c, body, *, current=None):
+    ws.body(body)
+    role = body.get('role')
+    name = body.get('name')
+    password = body.get('password', '')
+    cars = body.get('vehicles', [])
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError('Укажите имя пользователя')
+    if role not in ('admin', 'logist', 'viewer'):
+        raise ValueError('Выберите роль пользователя')
+    password_required = current is None or password != ''
+    if not isinstance(password, str) or (password_required and len(password) < 12):
+        raise ValueError('Пароль должен содержать не менее 12 символов')
+    if not isinstance(cars, list):
+        raise ValueError('Выберите автомобили из справочника')
+    if cars:
+        known = {row['name'] for row in ws.catalogs(c)['vehicles'] if not row.get('merged_into')}
+        if current is not None:
+            known.update(json.loads(current['vehicles'] or '[]'))
+        if any(not isinstance(car, str) or car not in known for car in cars):
+            raise ValueError('Неизвестная машина')
+    return name.strip(), role, json.dumps(cars), password
+
+
+def check_user_manager(c):
+    # Recheck inside the write transaction in case another manager changed our access.
+    actor = c.execute("select session_version from users where id=? and role='admin'",
+                      (session['uid'],)).fetchone()
+    if actor is None or actor['session_version'] != session.get('account_version'):
+        raise PermissionError()
+
+
 @app.post('/api/users')
 @auth(['admin'])
 def add_user():
-    b = request.get_json()
-    ws.body(b)
-    role = b.get('role')
-    name = str(b.get('name', '')).strip()
-    pwd = str(b.get('password', ''))
-    cars = b.get('vehicles', [])
-    if role not in ('admin', 'logist', 'viewer') or not name or len(pwd) < 12:
-        raise ValueError('Имя обязательно, пароль — от 12 символов')
-    if not isinstance(cars, list):
-        raise ValueError('Неизвестная машина')
     try:
         with db() as c:
-            if cars:
-                catalog = ws.catalogs(c)['vehicles']
-                known = {row['name'] for row in catalog if not row.get('merged_into')}
-                if any(not isinstance(car, str) or car not in known for car in cars):
-                    raise ValueError('Неизвестная машина')
-            c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',
-                      (name, generate_password_hash(pwd), role, json.dumps(cars)))
+            c.execute('begin immediate')
+            check_user_manager(c)
+            name, role, cars, password = user_fields(c, request.get_json())
+            next_id = c.execute("""
+                select max(coalesce((select max(id) from users), 0),
+                           coalesce((select max(user_id) from audit), 0),
+                           coalesce((select cast(body as integer) from workspace_meta
+                                     where key='last_deleted_user_id'), 0)) + 1
+            """).fetchone()[0]
+            c.execute('insert into users(id,name,password,role,vehicles,session_version) values(?,?,?,?,?,?)',
+                      (next_id, name, generate_password_hash(password), role, cars, secrets.token_hex(16)))
             audit(c, 'add user', name)
-    except sqlite3.IntegrityError:
-        raise ValueError('Пользователь уже существует')
+    except sqlite3.IntegrityError as error:
+        raise ValueError('Пользователь уже существует') from error
     return jsonify(ok=True)
+
+
+@app.put('/api/users/<int:uid>')
+@auth(['admin'])
+def update_user(uid):
+    own_account = uid == session['uid']
+    try:
+        with db() as c:
+            c.execute('begin immediate')
+            check_user_manager(c)
+            current = c.execute('select * from users where id=?', (uid,)).fetchone()
+            if current is None:
+                return jsonify(error='Пользователь не найден'), 404
+            name, role, cars, password = user_fields(c, request.get_json(), current=current)
+            if own_account and role != 'admin':
+                raise ws.ConflictError('Нельзя изменить роль своей учётной записи')
+            password_hash = generate_password_hash(password) if password else current['password']
+            version = secrets.token_hex(16) if password else current['session_version']
+            c.execute('update users set name=?,role=?,vehicles=?,password=?,session_version=? where id=?',
+                      (name, role, cars, password_hash, version, uid))
+            detail = name if name == current['name'] else f"{current['name']} → {name}"
+            audit(c, 'edit user', detail)
+    except sqlite3.IntegrityError as error:
+        raise ValueError('Пользователь уже существует') from error
+    if own_account and password:
+        session['account_version'] = version
+    return jsonify(ok=True)
+
+
+@app.delete('/api/users/<int:uid>')
+@auth(['admin'])
+def delete_user(uid):
+    if uid == session['uid']:
+        raise ws.ConflictError('Нельзя удалить свою учётную запись')
+    with db() as c:
+        c.execute('begin immediate')
+        check_user_manager(c)
+        target = c.execute('select name from users where id=?', (uid,)).fetchone()
+        if target is None:
+            return jsonify(error='Пользователь не найден'), 404
+        # Keep deleted IDs out of the allocator so audit and record authors stay distinct.
+        c.execute("""
+            insert into workspace_meta(key,body) values('last_deleted_user_id',?)
+            on conflict(key) do update set body=max(cast(body as integer), cast(excluded.body as integer))
+        """, (str(uid),))
+        c.execute('delete from users where id=?', (uid,))
+        audit(c, 'delete user', target['name'])
+    return jsonify(ok=True)
+
+
 @app.get('/api/audit')
 @auth(['admin'])
 def get_audit():

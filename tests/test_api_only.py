@@ -155,3 +155,48 @@ def test_user_creation_reads_vehicle_catalog_without_loading_reports(api_only, m
     session = viewer.get('/api/session').get_json()
     assert session['user']['vehicles'] == vehicles
     assert viewer.post('/api/users', headers={'X-CSRF-Token': session['csrf']}, json=account).status_code == 403
+
+
+def test_user_edit_and_removal_enforce_access_and_revoke_sessions(api_only):
+    with server.db() as c:
+        ws.add_catalog(c, 'vehicles', 'А001АА77')
+        ws.add_catalog(c, 'vehicles', 'А002АА77')
+    headers = {'X-CSRF-Token': 'test'}
+    original = dict(name='Проверка доступа', password='test-password-only',
+                    role='viewer', vehicles=['А001АА77'])
+    assert api_only.post('/api/users', headers=headers, json=original).status_code == 200
+    account = next(row for row in api_only.get('/api/users').json if row['name'] == original['name'])
+    path = f"/api/users/{account['id']}"
+    target = server.app.test_client()
+    assert target.post('/api/login', json=original).status_code == 200
+    target_headers = {'X-CSRF-Token': target.get('/api/session').json['csrf']}
+    assert target.put(path, headers=target_headers, json=original).status_code == 403
+    assert target.delete(path, headers=target_headers).status_code == 403
+    assert api_only.put(path, json=original).status_code == 403
+    assert api_only.delete(path).status_code == 403
+    assert api_only.delete('/api/users/1', headers=headers).status_code == 409
+    assert api_only.put('/api/users/1', headers=headers, json=original).status_code == 409
+
+    edited = dict(name='Обновлённое имя', role='logist', vehicles=['А002АА77'])
+    assert api_only.put(path, headers=headers, json={**edited, 'name': 'Руководитель'}).status_code == 400
+    assert api_only.put(path, headers=headers, json=edited).status_code == 200
+    assert target.get('/api/session').json['user'] == {'id': account['id'], **edited}
+    assert target.post('/api/login', json={**edited, 'password': original['password']}).status_code == 200
+
+    new_password = 'new-password-for-test'
+    assert api_only.put(path, headers=headers, json={**edited, 'password': new_password}).status_code == 200
+    assert target.get('/api/data').status_code == 401
+    assert target.post('/api/login', json={**edited, 'password': original['password']}).status_code == 401
+    assert target.post('/api/login', json={**edited, 'password': new_password}).status_code == 200
+    assert api_only.delete(path, headers=headers).status_code == 200
+    assert api_only.delete(path, headers=headers).status_code == 404
+    assert api_only.put(path, headers=headers, json=edited).status_code == 404
+    assert target.get('/api/data').status_code == 401
+    assert target.post('/api/login', json={**edited, 'password': new_password}).status_code == 401
+
+    assert api_only.post('/api/users', headers=headers, json={**edited, 'password': new_password}).status_code == 200
+    rows = api_only.get('/api/users').json
+    assert all(row['id'] != account['id'] and 'password' not in row and 'session_version' not in row for row in rows)
+    assert target.get('/api/data').status_code == 401
+    actions = [row['action'] for row in api_only.get('/api/audit').json]
+    assert actions == ['add user', 'delete user', 'edit user', 'edit user', 'add user']

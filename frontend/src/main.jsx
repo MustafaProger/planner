@@ -335,7 +335,8 @@ function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, f
       className={"multi " + (value.length ? "is-active" : "")}
       data-open={open ? "true" : "false"}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" && open) {
+          e.preventDefault();
           onToggle?.(id, false);
           e.currentTarget.querySelector(".multi-trigger")?.focus();
         }
@@ -437,7 +438,13 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
     setSearch("");
   };
   return (
-    <div ref={root} className="select-menu" data-open={open ? "true" : "false"} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+    <div ref={root} className="select-menu" data-open={open ? "true" : "false"} onKeyDown={(event) => {
+      if (event.key === "Escape" && open) {
+        event.preventDefault();
+        setOpen(false);
+        root.current.querySelector(".select-menu-trigger")?.focus();
+      }
+    }}>
       {name && <input className="select-menu-input" tabIndex={-1} aria-hidden="true" name={name} value={current} required={required} onChange={() => {}} />}
       <button type="button" className="select-menu-trigger" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((state) => !state)}>
         <span className={selected ? "" : "placeholder"}>{selected?.label || placeholder}</span>
@@ -568,7 +575,9 @@ function DataTable({ rows, columns, onRow, title = "Данные", downloadRows 
         <table>
           <thead>
             <tr>
-              {columns.map((c) => (
+              {columns.map((c) => c.sortable === false ? (
+                <th key={c.key}>{c.label}</th>
+              ) : (
                 <th
                   key={c.key}
                   aria-sort={
@@ -2113,7 +2122,7 @@ function App() {
             />
           )}
           {page === "users" && user.role === "admin" && (
-            <UsersPage p={p} />
+            <UsersPage p={p} user={user} onRename={(name) => setPayload((current) => ({ ...current, user: { ...current.user, name } }))} />
           )}
           </div>
           </ScrollRowsContext.Provider>
@@ -3748,6 +3757,8 @@ const auditActions = {
   "edit record": "Изменение записи",
   "delete record": "Удаление записи",
   "add user": "Добавление пользователя",
+  "edit user": "Редактирование пользователя",
+  "delete user": "Удаление пользователя",
   "assign rosneft driver": "Назначение водителя на карту Роснефти",
 };
 const auditTime = new Intl.DateTimeFormat("ru-RU", {
@@ -3756,15 +3767,83 @@ const auditTime = new Intl.DateTimeFormat("ru-RU", {
   timeStyle: "medium",
 });
 
-function UsersPage({ p }) {
+function assignedVehicles(account) {
+  try {
+    const names = JSON.parse(account?.vehicles || "[]");
+    return Array.isArray(names) ? names : [];
+  } catch {
+    return [];
+  }
+}
+
+function UserForm({ account, ownAccount, vehicleNames, onSaved }) {
+  const [role, setRole] = useState(account?.role ?? "logist");
+  const [vehicles, setVehicles] = useState(() => assignedVehicles(account));
+  const [vehicleMenu, setVehicleMenu] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const dismissVehicleMenu = useCallback(() => setVehicleMenu(false), []);
+  const vehicleId = account ? "edit-user-vehicles" : "user-vehicles";
+  const choices = [...new Set([...vehicleNames, ...assignedVehicles(account)])];
+
+  return (
+    <form
+      className={account ? "form user-edit-form" : "inline-form user-form"}
+      onSubmit={async (event) => {
+        event.preventDefault();
+        if (saving) return;
+        const form = event.currentTarget;
+        const body = { ...Object.fromEntries(new FormData(form)), vehicles };
+        setSaving(true);
+        setError("");
+        try {
+          await api(account ? `users/${account.id}` : "users", {
+            method: account ? "PUT" : "POST",
+            body: JSON.stringify(body),
+          });
+          if (!account) {
+            form.reset();
+            setRole("logist");
+            setVehicles([]);
+            setVehicleMenu(false);
+          }
+          await onSaved(body.name.trim());
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setSaving(false);
+        }
+      }}
+    >
+      <label>Имя<input name="name" required defaultValue={account?.name} /></label>
+      <label>
+        {account ? "Новый пароль" : "Пароль"}
+        <input name="password" type="password" minLength={12} required={!account} autoComplete="new-password" />
+        {account && <small>Оставьте поле пустым, чтобы сохранить текущий пароль</small>}
+      </label>
+      <div className="user-form-field">
+        <span>Роль</span>
+        <SelectMenu name="role" ariaLabel="Роль" value={role} onChange={(e) => setRole(e.target.value)} options={userRoles} disabled={ownAccount} />
+      </div>
+      <div className="user-form-field user-vehicle-field">
+        <label htmlFor={vehicleId}>Автомобили</label>
+        <Multi id={vehicleId} label="Выберите автомобили" items={choices} value={vehicles} onChange={setVehicles} open={vehicleMenu} onToggle={(_, next) => setVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
+      </div>
+      <B variant="primary" type="submit" disabled={saving}>
+        {account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}
+      </B>
+      {error && <span role="alert" className="error">{error}</span>}
+    </form>
+  );
+}
+
+function UsersPage({ p, user, onRename }) {
   const [users, setUsers] = useState(null);
   const [audit, setAudit] = useState(null);
   const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [newRole, setNewRole] = useState("logist");
-  const [userVehicles, setUserVehicles] = useState([]);
-  const [userVehicleMenu, setUserVehicleMenu] = useState(false);
-  const dismissVehicleMenu = useCallback(() => setUserVehicleMenu(false), []);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const vehicleNames = p.vehicles.map(({ name }) => name);
   const accounts = useMemo(() => users?.map((r) => ({
     ...r,
     role_label: userRoles.find(({ value }) => value === r.role)?.label ?? r.role,
@@ -3791,6 +3870,20 @@ function UsersPage({ p }) {
   useEffect(() => {
     load();
   }, []);
+  async function remove(account) {
+    if (deleting || !window.confirm(`Удалить пользователя «${account.name}»?`)) return;
+    setDeleting(account.id);
+    setMessage("");
+    try {
+      await api(`users/${account.id}`, { method: "DELETE" });
+      setMessage("Пользователь удалён");
+      await load();
+    } catch (e) {
+      setMessage(e.message);
+    } finally {
+      setDeleting(null);
+    }
+  }
   return (
     <>
       <Section title="Пользователи и роли">
@@ -3803,56 +3896,43 @@ function UsersPage({ p }) {
             {
               key: "vehicles",
               label: "Назначенные автомобили",
-              render: (r) => {
-                if (r.role === "admin") return "Все автомобили";
-                try {
-                  return JSON.parse(r.vehicles || "[]").join(", ") || "Не назначены";
-                } catch {
-                  return "—";
-                }
-              },
+              render: (r) => r.role === "admin" ? "Все автомобили" : assignedVehicles(r).join(", ") || "Не назначены",
+            },
+            {
+              key: "actions",
+              label: "Действия",
+              sortable: false,
+              render: (account) => (
+                <div className="user-row-actions">
+                  <B size="small" aria-label={`Редактировать пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => setEditing(account)}>
+                    Редактировать
+                  </B>
+                  {account.id !== user.id && (
+                    <B size="small" aria-label={`Удалить пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => remove(account)}>
+                      {deleting === account.id ? "Удаляем…" : "Удалить"}
+                    </B>
+                  )}
+                </div>
+              ),
             },
           ]}
         />
-        <form
-          className="inline-form user-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            if (saving) return;
-            const form = event.currentTarget;
-            const body = Object.fromEntries(new FormData(form));
-            body.vehicles = userVehicles;
-            setSaving(true);
-            setMessage("");
-            try {
-              await api("users", { method: "POST", body: JSON.stringify(body) });
-              form.reset();
-              setNewRole("logist");
-              setUserVehicles([]);
-              setUserVehicleMenu(false);
-              setMessage("Пользователь добавлен");
-              await load();
-            } catch (e) {
-              setMessage(e.message);
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          <label>Имя<input name="name" required /></label>
-          <label>Пароль<input name="password" type="password" minLength={12} required autoComplete="new-password" /></label>
-          <div className="user-form-field">
-            <span>Роль</span>
-            <SelectMenu name="role" ariaLabel="Роль" value={newRole} onChange={(e) => setNewRole(e.target.value)} options={userRoles} />
-          </div>
-          <div className="user-form-field user-vehicle-field">
-            <label htmlFor="user-vehicles">Автомобили</label>
-            <Multi id="user-vehicles" label="Выберите автомобили" items={p.vehicles.map((vehicle) => vehicle.name)} value={userVehicles} onChange={setUserVehicles} open={userVehicleMenu} onToggle={(_, next) => setUserVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
-          </div>
-          <B variant="primary" type="submit" disabled={saving}>{saving ? "Добавляем…" : "Добавить пользователя"}</B>
-        </form>
+        <UserForm vehicleNames={vehicleNames} onSaved={async () => {
+          setMessage("Пользователь добавлен");
+          await load();
+        }} />
         {message && <span role="status">{message}</span>}
       </Section>
+      {editing && (
+        <Drawer title="Редактирование пользователя" size="compact" onClose={() => setEditing(null)}>
+          <UserForm account={editing} ownAccount={editing.id === user.id} vehicleNames={vehicleNames} onSaved={async (name) => {
+            if (editing.id === user.id) onRename(name);
+            setEditing(null);
+            setMessage("Изменения сохранены");
+            await load();
+          }} />
+        </Drawer>
+      )}
       <Section title="Журнал действий" subtitle="Последние 100 событий">
         <DataTable
           rows={events}
