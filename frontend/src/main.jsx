@@ -3524,7 +3524,6 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
           ["statuses", "Статусы"],
           ["satellite", "Спутник"],
           ["fuel", "Топливо"],
-          ["service", "Контрольные записи"],
         ]}
         value={tab}
         onChange={setTab}
@@ -3592,47 +3591,6 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
         <Section title="Топливные операции" subtitle="Операции доступны руководителю; карты связываются с автомобилем по датам">
           <DataTable rows={fuelRows} title="Топливо" columns={fuelCols} />
         </Section>
-      )}
-      {tab === "service" && (
-        <div className="service-grid">
-          <Section title="Полнота периодов">
-            <DataTable
-              rows={p.coverage || []}
-              title="Полнота"
-              columns={[
-                { key: "source", label: "Источник" },
-                { key: "start", label: "С" },
-                { key: "end", label: "По" },
-                { key: "note", label: "Комментарий" },
-              ]}
-            />
-          </Section>
-          <Section title="Привязки топливных карт">
-            <DataTable
-              rows={p.card_bindings || []}
-              title="Карты"
-              columns={[
-                { key: "card", label: "Карта" },
-                { key: "vehicle", label: "Автомобиль", vehicle: true },
-                { key: "start", label: "С" },
-                { key: "end", label: "По" },
-              ]}
-            />
-          </Section>
-          <Section title="Подтверждённые расходы">
-            <DataTable
-              rows={p.expenses || []}
-              title="Расходы"
-              columns={[
-                { key: "date", label: "Дата" },
-                { key: "vehicle", label: "Автомобиль", vehicle: true },
-                { key: "kind", label: "Вид" },
-                col("amount", "Сумма", money),
-                { key: "note", label: "Комментарий" },
-              ]}
-            />
-          </Section>
-        </div>
       )}
     </>
   );
