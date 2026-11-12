@@ -192,7 +192,8 @@ input[type="checkbox"] {
   flex: none;
   margin-right: 8px;
 }
-.wordmark span {
+.wordmark > span {
+  margin-inline-start: 3px;
   color: #477dc6;
   font-size: 25px;
 }
@@ -3005,7 +3006,6 @@ button:not(:disabled):active,
   text-decoration: none;
 }
 .topbar-brand span {
-  margin-left: 3px;
   font-size: 21px;
 }
 .filters-toggle {
