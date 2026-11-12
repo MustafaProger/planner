@@ -55,6 +55,8 @@ import * as M from "./model";
 import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
 const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
+  satelliteKmFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 20 }),
+  fmtSatelliteKm = (n) => (n == null ? "—" : satelliteKmFormat.format(n)),
   money = (n) => (n == null ? "—" : N.format(n) + " ₽"),
   fmt = (n) => (n == null ? "—" : N.format(n)),
   pct = (n) => (n == null ? "—" : fmt(n) + "%"),
@@ -2246,7 +2248,7 @@ function App() {
                 columns={[
                   { key: "date", label: "Дата" },
                   { key: "vehicle", label: "Автомобиль", vehicle: true },
-                  col("km", "Пробег, км"),
+                  col("km", "Пробег, км", fmtSatelliteKm),
                   col("engine_hours", "Моточасы, ч"),
                   col("movement_hours", "Движение, ч"),
                   col("stop_hours", "Стоянки, ч"),
@@ -3578,7 +3580,7 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
             columns={[
               { key: "date", label: "Дата" },
               { key: "vehicle", label: "Автомобиль", vehicle: true },
-              col("km", "Пробег, км"),
+              col("km", "Пробег, км", fmtSatelliteKm),
               col("engine_hours", "Моточасы"),
               col("movement_hours", "Движение"),
               col("stop_hours", "Стоянки"),

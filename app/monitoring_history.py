@@ -63,8 +63,10 @@ def period(start, end):
     return [(a+dt.timedelta(days=i)).isoformat() for i in range((b-a).days+1)]
 
 
-def numeric(value):
-    return float(value) if type(value) in (int, float) and math.isfinite(value) and value >= 0 else None
+def numeric(value, *, signed=False):
+    if type(value) not in (int, float) or not math.isfinite(value):
+        return None
+    return float(value) if signed or value >= 0 else None
 
 
 def local_time(value):
@@ -93,11 +95,10 @@ def parse(result, ids, day, metric):
             except (KeyError, TypeError, AttributeError, ValueError):
                 raise ValueError('Границы истории не совпадают с запрошенными сутками МСК.') from None
             if metric == 'mileage':
-                km, seconds = numeric(p.get('mileage')), numeric(p.get('motohours'))
-                # All-zero counters cannot distinguish absence of telemetry from a real standstill.
-                km_signal = any((numeric(p.get(k)) or 0) > 0 for k in ('mileage','mileageBegin','mileageEnd'))
+                km = numeric(p.get('mileage'), signed=True)
+                seconds = numeric(p.get('motohours'))
                 engine_signal = any((numeric(p.get(k)) or 0) > 0 for k in ('motohours','motohoursBegin','motohoursEnd'))
-                values.update(km=km if km_signal else None,
+                values.update(km=km,
                               engine_hours=seconds/3600 if seconds is not None and engine_signal else None)
                 values['status'] = 'ok' if values['km'] is not None or values['engine_hours'] is not None else 'no_data'
             else:

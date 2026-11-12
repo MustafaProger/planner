@@ -26,10 +26,19 @@ def test_daily_units_zero_and_timezone():
     r=h.parse([item(mileage=0,mileageBegin=100,mileageEnd=100,motohours=0,motohoursBegin=10000)], [1], '2026-08-01','mileage')[1]
     assert r['km']==0 and r['engine_hours']==0
     r=h.parse([item(mileage=0,mileageBegin=0,mileageEnd=0,motohours=0,motohoursBegin=0)], [1], '2026-08-01','mileage')[1]
-    assert r['km'] is None and r['engine_hours'] is None
+    assert r['km']==0 and r['engine_hours'] is None
     r=item(mileage=5,motohours=3600)
     r['periods'][0].update(start='2026-07-31T21:00:00Z',end='2026-08-01T21:00:00Z')
     assert h.parse([r],[1],'2026-08-01','mileage')[1]['km']==5
+
+
+@pytest.mark.parametrize('mileage,expected', [(0, 0.0), (-0.012, -0.012), (None, None), (float('nan'), None)])
+def test_daily_mileage_preserves_provider_number_without_odometer(mileage, expected):
+    row = item(mileage=mileage, mileageBegin=None, mileageEnd=None)
+    r = h.parse([row], [1], '2026-08-01', 'mileage')[1]
+    assert r['km'] == expected
+    assert r['status'] == ('no_data' if expected is None else 'ok')
+    assert h.parse([], [1], '2026-08-01', 'mileage')[1].get('km') is None
 
 
 def test_fuel_missing_signal_is_not_zero():
