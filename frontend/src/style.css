@@ -3177,8 +3177,8 @@ button:not(:disabled):active,
   cursor: pointer;
   font-weight: 650;
 }
-.user-permissions p {
-  margin: 10px 0;
+.user-permissions > table {
+  margin-top: 10px;
 }
 .user-permissions table,
 .audit-diff {

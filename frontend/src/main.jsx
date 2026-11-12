@@ -3862,10 +3862,6 @@ function PermissionMatrix({ rules, role, overrides, onChange, disabled }) {
   return (
     <details className="user-permissions" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary>Полномочия</summary>
-      <p className="muted">
-        Роль задаёт начальные отметки. Ручной выбор сохраняется при смене роли. Для изменения привязок карт нужен просмотр операций.
-        Для логиста и наблюдателя действия с назначениями, ручными заявками, статусами и отклонениями ограничены назначенными автомобилями.
-      </p>
       <table>
         <thead><tr><th>Действие</th><th>Доступ</th></tr></thead>
         {groups.map((group) => (
