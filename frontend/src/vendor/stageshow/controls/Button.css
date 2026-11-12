@@ -35,7 +35,9 @@
       transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
       background-color 160ms ease,
       color 160ms ease,
-      padding 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      padding 220ms cubic-bezier(0.22, 1, 0.36, 1),
+      outline-color var(--charter-focus-duration, 0ms) var(--charter-focus-ease, ease),
+      box-shadow var(--charter-focus-duration, 0ms) var(--charter-focus-ease, ease);
   }
 
   .ss-button[data-size="small"] {

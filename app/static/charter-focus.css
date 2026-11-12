@@ -1,0 +1,48 @@
+:root {
+  --charter-focus-color: #3974c4;
+  --charter-focus-halo: #3974c41f;
+  --charter-focus-duration: 180ms;
+  --charter-focus-ease: ease-out;
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])),
+.search-input {
+  outline: 1px solid transparent;
+  outline-offset: 0;
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]):where(:not(.ss-button)),
+.search-input {
+  transition:
+    outline-color var(--charter-focus-duration) var(--charter-focus-ease),
+    box-shadow var(--charter-focus-duration) var(--charter-focus-ease),
+    border-color var(--charter-focus-duration) var(--charter-focus-ease);
+}
+
+:where(button:focus-visible, a:focus-visible, summary:focus-visible, [tabindex]:focus-visible):where(:not(.ss-button)) {
+  border-radius: 6px;
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible:not(:where(.search-input input)),
+.select-menu-trigger[aria-expanded="true"],
+.search-input:focus-within {
+  outline-color: var(--charter-focus-color);
+  /* Keep the focus halo on controls with their own active or hover shadow. */
+  box-shadow: 0 0 0 3px var(--charter-focus-halo) !important;
+}
+
+:where(input, select, textarea),
+.select-menu-trigger,
+.search-input {
+  outline-offset: -1px;
+}
+
+.search-input input {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root :where(button, a, input, select, textarea, summary, [tabindex], .search-input) {
+    transition-duration: 0ms !important;
+  }
+}

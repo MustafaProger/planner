@@ -2,18 +2,27 @@ import React, { useEffect, useState } from "react";
 
 const categories = ["Рейс", "Удержание", "Доплата", "Погрузка", "Сервис", "Корректировка"];
 const catalogs = { vehicles: "Автомобили", drivers: "Водители", routes: "Маршруты", companies: "Компании", clients: "Клиенты", carriers: "Исполнители", transport_types: "Типы транспорта", payment_methods: "Способы оплаты", reasons: "Причины статусов" };
+const catalogGroups = [
+  ["fleet", "Автомобили и водители", ["vehicles", "drivers", "ownership"]],
+  ["routes", "Маршруты", ["routes", "tariffs"]],
+  ["organizations", "Организации", ["companies", "clients", "carriers"]],
+  ["other", "Прочее", ["transport_types", "payment_methods", "reasons"]],
+];
+const catalogLabels = { ...catalogs, ownership: "Принадлежность", tariffs: "Тарифы" };
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
 const active = (p, kind) => (p.directories[kind] || []).filter(r => !r.archived && !r.merged_into && !r.placeholder);
 function Field({ label, name, value, type = "text", required = false, ...props }) {
   return <label>{label}<input aria-label={label} name={name} type={type} defaultValue={value ?? ""} required={required} {...props} /></label>;
 }
-function Choice({ label, name, value, items, required = false, ...props }) {
-  return <label>{label}<select aria-label={label} name={name} defaultValue={value || ""} required={required} {...props}><option value="">Выберите</option>{items.map(r => <option key={r.id ?? r} value={r.id ?? r}>{r.name ?? r}</option>)}</select></label>;
-}
 function Note({ value }) { return <label>Комментарий<textarea aria-label="Комментарий" name="note" defaultValue={value || ""} maxLength={1000} /></label>; }
 
 // Use the application's request/session helper and the same table and drawer primitives.
-export function createRecordEditors({ api, hasPermission, Section, DataTable, Drawer }) {
+export function createRecordEditors({ api, hasPermission, Section, DataTable, Drawer, SelectMenu, SlidingTabs, Button, Plus }) {
+  function Choice({ label, name, value, items, required = false }) {
+    return <label>{label}<SelectMenu ariaLabel={label} name={name} defaultValue={value || ""} required={required}
+      options={[...(!required ? [{ value: "", label: "Не указано" }] : []), ...items.map(r => ({ value: r.id ?? r, label: r.name ?? r }))]} /></label>;
+  }
+
   function Form({ children, onSubmit, onDelete, editable = true, label = "Сохранить" }) {
     const [busy, setBusy] = useState(false), [error, setError] = useState("");
     async function run(action) {
@@ -31,7 +40,11 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
         {onDelete && <button type="button" className="record-delete" disabled={busy} onClick={() => {
           if (window.confirm("Удалить эту запись? Действие сохранится в журнале.")) run(onDelete);
         }}>Удалить</button>}
-        {editable && <button className="record-action" disabled={busy}>{label}</button>}
+        {editable && (
+          <Button type="submit" variant="primary" disabled={busy}>
+            <span>{label}</span>
+          </Button>
+        )}
       </div>
     </form>;
   }
@@ -83,7 +96,7 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
       await onSaved();
     }} onDelete={row ? async () => { await api("workspace/" + kind + "/" + r.id, { method: "DELETE", body: JSON.stringify({ revision: r.revision }) }); await onSaved(); } : undefined}>
       {coverage ? <>
-        <label>Источник<select value={selection.source} onChange={e => change("source", e.target.value)}><option value="trips">Заявки</option><option value="plans">Назначения</option></select></label>
+        <label>Источник<SelectMenu ariaLabel="Источник" value={selection.source} onChange={e => change("source", e.target.value)} options={[{ value: "trips", label: "Заявки" }, { value: "plans", label: "Назначения" }]} /></label>
         <label>С<input type="date" required value={selection.start} onChange={e => change("start", e.target.value)} /></label>
         <label>По<input type="date" required value={selection.end} onChange={e => change("end", e.target.value)} /></label>
         <button type="button" disabled={previewBusy} onClick={async () => {
@@ -116,9 +129,12 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
     const editable = hasPermission(user, permission);
     const title = { coverage: "Полнота данных", expenses: "Расходы", card_bindings: "Привязки карт к автомобилям" }[kind];
     const fields = kind === "coverage" ? [["source", "Источник"], ["start", "С"], ["end", "По"], ["state", "Состояние"]] : kind === "expenses" ? [["date", "Дата"], ["vehicle", "Автомобиль"], ["category", "Вид расхода"], ["amount", "Сумма, ₽"]] : [["provider", "Поставщик"], ["card", "Карта"], ["vehicle", "Автомобиль"], ["start", "С"], ["end", "По"]];
-    return <Section title={title} action={editable && <button className="record-action" onClick={() => setEditor({})}>Добавить</button>}>
+    return <Section title={title} action={editable && <div><Button type="button" size="medium" variant="primary" icon={<Plus size={16} />} onClick={() => setEditor({})}>Добавить</Button></div>}>
       <DataTable title={title} rows={p[kind] || []} columns={[...fields.map(([key, label]) => ({ key, label, ...(["source", "provider"].includes(key) ? { render: r => ({ trips: "Заявки", plans: "Назначения", rosneft: "Роснефть", neftm: "Нефтьмагистраль" })[r[key]] || r[key] } : {}) })), { key: "note", label: "Комментарий" }, ...(editable ? [{ key: "actions", label: "Действия", render: row => <button className="text-link" onClick={() => setEditor({ row })}>Изменить</button> }] : [])]} />
-      {editor && <Drawer title={title} size="compact" onClose={() => setEditor(null)}><ExtraEditor kind={kind} row={editor.row} p={p} period={period} onSaved={async () => { await refresh(); setEditor(null); }} /></Drawer>}
+      {editor && <Drawer title={title} size="compact" onClose={() => setEditor(null)}>
+        {(closeDrawer) => <ExtraEditor kind={kind} row={editor.row} p={p} period={period}
+          onSaved={async () => { await refresh(); closeDrawer(); }} />}
+      </Drawer>}
     </Section>;
   }
   function CatalogForm({ p, kind, row, onSaved }) {
@@ -136,22 +152,69 @@ export function createRecordEditors({ api, hasPermission, Section, DataTable, Dr
       <label><input type="checkbox" name="archived" defaultChecked={r.archived} />В архиве</label>
     </Form>;
   }
-  function CatalogManager({ p, user, refresh }) {
-    const [kind, setKind] = useState("routes"), [editor, setEditor] = useState(null);
-    if (!hasPermission(user, "catalog.write")) return null;
-    return <Section title="Редактор справочников и тарифов" action={<button className="record-action" onClick={() => setEditor({})}>Добавить запись</button>}>
-      <label>Справочник<select value={kind} onChange={e => setKind(e.target.value)}>{Object.entries(catalogs).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
-      <DataTable title={catalogs[kind]} rows={(p.directories[kind] || []).filter(r => !r.merged_into)} columns={[{ key: "name", label: "Название" }, { key: "archived", label: "Состояние", render: r => r.archived ? "В архиве" : "Действует" }, { key: "actions", label: "Действия", render: row => <button className="text-link" onClick={() => setEditor({ row })}>Изменить</button> }]} />
-      {kind === "routes" && <><button className="record-action" onClick={() => setEditor({ tariff: true })}>Добавить тариф с даты</button><DataTable title="История тарифов" rows={p.tariffs || []} columns={[{ key: "route_id", label: "Маршрут", render: r => p.directories.routes.find(x => x.id === r.route_id)?.name || "—" }, { key: "effective_from", label: "С даты" }, { key: "revenue", label: "Выручка, ₽" }, { key: "payout", label: "Водителю, ₽" }, { key: "partner_payout", label: "Партнёру, ₽" }, { key: "km", label: "Км" }]} /></>}
+  function CatalogManager({ p, user, refresh, ownership, onChoose }) {
+    const [group, setGroup] = useState("fleet"), [kind, setKind] = useState("vehicles"), [editor, setEditor] = useState(null);
+    const editable = hasPermission(user, "catalog.write");
+    const kinds = catalogGroups.find(([id]) => id === group)[2];
+    const fleetRows = kind === "vehicles" ? p.vehicles : kind === "drivers" ? p.drivers : null;
+    const records = (p.directories[kind] || []).filter(r => !r.merged_into);
+    const ids = new Set(records.map(r => r.name));
+    const subjects = kind === "vehicles" ? p.vehicleMap : p.driverMap;
+    const rows = fleetRows
+      ? editable
+        ? [...records.map(r => ({ ...subjects.get(r.name), ...r, carrier: subjects.get(r.name)?.carrier ?? r.carrier })), ...fleetRows.filter(r => !ids.has(r.name))]
+        : fleetRows
+      : records.filter(r => editable || !r.archived);
+    const columns = [
+      { key: "name", label: kind === "vehicles" ? "Автомобиль" : kind === "drivers" ? "Водитель" : "Название",
+        render: r => fleetRows && subjects.has(r.name)
+          ? <button className="text-link" type="button" onClick={() => onChoose(kind, r.name)}>{r.name}</button>
+          : r.name },
+      ...(fleetRows ? [{ key: "carrier", label: "Исполнитель" }] : []),
+      ...(kind === "vehicles" ? [{ key: "brand", label: "Марка" }, { key: "transport_type", label: "Тип транспорта" }] : []),
+      ...(kind === "routes" ? [{ key: "group", label: "Группа маршрутов" }] : []),
+      { key: "state", label: "Состояние" },
+      ...(editable ? [{ key: "actions", label: "Действия", sortable: false, align: "end",
+        render: row => row.id && <button type="button" className="text-link" aria-label={`Изменить: ${row.name}`} onClick={() => setEditor({ row: records.find(r => r.id === row.id) })}>Изменить</button> }] : []),
+    ];
+    const add = (label) => editable && <Button type="button" size="medium" variant="primary" icon={<Plus size={16} />}
+      onClick={() => setEditor({ tariff: kind === "tariffs" })}>{label}</Button>;
+    const routes = new Map((p.directories.routes || []).map(r => [r.id, r.name]));
+    return <>
+      <SlidingTabs label="Группы справочников" className="catalog-tabs" items={catalogGroups}
+        value={group} onChange={id => {
+          if (id === group) return;
+          setGroup(id); setKind(catalogGroups.find(([key]) => key === id)[2][0]);
+        }} />
+      <div className="segments catalog-subtabs" role="group" aria-label={catalogGroups.find(([id]) => id === group)[1]}>
+        {kinds.map(id => <button type="button" key={id} className={id === kind ? "active" : ""}
+          aria-pressed={id === kind} onClick={() => setKind(id)}>{id === "routes" ? "Список маршрутов" : catalogLabels[id]}</button>)}
+      </div>
+      {kind === "ownership" ? ownership : kind === "tariffs" ? (
+        <Section title="История тарифов" subtitle="Тариф маршрута действует с указанной даты. Предыдущие тарифы сохраняются.">
+          <DataTable key="tariffs" title="История тарифов" className="catalog-table" action={add("Добавить тариф")}
+            rows={(p.tariffs || []).map(r => ({ ...r, route: routes.get(r.route_id) }))} columns={[
+              { key: "route", label: "Маршрут" }, { key: "effective_from", label: "Действует с" },
+              { key: "revenue", label: "Выручка, ₽" }, { key: "payout", label: "Водителю, ₽" },
+              { key: "partner_payout", label: "Партнёру, ₽" }, { key: "km", label: "Плановый пробег, км" },
+            ]} />
+        </Section>
+      ) : (
+        <Section title={catalogLabels[kind]}>
+          <DataTable key={kind} title={catalogLabels[kind]} className="catalog-table" action={add("Добавить запись")}
+            rows={rows.map(r => ({ ...r, state: r.archived ? "В архиве" : r.inactive_route ? "Не выполняется" : !r.id && fleetRows ? "Из заявок" : "Действует" }))}
+            columns={columns} />
+        </Section>
+      )}
       {editor && <Drawer title={editor.tariff ? "Новый тариф" : catalogs[kind]} size="compact" onClose={() => setEditor(null)}>
-        {editor.tariff ? <Form onSubmit={async body => { await api("tariffs", { method: "POST", body: JSON.stringify(body) }); await refresh(); setEditor(null); }}>
+        {(closeDrawer) => editor.tariff ? <Form onSubmit={async body => { await api("tariffs", { method: "POST", body: JSON.stringify(body) }); await refresh(); closeDrawer(); }}>
           <p>Исторические тарифы сохраняются. Новый тариф применяется с выбранной даты.</p>
           <Choice label="Маршрут" name="route_id" items={active(p, "routes")} required />
           <Field label="Действует с" name="effective_from" type="date" value={today()} required />
           {[["revenue", "Выручка, ₽"], ["payout", "Водителю, ₽"], ["partner_payout", "Партнёру, ₽"], ["km", "Пробег, км"], ["hours", "Часы"], ["rate", "Ставка водителя"], ["partner_rate", "Ставка партнёра"]].map(([name, label]) => <Field key={name} label={label} name={name} type="number" min="0" step="any" value={0} required />)}
-        </Form> : <CatalogForm p={p} kind={kind} row={editor.row} onSaved={async () => { await refresh(); setEditor(null); }} />}
+        </Form> : <CatalogForm p={p} kind={kind} row={editor.row} onSaved={async () => { await refresh(); closeDrawer(); }} />}
       </Drawer>}
-    </Section>;
+    </>;
   }
   return { TripEditor, ExtraRecords, CatalogManager };
 }

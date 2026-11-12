@@ -72,15 +72,15 @@ function SweptArea({ maskId, series, ...props }) {
   );
 }
 
-export default function MoneyChart({ data, bar, onSelect, reduced, date, short, money }) {
+export default function MoneyChart({ data, bar, allLabels, onSelect, reduced, date, short, money }) {
   const C = bar ? BarChart : AreaChart;
   const id = useId();
   const maskId = `money-sweep-${id}`;
   const fillId = `revenue-fill-${id}`;
   const sweep = !bar && data.length > 1 && !reduced;
   const shape = sweep ? <SweptArea maskId={maskId} series={data} /> : undefined;
-  return (
-    <div className="chart">
+  const chart = (
+    <div className="chart" style={allLabels ? { minWidth: 65 + 8 + data.length * 76 } : undefined}>
       <ResponsiveContainer width="100%" height="100%">
         <C
           data={data}
@@ -119,6 +119,7 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
                   : date(v)
                 : v
             }
+            interval={allLabels ? 0 : undefined}
             minTickGap={28}
           />
           <YAxis
@@ -190,4 +191,5 @@ export default function MoneyChart({ data, bar, onSelect, reduced, date, short, 
       </ResponsiveContainer>
     </div>
   );
+  return allLabels ? <div className="chart-scroll" role="region" aria-label="График сравнения" tabIndex={0}>{chart}</div> : chart;
 }

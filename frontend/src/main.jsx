@@ -3,12 +3,14 @@ import React, {
   startTransition,
   useCallback,
   useContext,
+  useId,
   useState,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -49,6 +51,7 @@ import { Card } from "./vendor/stageshow/parts/card";
 import { Badge } from "./vendor/stageshow/controls/badge";
 import { FleetStatus } from "./fleet-status.jsx";
 import { RevenueReview } from "./revenue-review.jsx";
+import { Collapse } from "./vendor/stageshow/motion/Collapse";
 import { AnimatedMetric } from "./animated-metric.jsx";
 import { RowBatches, ScrollRows, ScrollRowsContext, useScrollRows } from "./scroll-rows.jsx";
 import * as M from "./model";
@@ -120,7 +123,7 @@ const hints = {
   fuel: "Заправки по картам и нормативный расход отдельно от фактического",
   routes: "Сравнение совокупного результата двух назначений",
   data: "Заявки, назначения, статусы, спутник и топливные операции в одном месте",
-  directories: "Исполнитель → тип транспорта → автомобили и водители",
+  directories: "Автопарк, маршруты, тарифы и другие рабочие справочники",
   connections: "Состояние API и управляемое обновление внешних источников",
   settings: "Пороги контроля и правила интерпретации данных",
   users: "Роли, доступные автомобили и журнал действий",
@@ -166,11 +169,13 @@ function useReducedMotion() {
   return reduced;
 }
 
-function SlidingTabs({ items, value, onChange, className = "" }) {
+function SlidingTabs({ items, value, onChange, className = "", label }) {
   const index = Math.max(0, items.findIndex(([id]) => id === value));
   return (
     <div
       className={`sliding-tabs ${className}`}
+      role={label ? "group" : undefined}
+      aria-label={label}
       style={{ "--tab-count": items.length, "--tab-index": index }}
     >
       <i className="sliding-tabs__indicator" aria-hidden="true" />
@@ -412,32 +417,42 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
       if (!root.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener("pointerdown", close);
-    requestAnimationFrame(() => searchRef.current?.focus());
-    return () => document.removeEventListener("pointerdown", close);
+    const focusFrame = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("pointerdown", close);
+    };
   }, [open]);
   const choose = (next) => {
     if (!controlled) setLocalValue(next);
     onChange?.({ target: { value: next } });
     setOpen(false);
     setSearch("");
+    root.current.querySelector(".select-menu-trigger")?.focus();
   };
   return (
     <div ref={root} className="select-menu" data-open={open ? "true" : "false"} onKeyDown={(event) => {
       if (event.key === "Escape" && open) {
         event.preventDefault();
+        event.stopPropagation();
         setOpen(false);
         root.current.querySelector(".select-menu-trigger")?.focus();
       }
     }}>
-      {name && <input className="select-menu-input" tabIndex={-1} aria-hidden="true" name={name} value={current} required={required} onChange={() => {}} />}
-      <button type="button" className="select-menu-trigger" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((state) => !state)}>
+      {name && <input className="select-menu-input" tabIndex={-1} aria-hidden="true" name={name} value={current} required={required} disabled={disabled} onChange={() => {}} onInvalid={(event) => { event.preventDefault(); setOpen(true); }} />}
+      <button type="button" className="select-menu-trigger" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => { setSearch(""); setOpen(!open); }}>
         <span className={selected ? "" : "placeholder"}>{selected?.label || placeholder}</span>
         <ChevronDown size={14} />
       </button>
-      <div className="select-menu-pop" aria-hidden={!open} inert={open ? undefined : ""}>
+      {open && <div className="select-menu-pop">
         <div className="search-input">
           <Search size={15} />
-          <input ref={searchRef} aria-label={`Поиск: ${ariaLabel || placeholder}`} placeholder="Поиск…" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input ref={searchRef} aria-label={`Поиск: ${ariaLabel || placeholder}`} placeholder="Поиск…" value={search} onChange={(event) => setSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              if (visible.length) choose(visible[0].value);
+            }} />
         </div>
         <div className="select-menu-list" role="listbox" aria-label={ariaLabel}>
           {visible.map((option) => (
@@ -448,11 +463,11 @@ function SelectMenu({ name, value, defaultValue = "", onChange, options, ariaLab
           ))}
           {!visible.length && <p>Ничего не найдено</p>}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
-function DataTable({ rows, columns, onRow, title = "Данные", downloadRows, className = "" }) {
+function DataTable({ rows, columns, onRow, title = "Данные", downloadRows, className = "", action }) {
   const loading = rows === null;
   rows ??= EMPTY_ROWS;
   const [search, setSearch] = useState(""),
@@ -547,6 +562,7 @@ function DataTable({ rows, columns, onRow, title = "Данные", downloadRows,
           />
         </div>
         {!loading && <span className="muted">Всего <AnimatedMetric value={filtered.length} format={fmt} integer /></span>}
+        {action}
         {downloadRows && (
           <B size="medium" type="button" icon={<Download size={16} />}
              onClick={download} disabled={!filtered.length || downloading}>
@@ -639,12 +655,12 @@ const groupCols = (vehicle = false) => [
 ];
 const Chart = React.lazy(() => import("./money-chart"));
 
-function MoneyChart({ data, bar = false, onSelect }) {
+function MoneyChart({ data, bar = false, allLabels = false, onSelect }) {
   const reduced = useReducedMotion();
   if (!data.length) return <Empty />;
   return (
     <React.Suspense fallback={<ChartSkeleton />}>
-      <Chart {...{ data, bar, onSelect, reduced, date, short, money }} />
+      <Chart {...{ data, bar, allLabels, onSelect, reduced, date, short, money }} />
     </React.Suspense>
   );
 }
@@ -687,21 +703,44 @@ function KPI({ label, raw, format = fmt, integer = false, sub, change, onClick, 
   );
 }
 function Drawer({ title, children, onClose, size = "wide", className = "" }) {
-  const ref = useRef();
+  const ref = useRef(null);
   const opener = useRef(document.activeElement);
-  const [opened, setOpened] = useState(false);
+  const [phase, setPhase] = useState("opening");
   const closing = useRef(false);
-  const reduced = useReducedMotion();
-  const requestClose = () => {
-    if (closing.current) return;
+  const afterClose = useRef(null);
+  function requestClose(next) {
+    if (closing.current || !ref.current?.open) return;
     closing.current = true;
-    setOpened(false);
-    window.setTimeout(() => {
+    afterClose.current = next;
+    setPhase("closing");
+  }
+
+  useLayoutEffect(() => {
+    if (phase !== "closing") return;
+    const el = ref.current;
+    // Read the closing state before collecting transitions started by this commit.
+    el.getBoundingClientRect();
+    const transitions = el.getAnimations().filter(
+      (animation) => animation.transitionProperty === "transform" || animation.transitionProperty === "opacity",
+    );
+    let cancelled = false;
+    function finish() {
+      if (cancelled) return;
+      el.close();
+      const next = afterClose.current;
+      if (!next) opener.current?.focus?.({ preventScroll: true });
       onClose();
-      opener.current?.focus?.({ preventScroll: true });
-    }, reduced ? 100 : 280);
-  };
-  useEffect(() => {
+      next?.();
+    }
+    if (transitions.length) {
+      Promise.allSettled(transitions.map((animation) => animation.finished)).then(finish);
+    } else {
+      finish();
+    }
+    return () => { cancelled = true; };
+  }, [phase, onClose]);
+
+  useLayoutEffect(() => {
     const el = ref.current;
     const body = document.body;
     const root = document.documentElement;
@@ -724,8 +763,13 @@ function Drawer({ title, children, onClose, size = "wide", className = "" }) {
     body.style.width = "100%";
     if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
     el.showModal();
-    requestAnimationFrame(() => setOpened(true));
+    // A dialog has no rendered start state while it is outside the top layer.
+    el.getBoundingClientRect();
+    const enterFrame = requestAnimationFrame(() => {
+      if (!closing.current) setPhase("open");
+    });
     return () => {
+      cancelAnimationFrame(enterFrame);
       if (el.open) el.close();
       root.classList.remove("drawer-open");
       body.classList.remove("drawer-open");
@@ -733,10 +777,10 @@ function Drawer({ title, children, onClose, size = "wide", className = "" }) {
       window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
     };
   }, []);
-  return (
+  return createPortal(
     <dialog
       ref={ref}
-      className={`drawer drawer-${size} ${opened ? "is-open" : "is-closing"} ${className}`}
+      className={`drawer drawer-${size} is-${phase} ${className}`}
       onCancel={(e) => {
         e.preventDefault();
         requestClose();
@@ -745,7 +789,7 @@ function Drawer({ title, children, onClose, size = "wide", className = "" }) {
         if (e.target === e.currentTarget) requestClose();
       }}
     >
-      <div className="drawer-inner">
+      <div className="drawer-inner" inert={phase === "closing" ? "" : undefined}>
         <header>
           <div>
             <span className="eyebrow">Детализация</span>
@@ -754,15 +798,16 @@ function Drawer({ title, children, onClose, size = "wide", className = "" }) {
           <B
             aria-label="Закрыть детализацию"
             icon={<X size={18} />}
-            onClick={requestClose}
+            onClick={() => requestClose()}
           />
         </header>
-        {children}
+        {typeof children === "function" ? children(requestClose) : children}
       </div>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }
-const { TripEditor, ExtraRecords, CatalogManager } = createRecordEditors({ api, hasPermission, Section, DataTable, Drawer });
+const { TripEditor, ExtraRecords, CatalogManager } = createRecordEditors({ api, hasPermission, Section, DataTable, Drawer, SelectMenu, SlidingTabs, Button: B, Plus });
 
 function App() {
   const navRef = useRef(null);
@@ -1457,9 +1502,10 @@ function App() {
                   className="filters-toggle"
                   icon={<SlidersHorizontal size={15} />}
                   aria-expanded={showMore}
+                  aria-controls="additional-report-filters"
                   onClick={() => {
                     setOpenMulti(null);
-                    setShowMore(!showMore);
+                    setShowMore((previous) => !previous);
                   }}
                 >
                   Фильтры{count > 0 && <> · <AnimatedMetric value={count} format={fmt} integer /></>}
@@ -1499,7 +1545,8 @@ function App() {
                   </button>
                 )}
               </div>
-              {showMore && (
+              <Collapse id="additional-report-filters" className="report-filter-disclosure"
+                open={showMore} solid inert={showMore ? undefined : ""} aria-hidden={!showMore || undefined}>
                 <div className="extra-filters">
                   <Multi
                     {...multiProps("drivers")}
@@ -1541,7 +1588,7 @@ function App() {
                     onChange={(v) => filter("ownership", v)}
                   />
                 </div>
-              )}
+              </Collapse>
             </div>
           )}
           {pending && (!hasCurrentReport || busy) && (
@@ -1870,6 +1917,7 @@ function App() {
               >
                 <MoneyChart
                   bar
+                  allLabels={compareMode === "objects" && compareBy === "vehicle"}
                   data={
                     compareMode === "objects" ? comparisonRows.slice(0, 12) : comparisonRows
                   }
@@ -2140,130 +2188,129 @@ function App() {
           size={["trips", "days", "telemetry", "fuel"].includes(drawer.type) ? "wide" : "compact"}
           onClose={() => setDrawer(null)}
         >
-          {drawer.type === "trips" && (
-            <>
-              <InfoNote>
-                Финансовые суммы учтены по дате начала заявки. Пробег заявки не
-                распределяется по дням. «—» означает отсутствие данных.
-              </InfoNote>
+          {(closeDrawer) => <>
+            {drawer.type === "trips" && (
+              <>
+                <InfoNote>
+                  Финансовые суммы учтены по дате начала заявки. Пробег заявки не
+                  распределяется по дням. «—» означает отсутствие данных.
+                </InfoNote>
+                <DataTable
+                  title="Исходные заявки"
+                  rows={drawer.rows}
+                  columns={[...tripCols, ...(hasPermission(user, "trips.write") || hasPermission(user, "trips.delete") || hasPermission(user, "trips.classify") ? [{ key: "actions", label: "Действия", render: r => (user.role === "admin" || user.vehicles.includes(r.vehicle)) && <button className="text-link" onClick={() => setDrawer({ type: "trip-edit", title: "Заявка " + r.id, row: r })}>Открыть редактор</button> }] : [])]}
+                />
+                <button
+                  className="text-link"
+                  onClick={() => closeDrawer(() => go("data"))}
+                >
+                  Открыть исходные данные <ArrowRight size={14} />
+                </button>
+              </>
+            )}
+            {drawer.type === "trip-edit" && <TripEditor p={p} row={drawer.row} user={user} onSaved={async () => { await refresh(); closeDrawer(); }} />}
+            {drawer.type === "days" && (
               <DataTable
-                title="Исходные заявки"
-                rows={drawer.rows}
-                columns={[...tripCols, ...(hasPermission(user, "trips.write") || hasPermission(user, "trips.delete") || hasPermission(user, "trips.classify") ? [{ key: "actions", label: "Действия", render: r => (user.role === "admin" || user.vehicles.includes(r.vehicle)) && <button className="text-link" onClick={() => setDrawer({ type: "trip-edit", title: "Заявка " + r.id, row: r })}>Открыть редактор</button> }] : [])]}
-              />
-              <button
-                className="text-link"
-                onClick={() => {
-                  setDrawer(null);
-                  go("data");
-                }}
-              >
-                Открыть исходные данные <ArrowRight size={14} />
-              </button>
-            </>
-          )}
-          {drawer.type === "trip-edit" && <TripEditor p={p} row={drawer.row} user={user} onSaved={async () => { await refresh(); setDrawer(null); }} />}
-          {drawer.type === "days" && (
-            <DataTable
-              title="Даты статусов"
-              rows={drawer.days}
-              columns={[
-                { key: "date", label: "Дата" },
-                { key: "vehicle", label: "Автомобиль", vehicle: true },
-                { key: "driver", label: "Водитель" },
-                { key: "status", label: "Основной статус" },
-                {
-                  key: "events",
-                  label: "События",
-                  render: (r) =>
-                    r.events.map((e) => e.reason).join(", ") || "—",
-                },
-              ]}
-              onRow={(d) => {
-                setCalMode("vehicle");
-                setDrawer({
-                  type: "day",
-                  title: `${d.name} · ${date(d.date)}`,
-                  day: d,
-                });
-              }}
-            />
-          )}
-          {drawer.type === "day" && (
-            <DayDetail
-              day={drawer.day}
-              inScope={user.role === "admin" || (calMode === "vehicle"
-                ? user.vehicles.includes(drawer.day.name)
-                : [...workspace.plans, ...workspace.trips].some((row) =>
-                    row.driver === drawer.day.name && user.vehicles.includes(row.vehicle)
-                  ))}
-              events={workspace.statuses.filter((row) =>
-                row.kind === calMode && row.entity === drawer.day.name && row.date === drawer.day.date
-              )}
-              onDelete={({ id, revision, delete_token }) =>
-                changeStatus(`manual/${encodeURIComponent(id)}`, "DELETE", { revision, delete_token })
-              }
-              user={user}
-              reasons={workspace.directories.reasons}
-              onSave={saveStatus}
-            />
-          )}
-          {drawer.type === "issues" && (
-            <IssueTable
-              issues={drawer.issues}
-              reviews={payload.state.reviews}
-              onRow={(r) =>
-                setDrawer({ type: "review", title: r.kind, issue: r })
-              }
-            />
-          )}
-          {drawer.type === "review" && (
-            <Review
-              issue={drawer.issue}
-              value={payload.state.reviews[drawer.issue.id]}
-              user={user}
-              onSave={async (r) => {
-                await save({ kind: "review", review: r });
-                setDrawer(null);
-              }}
-            />
-          )}
-          {drawer.type === "telemetry" && (
-            <>
-              <InfoNote>
-                Данные относятся к автомобилю за сутки. Моточасы, движение,
-                стоянки и часы заявки имеют разные определения.
-              </InfoNote>
-              <DataTable
-                title="Спутниковые данные"
-                rows={a.satellite}
+                title="Даты статусов"
+                rows={drawer.days}
                 columns={[
                   { key: "date", label: "Дата" },
                   { key: "vehicle", label: "Автомобиль", vehicle: true },
-                  col("km", "Пробег, км", fmtSatelliteKm),
-                  col("engine_hours", "Моточасы, ч"),
-                  col("movement_hours", "Движение, ч"),
-                  col("stop_hours", "Стоянки, ч"),
-                  col("hours", "Интервал, ч"),
-                  { key: "source", label: "Источник" },
+                  { key: "driver", label: "Водитель" },
+                  { key: "status", label: "Основной статус" },
+                  {
+                    key: "events",
+                    label: "События",
+                    render: (r) =>
+                      r.events.map((e) => e.reason).join(", ") || "—",
+                  },
                 ]}
+                onRow={(d) => {
+                  setCalMode("vehicle");
+                  setDrawer({
+                    type: "day",
+                    title: `${d.name} · ${date(d.date)}`,
+                    day: d,
+                  });
+                }}
               />
-            </>
-          )}
-          {drawer.type === "fuel" && (
-            <DataTable title="Заправки" rows={drawer.rows} columns={fuelCols} />
-          )}
-          {drawer.type === "plan" && (
-            <PlanForm
-              p={p}
-              row={drawer.row}
-              user={user}
-              onSaved={async () => {
-                await refresh();
-                setDrawer(null);
-              }}
-            />
-          )}
+            )}
+            {drawer.type === "day" && (
+              <DayDetail
+                day={drawer.day}
+                inScope={user.role === "admin" || (calMode === "vehicle"
+                  ? user.vehicles.includes(drawer.day.name)
+                  : [...workspace.plans, ...workspace.trips].some((row) =>
+                      row.driver === drawer.day.name && user.vehicles.includes(row.vehicle)
+                    ))}
+                events={workspace.statuses.filter((row) =>
+                  row.kind === calMode && row.entity === drawer.day.name && row.date === drawer.day.date
+                )}
+                onDelete={({ id, revision, delete_token }) =>
+                  changeStatus(`manual/${encodeURIComponent(id)}`, "DELETE", { revision, delete_token })
+                }
+                user={user}
+                reasons={workspace.directories.reasons}
+                onSave={saveStatus}
+              />
+            )}
+            {drawer.type === "issues" && (
+              <IssueTable
+                issues={drawer.issues}
+                reviews={payload.state.reviews}
+                onRow={(r) =>
+                  setDrawer({ type: "review", title: r.kind, issue: r })
+                }
+              />
+            )}
+            {drawer.type === "review" && (
+              <Review
+                issue={drawer.issue}
+                value={payload.state.reviews[drawer.issue.id]}
+                user={user}
+                onSave={async (r) => {
+                  await save({ kind: "review", review: r });
+                  closeDrawer();
+                }}
+              />
+            )}
+            {drawer.type === "telemetry" && (
+              <>
+                <InfoNote>
+                  Данные относятся к автомобилю за сутки. Моточасы, движение,
+                  стоянки и часы заявки имеют разные определения.
+                </InfoNote>
+                <DataTable
+                  title="Спутниковые данные"
+                  rows={a.satellite}
+                  columns={[
+                    { key: "date", label: "Дата" },
+                    { key: "vehicle", label: "Автомобиль", vehicle: true },
+                    col("km", "Пробег, км", fmtSatelliteKm),
+                    col("engine_hours", "Моточасы, ч"),
+                    col("movement_hours", "Движение, ч"),
+                    col("stop_hours", "Стоянки, ч"),
+                    col("hours", "Интервал, ч"),
+                    { key: "source", label: "Источник" },
+                  ]}
+                />
+              </>
+            )}
+            {drawer.type === "fuel" && (
+              <DataTable title="Заправки" rows={drawer.rows} columns={fuelCols} />
+            )}
+            {drawer.type === "plan" && (
+              <PlanForm
+                p={p}
+                row={drawer.row}
+                user={user}
+                onSaved={async () => {
+                  await refresh();
+                  closeDrawer();
+                }}
+              />
+            )}
+          </>}
         </Drawer>
       )}
       </div>
@@ -2769,32 +2816,34 @@ function RosneftDriverCards({ onRefresh, editable }) {
     <Section title="Карты Роснефти и водители"
       subtitle="После обновления Роснефти однозначное совпадение по ФИО действует со следующего дня. Ручной выбор имеет приоритет.">
       {data && cards.length > 0 && (
-        <form className="inline-form" onSubmit={assign}>
-          <label>Карта
-            <select aria-label="Карта" className="rosneft-assignment-select" required value={number} disabled={busy} onChange={(e) => {
-              setNumber(e.target.value);
-              setDriver("");
-              setDate("");
-              setMessage("");
-            }}>
-              <option value="">Выберите карту</option>
-              {cards.map((row) => <option key={row.card} value={row.card}>{row.card}</option>)}
-            </select>
-          </label>
-          <label>Водитель
-            <select aria-label="Водитель" className="rosneft-assignment-select" required value={driver} disabled={!editable || busy} onChange={(e) => setDriver(e.target.value)}>
-              <option value="">Выберите водителя</option>
-              {data.drivers.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}
-            </select>
-          </label>
-          <label>Действует с
-            <input required type="date" value={start} min={last?.start} disabled={!editable || busy}
-              onChange={(e) => setDate(e.target.value)} />
-          </label>
-          <B variant="primary" type="submit" disabled={!editable || busy || !selected || !driver}>Привязать</B>
+        <form className="rosneft-assignment" onSubmit={assign}>
+          <div className="rosneft-field">
+            <span>Карта</span>
+            <SelectMenu ariaLabel="Карта" placeholder="Выберите карту" value={number} disabled={busy}
+              options={cards.map((row) => ({ value: row.card, label: row.card }))}
+              onChange={(e) => {
+                setNumber(e.target.value);
+                setDriver("");
+                setDate("");
+                setMessage("");
+              }} />
+          </div>
+          {editable && <>
+            <div className="rosneft-field">
+              <span>Водитель</span>
+              <SelectMenu ariaLabel="Водитель" placeholder="Выберите водителя" value={driver} disabled={busy}
+                options={data.drivers.map((row) => ({ value: row.id, label: row.name }))}
+                onChange={(e) => setDriver(e.target.value)} />
+            </div>
+            <label className="rosneft-field">Действует с
+              <input required type="date" value={start} min={last?.start} disabled={busy}
+                onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <B variant="primary" type="submit" disabled={busy || !selected || !driver}>Привязать</B>
+          </>}
         </form>
       )}
-      <div role="status">{message || (!data ? "Загрузка карт…" : "")}</div>
+      {message || !data ? <div role="status">{message || "Загрузка карт…"}</div> : null}
       {data && (cards.length ? <DataTable title="Карты Роснефти" rows={cards} columns={[
         { key: "card", label: "Карта" },
         { key: "note", label: "Примечание Роснефти" },
@@ -2985,14 +3034,14 @@ function FuelReport({ a, p, filters, settings, user, save, details }) {
       </div>
       <Section
         title="Заправки и норматив"
-        subtitle="Норма × пробег ГЛОНАСС / 100 · только по доступным показаниям"
+        subtitle="Пробег берём из суточных показаний ГЛОНАССсофт за выбранный период. Норматив = пробег × норма автомобиля / 100."
       >
         <DataTable
           title="ГСМ по автомобилям"
           rows={rows}
           columns={[
             { key: "name", label: "Автомобиль", vehicle: true },
-            col("km", "ГЛОНАСС, км"),
+            col("km", "Пробег ГЛОНАСС, км"),
             col("norm", "Норма, л/100 км"),
             col("expected", "Норматив, л"),
             col("liters", "Заправлено, л"),
@@ -3150,6 +3199,30 @@ function RouteFacts({ route: r }) {
   );
 }
 function Directories({ p, onChoose, user, refresh }) {
+  return <CatalogManager p={p} user={user} refresh={refresh} onChoose={onChoose}
+    ownership={<DirectoryOwnership p={p} user={user} refresh={refresh} onChoose={onChoose} />} />;
+}
+function DirectoryGroup({ defaultOpen, label, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
+  useEffect(() => setOpen(defaultOpen), [defaultOpen]);
+
+  return (
+    <Card pad="large" className="directory-group">
+      <button type="button" className="directory-group-toggle" aria-expanded={open}
+        aria-controls={panelId} onClick={() => setOpen((previous) => !previous)}>
+        <Building2 size={20} aria-hidden="true" />
+        {label}
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      <Collapse id={panelId} className="directory-disclosure" open={open} solid
+        inert={open ? undefined : ""} aria-hidden={!open || undefined}>
+        {children}
+      </Collapse>
+    </Card>
+  );
+}
+function DirectoryOwnership({ p, onChoose, user, refresh }) {
   const [search, setSearch] = useState("");
   const carriers = [
     ...new Set([
@@ -3188,77 +3261,73 @@ function Directories({ p, onChoose, user, refresh }) {
           );
         if (!cars.length && !drivers.length) return null;
         return (
-          <Card pad="large" key={carrier} className="directory-group">
-            <details
-              open={!!search || carrier === M.UNKNOWN || carriers.length < 5}
-            >
-              <summary>
-                <Building2 size={20} />
-                <span>
-                  <strong>
-                    {carrier === M.UNKNOWN
-                      ? "Принадлежность не установлена"
-                      : carrier}
-                  </strong>
-                  <small>
-                    {M.ownership(carrier)} · <AnimatedMetric value={cars.length} format={fmt} integer /> автомобилей ·{" "}
-                    <AnimatedMetric value={drivers.length} format={fmt} integer /> водителей
-                  </small>
-                </span>
-                <ChevronDown size={18} />
-              </summary>
-              <div className="directory-columns">
-                <div>
-                  <h3>Автомобили</h3>
-                  {[...new Set(cars.map((v) => v.transport_type))].map(
-                    (type) => (
-                      <details key={type} open>
-                        <summary>
-                          {type === M.UNKNOWN ? "Тип не установлен" : type}
-                          <span>
-                            {
-                              cars.filter((v) => v.transport_type === type)
-                                .length
-                            }
-                          </span>
-                        </summary>
-                        {cars
-                          .filter((v) => v.transport_type === type)
-                          .map((v) => (
-                            <button
-                              key={v.name}
-                              onClick={() => onChoose("vehicles", v.name)}
-                            >
-                              <Truck size={15} />
-                              {v.name}
-                              <small>{v.brand}</small>
-                              <ArrowUpRight size={14} />
-                            </button>
-                          ))}
-                      </details>
-                    ),
-                  )}
-                </div>
-                <div>
-                  <h3>Водители</h3>
-                  {drivers.map((d) => (
-                    <button
-                      key={d.name}
-                      onClick={() => onChoose("drivers", d.name)}
-                    >
-                      <Users size={15} />
-                      {d.name}
-                      <ArrowUpRight size={14} />
-                    </button>
-                  ))}
-                </div>
+          <DirectoryGroup
+            key={carrier}
+            defaultOpen={!!search || carrier === M.UNKNOWN || carriers.length < 5}
+            label={
+              <span>
+                <strong>
+                  {carrier === M.UNKNOWN
+                    ? "Принадлежность не установлена"
+                    : carrier}
+                </strong>
+                <small>
+                  {M.ownership(carrier)} · <AnimatedMetric value={cars.length} format={fmt} integer /> автомобилей ·{" "}
+                  <AnimatedMetric value={drivers.length} format={fmt} integer /> водителей
+                </small>
+              </span>
+            }
+          >
+            <div className="directory-columns">
+              <div>
+                <h3>Автомобили</h3>
+                {[...new Set(cars.map((v) => v.transport_type))].map(
+                  (type) => (
+                    <details key={type} open>
+                      <summary>
+                        {type === M.UNKNOWN ? "Тип не установлен" : type}
+                        <span>
+                          {
+                            cars.filter((v) => v.transport_type === type)
+                              .length
+                          }
+                        </span>
+                      </summary>
+                      {cars
+                        .filter((v) => v.transport_type === type)
+                        .map((v) => (
+                          <button
+                            key={v.name}
+                            onClick={() => onChoose("vehicles", v.name)}
+                          >
+                            <Truck size={15} />
+                            {v.name}
+                            <small>{v.brand}</small>
+                            <ArrowUpRight size={14} />
+                          </button>
+                        ))}
+                    </details>
+                  ),
+                )}
               </div>
-            </details>
-          </Card>
+              <div>
+                <h3>Водители</h3>
+                {drivers.map((d) => (
+                  <button
+                    key={d.name}
+                    onClick={() => onChoose("drivers", d.name)}
+                  >
+                    <Users size={15} />
+                    {d.name}
+                    <ArrowUpRight size={14} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </DirectoryGroup>
         );
       })}
       {hasPermission(user, "catalog.write") && <AssignmentEditor p={p} refresh={refresh} />}
-      <CatalogManager p={p} user={user} refresh={refresh} />
     </>
   );
 }
@@ -4064,13 +4133,15 @@ function UsersPage({ p, user, onAccountSaved }) {
       {editing && (
         <Drawer title={editing.account ? "Редактирование пользователя" : "Добавление пользователя"}
           size="compact" className="user-drawer" onClose={() => setEditing(null)}>
-          <UserForm account={editing.account} ownAccount={editing.account?.id === user.id}
-            vehicleNames={vehicleNames} rules={rules} onSaved={async () => {
-              setEditing(null);
-              setMessage(editing.account ? "Изменения сохранены" : "Пользователь добавлен");
-              await load();
-              if (editing.account?.id === user.id) await onAccountSaved();
-            }} />
+          {(closeDrawer) => (
+            <UserForm account={editing.account} ownAccount={editing.account?.id === user.id}
+              vehicleNames={vehicleNames} rules={rules} onSaved={async () => {
+                setMessage(editing.account ? "Изменения сохранены" : "Пользователь добавлен");
+                await load();
+                if (editing.account?.id === user.id) await onAccountSaved();
+                closeDrawer();
+              }} />
+          )}
         </Drawer>
       )}
       <Section title="Журнал действий" subtitle="Последние 100 событий">

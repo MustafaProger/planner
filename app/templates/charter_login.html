@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Вход · CharterStats</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='charter-focus.css') }}">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -57,7 +58,6 @@
     label { gap: 6px; font-size: 12px; font-weight: 600; }
     input, button { min-height: 46px; font: inherit; }
     input { width: 100%; border: 1px solid #dfe5ec; border-radius: 7px; padding: 0 12px; color: inherit; font-size: 14px; }
-    input:focus-visible { outline: 2px solid #0875db; outline-offset: 2px; }
     button {
       display: flex;
       align-items: center;
@@ -72,7 +72,6 @@
       cursor: pointer;
     }
     button:hover { background: #0665c0; }
-    button:focus-visible { outline: 2px solid #3974c4; outline-offset: 4px; }
     form p.error { margin: 0; padding: 8px 12px; border-radius: 7px; color: #a23434; background: #fcf1f1; }
     @media (max-width: 760px) {
       .login { width: calc(100% - 24px); grid-template-columns: 1fr; margin: 12px auto; }
