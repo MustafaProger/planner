@@ -349,12 +349,28 @@ def users():
 @app.post('/api/users')
 @auth(['admin'])
 def add_user():
-    b=request.get_json();role=b.get('role');name=str(b.get('name','')).strip();pwd=str(b.get('password',''));cars=b.get('vehicles',[])
-    if role not in ('admin','logist','viewer') or not name or len(pwd)<12:raise ValueError('Имя обязательно, пароль — от 12 символов')
-    if not isinstance(cars,list) or any(v not in dataset()['vehicles'] for v in cars):raise ValueError('Неизвестная машина')
+    b = request.get_json()
+    ws.body(b)
+    role = b.get('role')
+    name = str(b.get('name', '')).strip()
+    pwd = str(b.get('password', ''))
+    cars = b.get('vehicles', [])
+    if role not in ('admin', 'logist', 'viewer') or not name or len(pwd) < 12:
+        raise ValueError('Имя обязательно, пароль — от 12 символов')
+    if not isinstance(cars, list):
+        raise ValueError('Неизвестная машина')
     try:
-        with db() as c:c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',(name,generate_password_hash(pwd),role,json.dumps(cars)));audit(c,'add user',name)
-    except sqlite3.IntegrityError:raise ValueError('Пользователь уже существует')
+        with db() as c:
+            if cars:
+                catalog = ws.catalogs(c)['vehicles']
+                known = {row['name'] for row in catalog if not row.get('merged_into')}
+                if any(not isinstance(car, str) or car not in known for car in cars):
+                    raise ValueError('Неизвестная машина')
+            c.execute('insert into users(name,password,role,vehicles) values(?,?,?,?)',
+                      (name, generate_password_hash(pwd), role, json.dumps(cars)))
+            audit(c, 'add user', name)
+    except sqlite3.IntegrityError:
+        raise ValueError('Пользователь уже существует')
     return jsonify(ok=True)
 @app.get('/api/audit')
 @auth(['admin'])

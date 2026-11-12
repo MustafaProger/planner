@@ -3760,6 +3760,7 @@ function UsersPage({ p }) {
   const [users, setUsers] = useState(null);
   const [audit, setAudit] = useState(null);
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
   const [newRole, setNewRole] = useState("logist");
   const [userVehicles, setUserVehicles] = useState([]);
   const [userVehicleMenu, setUserVehicleMenu] = useState(false);
@@ -3817,9 +3818,12 @@ function UsersPage({ p }) {
           className="inline-form user-form"
           onSubmit={async (event) => {
             event.preventDefault();
+            if (saving) return;
             const form = event.currentTarget;
             const body = Object.fromEntries(new FormData(form));
             body.vehicles = userVehicles;
+            setSaving(true);
+            setMessage("");
             try {
               await api("users", { method: "POST", body: JSON.stringify(body) });
               form.reset();
@@ -3830,6 +3834,8 @@ function UsersPage({ p }) {
               await load();
             } catch (e) {
               setMessage(e.message);
+            } finally {
+              setSaving(false);
             }
           }}
         >
@@ -3843,7 +3849,7 @@ function UsersPage({ p }) {
             <label htmlFor="user-vehicles">Автомобили</label>
             <Multi id="user-vehicles" label="Выберите автомобили" items={p.vehicles.map((vehicle) => vehicle.name)} value={userVehicles} onChange={setUserVehicles} open={userVehicleMenu} onToggle={(_, next) => setUserVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
           </div>
-          <B variant="primary" type="submit">Добавить пользователя</B>
+          <B variant="primary" type="submit" disabled={saving}>{saving ? "Добавляем…" : "Добавить пользователя"}</B>
         </form>
         {message && <span role="status">{message}</span>}
       </Section>

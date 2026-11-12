@@ -127,3 +127,31 @@ def test_deviation_export_formats_only_submitted_rows(api_only):
     assert list(sheet.values)[1]==(dt.datetime(2026,11,5),*row[1:])
     assert sheet['H2'].data_type=='s'
     book.close()
+
+
+def test_user_creation_reads_vehicle_catalog_without_loading_reports(api_only, monkeypatch):
+    with server.db() as c:
+        ws.add_catalog(c, 'vehicles', 'А001АА77')
+        ws.add_catalog(c, 'vehicles', 'А002АА77')
+
+    def report_unavailable(*args, **kwargs):
+        pytest.fail('Creating a user must not load the report dataset')
+
+    monkeypatch.setattr(server, 'dataset', report_unavailable)
+    headers = {'X-CSRF-Token': 'test'}
+    account = dict(name='Новый наблюдатель', password='test-password-only', role='viewer')
+    vehicles = ['А001АА77', 'А002АА77']
+    invalid = api_only.post('/api/users', headers=headers, json={**account, 'vehicles': [*vehicles, 'Неизвестный']})
+    assert invalid.status_code == 400
+
+    created = api_only.post('/api/users', headers=headers, json={**account, 'vehicles': vehicles})
+    assert created.status_code == 200
+    accounts = api_only.get('/api/users').get_json()
+    assert json.loads(next(row['vehicles'] for row in accounts if row['name'] == account['name'])) == vehicles
+    assert sum(row['action'] == 'add user' for row in api_only.get('/api/audit').get_json()) == 1
+
+    viewer = server.app.test_client()
+    assert viewer.post('/api/login', json=account).status_code == 200
+    session = viewer.get('/api/session').get_json()
+    assert session['user']['vehicles'] == vehicles
+    assert viewer.post('/api/users', headers={'X-CSRF-Token': session['csrf']}, json=account).status_code == 403
