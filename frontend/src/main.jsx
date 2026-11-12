@@ -56,6 +56,7 @@ import { AnimatedMetric } from "./animated-metric.jsx";
 import { RowBatches, ScrollRows, ScrollRowsContext, useScrollRows } from "./scroll-rows.jsx";
 import * as M from "./model";
 import { createRecordEditors } from "./record-editors.jsx";
+import { WorkspaceBrand } from "./workspace-brand.jsx";
 import { ChartSkeleton, ReportSkeleton, WorkspaceSkeleton } from "./workspace-loading";
 import "./style.css";
 const N = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }),
@@ -1305,7 +1306,7 @@ function App() {
             go("overview");
           }}
         >
-          CharterStats<span> / </span>
+          <WorkspaceBrand />
         </a>
         <nav aria-label="Основная навигация" ref={navRef}>
           <i
@@ -1397,7 +1398,7 @@ function App() {
               go("overview");
             }}
           >
-            CharterStats<span> / </span>
+            <WorkspaceBrand />
           </a>
           <div className="topbar-controls">
             <span className="environment">

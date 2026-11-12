@@ -181,17 +181,23 @@ input[type="checkbox"] {
   z-index: 30;
 }
 .wordmark {
+  display: flex;
+  align-items: center;
   font-weight: 720;
   font-size: 21px;
   letter-spacing: -0.9px;
   white-space: nowrap;
+}
+.wordmark-icon {
+  flex: none;
+  margin-right: 8px;
 }
 .wordmark span {
   color: #477dc6;
   font-size: 25px;
 }
 .sidebar > .wordmark {
-  padding: 30px 25px 24px;
+  padding: 30px 16px 24px 25px;
 }
 .workspace-name {
   margin: 0 16px 19px;
@@ -314,14 +320,14 @@ input[type="checkbox"] {
   padding: 0 32px;
   gap: 10px;
 }
-.topbar > span {
+.topbar > .topbar-context {
   display: flex;
   gap: 12px;
   align-items: center;
   font-size: 11px;
   color: #8b95a1;
 }
-.topbar > span b {
+.topbar > .topbar-context b {
   color: #65707e;
   font-weight: 500;
 }
@@ -1734,7 +1740,7 @@ details summary::-webkit-details-marker {
     height: 54px;
     padding: 0 16px;
   }
-  .topbar > span {
+  .topbar > .topbar-context {
     font-size: 10px;
     gap: 5px;
   }
@@ -3143,7 +3149,10 @@ button:not(:disabled):active,
     transform: translateX(0);
   }
   .sidebar > .wordmark {
-    padding: 26px 25px 20px;
+    display: none;
+  }
+  .sidebar nav {
+    padding-top: 14px;
   }
   .mobile-scrim {
     display: block;

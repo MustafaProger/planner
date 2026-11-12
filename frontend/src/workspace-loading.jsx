@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
 import { Card } from "./vendor/stageshow/parts/card";
+import { WorkspaceBrand } from "./workspace-brand.jsx";
 
 const barHeights = [83, 71, 76, 63, 58, 68, 47, 51, 39, 43, 34, 28];
 
@@ -200,7 +201,7 @@ export function WorkspaceSkeleton({ page, title, hint, filtered }) {
     <div className="workspace workspace-skeleton">
       <span className="loading-announcement" role="status">Загрузка рабочего пространства…</span>
       <aside className="sidebar" aria-hidden="true">
-        <span className="wordmark">CharterStats<span> / </span></span>
+        <span className="wordmark"><WorkspaceBrand /></span>
         <div className="skeleton-nav">
           {Array.from({ length: 11 }, (_, index) => <div key={index} className="skeleton-line" />)}
         </div>
@@ -208,7 +209,7 @@ export function WorkspaceSkeleton({ page, title, hint, filtered }) {
       <div className="main-wrap" aria-busy="true">
         <header className="topbar">
           <span className="topbar-context">Рабочее пространство <ChevronRight size={13} /> <b>{title}</b></span>
-          <span className="topbar-brand wordmark">CharterStats<span> / </span></span>
+          <span className="topbar-brand wordmark"><WorkspaceBrand /></span>
           <div className="skeleton-line skeleton-refresh" aria-hidden="true" />
         </header>
         <main>
