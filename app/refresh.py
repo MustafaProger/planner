@@ -291,7 +291,7 @@ def register(app, auth, data_dir, db_path, get_dataset):
         return jsonify(service.status())
 
     @app.post('/api/refresh')
-    @auth(['admin'])
+    @auth(permission='connections.run')
     def refresh_start():
         body = request.get_json()
         if not isinstance(body, dict):

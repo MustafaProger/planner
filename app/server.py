@@ -223,7 +223,7 @@ def extra_snapshot(c, kind, ident):
 
 @app.post('/api/workspace/<kind>')
 @app.put('/api/workspace/<kind>/<ident>')
-@auth(['admin'])
+@auth()
 def extra_save(kind,ident=None):
     if kind not in ('coverage','card_bindings','expenses'):raise ValueError('Неизвестная таблица.')
     with LOCK,db() as c:
@@ -243,7 +243,7 @@ def coverage_preview():
     with db() as c:return jsonify(preview(ws.dataset(c),request.args.get('source'),start,end))
 
 @app.delete('/api/workspace/<kind>/<ident>')
-@auth(['admin'])
+@auth()
 def extra_delete(kind,ident):
     if kind not in ('coverage','card_bindings','expenses'):abort(404)
     with LOCK,db() as c:
@@ -455,8 +455,8 @@ def user_fields(c, body, *, current=None):
             known.update(json.loads(current['vehicles'] or '[]'))
         if any(not isinstance(car, str) or car not in known for car in cars):
             raise ValueError('Неизвестная машина')
-    current_overrides = json.loads(current['permissions']) if current and role == current['role'] else {}
-    overrides = permissions.validate_overrides(role, body.get('permissions', current_overrides))
+    current_overrides = json.loads(current['permissions']) if current is not None else {}
+    overrides = permissions.validate_overrides(body.get('permissions', current_overrides))
     return name.strip(), role, json.dumps(list(dict.fromkeys(cars))), password, json.dumps(overrides)
 
 

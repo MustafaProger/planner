@@ -210,9 +210,6 @@ def test_permissions_apply_to_existing_session_and_vehicle_scope(api_only):
     account = dict(name='Сотрудник', password='isolated-test-password', role='viewer',
                    vehicles=['А001АА77'])
     assert api_only.post('/api/users', headers=headers, json={
-        **account, 'permissions': {'settings.write': True},
-    }).status_code == 400
-    assert api_only.post('/api/users', headers=headers, json={
         **account, 'permissions': {'statuses.write': True},
     }).status_code == 200
     employee = server.app.test_client()
@@ -247,6 +244,48 @@ def test_permissions_apply_to_existing_session_and_vehicle_scope(api_only):
     diff = api_only.get(f"/api/audit/{replacements[0]['id']}").json['changes']
     assert diff == [dict(field='reason', before=['Ремонт'], after=['Сервис'],
                         subject=f'{day} · А001АА77')]
+
+
+def test_permissions_for_other_roles_are_enforced_on_write_routes(api_only, monkeypatch):
+    headers = {'X-CSRF-Token': 'test'}
+    with server.db() as c:
+        ws.save_catalog(c, 'vehicles', {'name': 'А001АА77'})
+    account = dict(name='Сотрудник', role='viewer', password='isolated-test-password', vehicles=[])
+    rights = {'settings.write': True, 'expenses.write': True, 'connections.run': True,
+              'fuel.read': True, 'plans.write': False}
+    for invalid in ({'users.write': True}, {'settings.write': 1}):
+        assert api_only.post('/api/users', headers=headers, json={**account, 'permissions': invalid}).status_code == 400
+    assert api_only.post('/api/users', headers=headers, json={**account, 'permissions': rights}).status_code == 200
+    employee = server.app.test_client()
+    assert employee.post('/api/login', json=account).status_code == 200
+    auth = {'X-CSRF-Token': employee.get('/api/session').json['csrf']}
+    workspace = employee.get('/api/charter?view=workspace').json
+    assert employee.get('/api/users').status_code == 403
+    assert employee.get('/api/neftm').status_code == 200
+    assert employee.put('/api/charter/state', headers=auth, json={
+        'kind': 'settings', 'revision': workspace['state']['revision'], 'settings': {'movement_threshold': 11},
+    }).status_code == 200
+    expense = {'vehicle': 'А001АА77', 'date': '2026-11-12', 'category': 'Ремонт', 'amount': 10}
+    created = employee.post('/api/workspace/expenses', headers=auth, json=expense)
+    assert created.status_code == 200, created.json
+    assert employee.delete('/api/workspace/expenses/' + created.json['id'], headers=auth,
+                           json={'revision': 1}).status_code == 200
+    monkeypatch.setattr(server.refresh_service, 'start', lambda *_args, **_kwargs: {'status': 'queued'})
+    assert employee.post('/api/refresh', headers=auth, json={}).status_code == 202
+
+    ident = next(row['id'] for row in api_only.get('/api/users').json if row['name'] == account['name'])
+    assert api_only.put(f'/api/users/{ident}', headers=headers, json={
+        **account, 'password': '', 'role': 'logist',
+    }).status_code == 200
+    current = employee.get('/api/charter?view=workspace').json['user']
+    assert current['role'] == 'logist'
+    assert all(current['permissions'][key] == flag for key, flag in rights.items())
+    assert api_only.put(f'/api/users/{ident}', headers=headers, json={
+        **account, 'password': '', 'role': 'logist', 'permissions': {},
+    }).status_code == 200
+    assert employee.post('/api/workspace/expenses', headers=auth, json=expense).status_code == 403
+    assert employee.post('/api/refresh', headers=auth, json={}).status_code == 403
+    assert employee.get('/api/neftm').status_code == 403
 
 
 def test_audit_keeps_legacy_description_and_omits_password_values(api_only):

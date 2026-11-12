@@ -3587,7 +3587,7 @@ function SourceDataPage({ p, fuel, period, filters, onTrips }) {
         </Section>
       )}
       {tab === "fuel" && (
-        <Section title="Топливные операции" subtitle="Операции доступны руководителю; карты связываются с автомобилем по датам">
+        <Section title="Топливные операции" subtitle="Карты связываются с автомобилем по датам">
           <DataTable rows={fuelRows} title="Топливо" columns={fuelCols} />
         </Section>
       )}
@@ -3851,27 +3851,34 @@ function assignedVehicles(account) {
 function PermissionMatrix({ rules, role, overrides, onChange, disabled }) {
   const [expanded, setExpanded] = useState(true);
   const groups = [...new Set(rules.map(({ group }) => group))];
-  const readFuel = overrides["fuel.read"] ?? role === "admin";
+  const readRule = rules.find(({ key }) => key === "fuel.read");
+  const readFuel = overrides["fuel.read"] ?? readRule?.defaults[role] ?? false;
+  function changePermission(key, checked) {
+    const next = { ...overrides, [key]: checked };
+    if (key === "fuel.write" && checked) next["fuel.read"] = true;
+    if (key === "fuel.read" && !checked) next["fuel.write"] = false;
+    onChange(next);
+  }
   return (
     <details className="user-permissions" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary>Полномочия</summary>
       <p className="muted">
-        Роль задаёт начальный набор. Для логиста и наблюдателя рабочие действия ограничены назначенными автомобилями.
+        Роль задаёт начальные отметки. Ручной выбор сохраняется при смене роли. Для изменения привязок карт нужен просмотр операций.
+        Для логиста и наблюдателя действия с назначениями, ручными заявками, статусами и отклонениями ограничены назначенными автомобилями.
       </p>
       <table>
         <thead><tr><th>Действие</th><th>Доступ</th></tr></thead>
         {groups.map((group) => (
           <tbody key={group}>
             <tr><th colSpan={2} scope="rowgroup">{group}</th></tr>
-            {rules.filter((rule) => rule.group === group).map(({ key, label, manager_only, defaults }) => {
-              const available = (!manager_only || role === "admin") && (key !== "fuel.write" || readFuel);
-              const checked = available && (overrides[key] ?? defaults[role]);
+            {rules.filter((rule) => rule.group === group).map(({ key, label, defaults }) => {
+              const checked = (key !== "fuel.write" || readFuel) && (overrides[key] ?? defaults[role]);
               return (
                 <tr key={key}>
                   <th scope="row">{label}</th>
                   <td>
-                    <input type="checkbox" aria-label={label} checked={checked} disabled={disabled || !available}
-                      onChange={(event) => onChange({ ...overrides, [key]: event.target.checked })} />
+                    <input type="checkbox" aria-label={label} checked={!!checked} disabled={disabled}
+                      onChange={(event) => changePermission(key, event.target.checked)} />
                   </td>
                 </tr>
               );
@@ -3880,8 +3887,8 @@ function PermissionMatrix({ rules, role, overrides, onChange, disabled }) {
         ))}
       </table>
       <div className="form-actions">
-        <B size="small" disabled={disabled || !Object.keys(overrides).length} onClick={() => onChange({})}>
-          Вернуть права по роли
+        <B className="user-permissions-reset" disabled={disabled || !Object.keys(overrides).length} onClick={() => onChange({})}>
+          <span>Вернуть права по роли</span>
         </B>
       </div>
     </details>
@@ -3930,12 +3937,8 @@ function UserForm({ account, ownAccount, vehicleNames, rules, onSaved }) {
         </label>
         <div className="user-form-field">
           <span>Роль</span>
-          <SelectMenu ariaLabel="Роль" value={role} onChange={(event) => {
-            const next = event.target.value;
-            if (next === role) return;
-            setRole(next);
-            setOverrides(next === account?.role ? account.permissions ?? {} : {});
-          }} options={userRoles} disabled={ownAccount || saving} />
+          <SelectMenu ariaLabel="Роль" value={role} onChange={(event) => setRole(event.target.value)}
+            options={userRoles} disabled={ownAccount || saving} />
         </div>
         <div className="user-form-field user-vehicle-field">
           <label htmlFor={vehicleId}>Автомобили</label>
@@ -4033,12 +4036,12 @@ function UsersPage({ p, user, onAccountSaved }) {
               align: "end",
               render: (account) => (
                 <div className="user-row-actions">
-                  <B size="small" aria-label={`Редактировать пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => setEditing({ account })}>
-                    Редактировать
+                  <B size="small" className="user-edit-action" aria-label={`Редактировать пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => setEditing({ account })}>
+                    <span>Редактировать</span>
                   </B>
                   {account.id !== user.id && (
-                    <B size="small" aria-label={`Удалить пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => remove(account)}>
-                      {deleting === account.id ? "Удаляем…" : "Удалить"}
+                    <B size="small" variant="danger" className="user-delete-action" aria-label={`Удалить пользователя «${account.name}»`} disabled={deleting !== null} onClick={() => remove(account)}>
+                      <span>{deleting === account.id ? "Удаляем…" : "Удалить"}</span>
                     </B>
                   )}
                 </div>

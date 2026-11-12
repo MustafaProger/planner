@@ -158,14 +158,14 @@ def test_scheduler_starts_real_provider_job_without_browser(service, monkeypatch
 def test_endpoint_authorization_csrf_and_invalid_period(service, monkeypatch):
     app = Flask(__name__)
     app.secret_key = 'test-only'
-    def auth(roles=None):
+    def auth(*, permission=None):
         def wrap(fn):
             @wraps(fn)
             def call(*args, **kwargs):
                 if not session.get('uid'):
                     return jsonify(error='login'), 401
-                if roles and session['role'] not in roles:
-                    return jsonify(error='role'), 403
+                if permission and permission not in session.get('permissions', []):
+                    return jsonify(error='permission'), 403
                 if request.method == 'POST' and request.headers.get('X-CSRF-Token') != session['csrf']:
                     return jsonify(error='csrf'), 403
                 return fn(*args, **kwargs)
@@ -178,11 +178,11 @@ def test_endpoint_authorization_csrf_and_invalid_period(service, monkeypatch):
     client = app.test_client()
     assert client.get('/api/refresh').status_code == 401
     with client.session_transaction() as s:
-        s.update(uid=9, role='viewer', csrf='x')
+        s.update(uid=9, csrf='x')
     assert client.get('/api/refresh').status_code == 200
     assert client.post('/api/refresh', json={}, headers={'X-CSRF-Token': 'x'}).status_code == 403
     with client.session_transaction() as s:
-        s['role'] = 'admin'
+        s['permissions'] = ['connections.run']
     assert client.post('/api/refresh', json={}).status_code == 403
     assert client.post('/api/refresh', json=[], headers={'X-CSRF-Token': 'x'}).status_code == 400
     assert client.post('/api/refresh', json={'from': '2026-08-01', 'to': '2026-08-31'}, headers={'X-CSRF-Token': 'x'}).status_code == 202
