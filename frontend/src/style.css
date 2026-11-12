@@ -2636,7 +2636,46 @@ button:not(:disabled):active,
   justify-content: flex-end;
   gap: 8px;
 }
-.user-edit-form .user-form-field {
+.user-drawer {
+  --user-drawer-gutter: clamp(16px, 4vw, 30px);
+}
+.user-drawer .drawer-inner {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.user-drawer header {
+  position: static;
+  padding: 20px var(--user-drawer-gutter) 16px;
+}
+.user-edit-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0;
+}
+.user-form-fields {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px var(--user-drawer-gutter);
+  scroll-padding-block: 12px;
+}
+.user-form-footer {
+  display: grid;
+  gap: 8px;
+  padding: 12px var(--user-drawer-gutter);
+  border-top: 1px solid #e8edf3;
+  background: #fff;
+}
+.user-form-footer .user-primary-action {
+  justify-self: end;
+}
+.user-form-field {
   display: grid;
   gap: 8px;
   font-size: 12px;
@@ -2644,27 +2683,58 @@ button:not(:disabled):active,
 }
 .user-vehicle-field .multi-trigger {
   min-height: 38px;
-  justify-content: space-between;
   width: 100%;
+  font-size: 12px;
 }
-.user-vehicle-field .multi-pop {
-  top: calc(100% + 6px);
-  width: min(295px, calc(100vw - 72px));
+.user-vehicle-field .multi-trigger svg {
+  margin-inline-start: auto;
 }
-.user-vehicle-field [data-placement="above"] .multi-pop {
-  top: auto;
-  bottom: calc(100% + 6px);
-  transform-origin: bottom left;
+.user-vehicle-field .multi-inline .multi-pop {
+  position: static;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border-color: #dce3eb;
+  box-shadow: none;
+  transform: none;
+}
+.user-vehicle-field .multi-pop[hidden] {
+  display: none;
+}
+.user-vehicle-field .multi-actions {
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.user-vehicle-field .multi-actions button {
+  min-height: 32px;
+  padding-inline: 8px;
+  font-size: 12px;
 }
 .user-vehicle-field .multi-list {
-  max-height: min(270px, 35vh);
+  max-height: min(216px, 32dvh);
   overscroll-behavior: contain;
+}
+.user-vehicle-field .multi-list > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 13px;
+}
+.user-vehicle-field .multi-list > label:has(input:checked) {
+  background: #f2f6fc;
 }
 .user-vehicle-field .multi-list input {
   margin: 0;
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  flex: 0 0 16px;
+  accent-color: #3974c4;
 }
 .page-footer button {
   display: flex;

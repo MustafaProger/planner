@@ -298,47 +298,25 @@ function PeriodPicker({ period, onChange }) {
     </div>}
   </div>;
 }
-function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, fitViewport }) {
+function Multi({ id, label, items, value, onChange, open, onToggle, inline }) {
   const [search, setSearch] = useState("");
-  const root = useRef(null);
-  const panel = useRef(null);
   const searchRef = useRef(null);
-  useLayoutEffect(() => {
-    if (!open || !fitViewport) return;
-    const place = () => {
-      const bounds = root.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - bounds.bottom;
-      root.current.dataset.placement = spaceBelow < panel.current.offsetHeight + 12 && bounds.top > spaceBelow
-        ? "above"
-        : "below";
-    };
-    place();
-    window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
-  }, [open, fitViewport]);
   useEffect(() => {
     if (!open) return;
-    const frame = requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: true }));
-    const close = (event) => {
-      if (!root.current?.contains(event.target)) onDismiss?.();
-    };
-    if (onDismiss) document.addEventListener("pointerdown", close);
-    return () => {
-      cancelAnimationFrame(frame);
-      if (onDismiss) document.removeEventListener("pointerdown", close);
-    };
-  }, [open, onDismiss]);
+    const frame = requestAnimationFrame(() => searchRef.current?.focus({ preventScroll: !inline }));
+    return () => cancelAnimationFrame(frame);
+  }, [open, inline]);
   const list = items
     .map((i) => (typeof i === "string" ? { value: i, label: i } : i))
     .filter((i) => i.label.toLowerCase().includes(search.toLowerCase()));
   return (
     <div
-      ref={root}
-      className={"multi " + (value.length ? "is-active" : "")}
+      className={`multi${inline ? " multi-inline" : ""}${value.length ? " is-active" : ""}`}
       data-open={open ? "true" : "false"}
       onKeyDown={(e) => {
         if (e.key === "Escape" && open) {
           e.preventDefault();
+          e.stopPropagation();
           onToggle?.(id, false);
           e.currentTarget.querySelector(".multi-trigger")?.focus();
         }
@@ -349,6 +327,7 @@ function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, f
         type="button"
         className="multi-trigger"
         aria-expanded={open}
+        aria-controls={id + "-options"}
         onClick={() => onToggle?.(id, !open)}
       >
         {label}
@@ -356,8 +335,9 @@ function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, f
         <ChevronDown size={14} />
       </button>
       <div
-        ref={panel}
+        id={id + "-options"}
         className="multi-pop"
+        hidden={inline && !open}
         aria-hidden={!open}
         inert={open ? undefined : ""}
       >
@@ -369,6 +349,7 @@ function Multi({ id, label, items, value, onChange, open, onToggle, onDismiss, f
             placeholder="Поиск…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={inline ? (e) => { if (e.key === "Enter") e.preventDefault(); } : undefined}
           />
         </div>
         <div className="multi-actions">
@@ -704,7 +685,7 @@ function KPI({ label, raw, format = fmt, integer = false, sub, change, onClick, 
     </Card>
   );
 }
-function Drawer({ title, children, onClose, size = "wide" }) {
+function Drawer({ title, children, onClose, size = "wide", className = "" }) {
   const ref = useRef();
   const opener = useRef(document.activeElement);
   const [opened, setOpened] = useState(false);
@@ -754,7 +735,7 @@ function Drawer({ title, children, onClose, size = "wide" }) {
   return (
     <dialog
       ref={ref}
-      className={`drawer drawer-${size} ${opened ? "is-open" : "is-closing"}`}
+      className={`drawer drawer-${size} ${opened ? "is-open" : "is-closing"} ${className}`}
       onCancel={(e) => {
         e.preventDefault();
         requestClose();
@@ -3868,10 +3849,11 @@ function assignedVehicles(account) {
 }
 
 function PermissionMatrix({ rules, role, overrides, onChange, disabled }) {
+  const [expanded, setExpanded] = useState(true);
   const groups = [...new Set(rules.map(({ group }) => group))];
   const readFuel = overrides["fuel.read"] ?? role === "admin";
   return (
-    <details className="user-permissions">
+    <details className="user-permissions" open={expanded} onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary>Полномочия</summary>
       <p className="muted">
         Роль задаёт начальный набор. Для логиста и наблюдателя рабочие действия ограничены назначенными автомобилями.
@@ -3913,7 +3895,6 @@ function UserForm({ account, ownAccount, vehicleNames, rules, onSaved }) {
   const [vehicleMenu, setVehicleMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const dismissVehicleMenu = useCallback(() => setVehicleMenu(false), []);
   const vehicleId = "user-form-vehicles";
   const choices = [...new Set([...vehicleNames, ...assignedVehicles(account)])];
 
@@ -3940,32 +3921,34 @@ function UserForm({ account, ownAccount, vehicleNames, rules, onSaved }) {
         }
       }}
     >
-      <label>Имя<input name="name" required defaultValue={account?.name} /></label>
-      <label>
-        {account ? "Новый пароль" : "Пароль"}
-        <input name="password" type="password" minLength={12} required={!account} autoComplete="new-password" />
-        {account && <small>Оставьте поле пустым, чтобы сохранить текущий пароль</small>}
-      </label>
-      <div className="user-form-field">
-        <span>Роль</span>
-        <SelectMenu ariaLabel="Роль" value={role} onChange={(event) => {
-          const next = event.target.value;
-          if (next === role) return;
-          setRole(next);
-          setOverrides(next === account?.role ? account.permissions ?? {} : {});
-        }} options={userRoles} disabled={ownAccount || saving} />
+      <div className="user-form-fields">
+        <label>Имя<input name="name" required defaultValue={account?.name} /></label>
+        <label>
+          {account ? "Новый пароль" : "Пароль"}
+          <input name="password" type="password" minLength={12} required={!account} autoComplete="new-password" />
+          {account && <small>Оставьте поле пустым, чтобы сохранить текущий пароль</small>}
+        </label>
+        <div className="user-form-field">
+          <span>Роль</span>
+          <SelectMenu ariaLabel="Роль" value={role} onChange={(event) => {
+            const next = event.target.value;
+            if (next === role) return;
+            setRole(next);
+            setOverrides(next === account?.role ? account.permissions ?? {} : {});
+          }} options={userRoles} disabled={ownAccount || saving} />
+        </div>
+        <div className="user-form-field user-vehicle-field">
+          <label htmlFor={vehicleId}>Автомобили</label>
+          <Multi id={vehicleId} label="Выберите автомобили" items={choices} value={vehicles} onChange={setVehicles} open={vehicleMenu} onToggle={(_, next) => setVehicleMenu(next)} inline />
+        </div>
+        <PermissionMatrix rules={rules} role={role} overrides={overrides} onChange={setOverrides} disabled={saving} />
       </div>
-      <div className="user-form-field user-vehicle-field">
-        <label htmlFor={vehicleId}>Автомобили</label>
-        <Multi id={vehicleId} label="Выберите автомобили" items={choices} value={vehicles} onChange={setVehicles} open={vehicleMenu} onToggle={(_, next) => setVehicleMenu(next)} onDismiss={dismissVehicleMenu} fitViewport />
-      </div>
-      <PermissionMatrix rules={rules} role={role} overrides={overrides} onChange={setOverrides} disabled={saving} />
-      <div className="form-actions">
+      <div className="user-form-footer">
+        {error && <span role="alert" className="error">{error}</span>}
         <B className="user-primary-action" variant="primary" type="submit" disabled={saving}>
           <span>{account ? (saving ? "Сохраняем…" : "Сохранить изменения") : (saving ? "Добавляем…" : "Добавить пользователя")}</span>
         </B>
       </div>
-      {error && <span role="alert" className="error">{error}</span>}
     </form>
   );
 }
@@ -4067,7 +4050,7 @@ function UsersPage({ p, user, onAccountSaved }) {
       </Section>
       {editing && (
         <Drawer title={editing.account ? "Редактирование пользователя" : "Добавление пользователя"}
-          size="compact" onClose={() => setEditing(null)}>
+          size="compact" className="user-drawer" onClose={() => setEditing(null)}>
           <UserForm account={editing.account} ownAccount={editing.account?.id === user.id}
             vehicleNames={vehicleNames} rules={rules} onSaved={async () => {
               setEditing(null);
