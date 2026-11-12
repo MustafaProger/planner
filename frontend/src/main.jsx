@@ -154,6 +154,19 @@ function useReportView(request, busy) {
   return view;
 }
 
+function useReportSkeleton(pending) {
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  useEffect(() => {
+    if (!pending) {
+      setShowSkeleton(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), 180);
+    return () => clearTimeout(timer);
+  }, [pending]);
+  return pending && showSkeleton;
+}
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(() =>
     typeof matchMedia === "function" &&
@@ -659,7 +672,7 @@ function MoneyChart({ data, bar = false, allLabels = false, onSelect }) {
   const reduced = useReducedMotion();
   if (!data.length) return <Empty />;
   return (
-    <React.Suspense fallback={<ChartSkeleton />}>
+    <React.Suspense fallback={<ChartSkeleton bar={bar} />}>
       <Chart {...{ data, bar, allLabels, onSelect, reduced, date, short, money }} />
     </React.Suspense>
   );
@@ -1027,6 +1040,8 @@ function App() {
   const rowLimits = useMemo(() => new Map(), [p, reportFilters, reportPeriod, settings, fuel]);
   const scrollScope = useMemo(() => ({ page, limits: rowLimits }), [page, rowLimits]);
   const hasCurrentReport = reportPage === page;
+  const showDelayedSkeleton = useReportSkeleton(pending && hasCurrentReport);
+  const showReportSkeleton = !hasCurrentReport || showDelayedSkeleton;
   const a = useMemo(
     () => (p ? M.analyze(p, reportFilters, ...reportPeriod, settings, fuel) : null),
     [p, reportFilters, reportPeriod, settings, fuel],
@@ -1185,7 +1200,7 @@ function App() {
       window.scrollTo(0, scrollPositions.current.get(page) || 0);
     }
   }, [page, pending]);
-  const visibleNav = nav.filter(([id]) => id !== "users" || user?.role === "admin"),
+  const visibleNav = nav.filter(([id]) => id !== "users" || !user || user.role === "admin"),
     active = visibleNav.find((n) => n[0] === page) || visibleNav[0],
     title = active[0] === "overview" ? "Обзор автопарка" : active[1];
   if (!a && (!error || busy)) {
@@ -1201,7 +1216,7 @@ function App() {
   const count = Object.values(filters).reduce((n, v) => n + v.length, 0),
     changed = (key) => M.delta(a[key], prev?.[key]).percent;
   const subnav = (id, label) => (
-    <button onClick={() => go(id)}>
+    <button className="section-link" onClick={() => go(id)}>
       {label}
       <ArrowRight size={14} />
     </button>
@@ -1591,15 +1606,16 @@ function App() {
               </Collapse>
             </div>
           )}
-          {pending && (!hasCurrentReport || busy) && (
-            <span className="loading-announcement" role="status">Загрузка данных…</span>
+          {pending && (busy || showReportSkeleton) && (
+            <span className="loading-announcement" role="status">
+              {busy || !hasCurrentReport ? "Загрузка данных…" : "Пересчёт отчёта…"}
+            </span>
           )}
-          <div className={"report-body" + (pending ? " is-pending" : "")} aria-busy={pending}>
-          {!hasCurrentReport && <ReportSkeleton page={active[0]} />}
-          {hasCurrentReport && (
-          <div className="report-skeleton-layer" aria-hidden="true">
-            <ReportSkeleton page={active[0]} />
-          </div>
+          <div className="report-body" data-show-skeleton={showReportSkeleton} aria-busy={pending}>
+          {showReportSkeleton && (
+            <div className="report-placeholder">
+              <ReportSkeleton page={active[0]} />
+            </div>
           )}
           {hasCurrentReport && (
           <ScrollRowsContext.Provider value={scrollScope}>
@@ -3611,7 +3627,15 @@ function SourceDataPage({ p, fuel, period, filters, onTrips, user, refresh, onNe
       {tab === "coverage" && <ExtraRecords kind="coverage" p={p} user={user} period={period} refresh={refresh} />}
       {tab === "expenses" && <ExtraRecords kind="expenses" p={p} user={user} period={period} refresh={refresh} />}
       {tab === "orders" && (
-        <Section title="Заявки ТрансТрейд и ручные записи" subtitle="Фактическая работа; исходные записи не заменяются планом" action={hasPermission(user, "trips.write") && <button className="record-action" onClick={onNewTrip}>Добавить ручную заявку</button>}>
+        <Section
+          title="Заявки ТрансТрейд и ручные записи"
+          subtitle="Фактическая работа; исходные записи не заменяются планом"
+          action={hasPermission(user, "trips.write") && (
+            <B variant="primary" size="large" onClick={onNewTrip}>
+              Добавить ручную заявку
+            </B>
+          )}
+        >
           <DataTable
             rows={trips}
             columns={tripCols}
@@ -4283,7 +4307,7 @@ function TelemetrySummary({ a, onDetails }) {
       title="Пробег и время"
       subtitle="Заявки ТТ и доступные суточные показания автомобиля"
       action={
-        <button onClick={onDetails}>
+        <button className="section-link" onClick={onDetails}>
           Показания <ArrowRight size={14} />
         </button>
       }

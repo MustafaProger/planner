@@ -656,7 +656,7 @@ details summary::-webkit-details-marker {
   line-height: 1.6;
   margin-top: 5px;
 }
-.section-head > button {
+.section-head > .section-link {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -2152,7 +2152,6 @@ button:not(:disabled):active,
   min-width: 0;
 }
 .report-body {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -2161,29 +2160,16 @@ button:not(:disabled):active,
   min-width: 0;
 }
 .report-results {
-  opacity: 1;
-  transition: opacity 500ms var(--motion-ease-out);
+  transition-property: none;
 }
-.report-body.is-pending .report-results {
-  opacity: .92;
-  transition-duration: 180ms;
-}
-.report-skeleton-layer {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 1;
-  pointer-events: none;
+.report-body[data-show-skeleton="true"] > .report-results {
   opacity: 0;
-  background: #f6f8fa;
-  transition: opacity 180ms var(--motion-ease-out);
 }
-.report-body.is-pending .report-skeleton-layer {
-  opacity: 1;
-  /* This loading threshold also applies with reduced motion. */
-  transition-delay: 180ms !important;
-}
-.report-body:not(.is-pending) .report-skeleton-layer .skeleton-card {
-  animation: none;
+.report-placeholder {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  pointer-events: none;
 }
 .report-results > :not(.dashboard-grid, .kpi-grid, .control-summary),
 .report-results :is(.dashboard-grid, .kpi-grid, .control-summary) > * {
@@ -2261,6 +2247,80 @@ button:not(:disabled):active,
 .skeleton-row .skeleton-line:last-child {
   width: 23%;
 }
+.skeleton-card--table .skeleton-row .skeleton-line {
+  width: 13%;
+}
+.skeleton-card--table .skeleton-row .skeleton-line:first-child {
+  width: 23%;
+}
+.skeleton-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: #f0f3f6;
+}
+.skeleton-tabs .skeleton-line {
+  flex: 1;
+  max-width: 96px;
+  height: 10px;
+}
+.skeleton-tabs.catalog-tabs {
+  min-height: 44px;
+}
+.skeleton-tabs.catalog-subtabs {
+  width: min(100%, 340px);
+}
+.skeleton-card--calendar .skeleton-row {
+  justify-content: flex-start;
+  gap: 5px;
+  overflow: hidden;
+}
+.skeleton-card--calendar .skeleton-row .skeleton-line:first-child {
+  flex: 0 0 clamp(75px, 14%, 160px);
+  margin-right: 8px;
+}
+.skeleton-card--calendar .skeleton-row .skeleton-calendar-cell {
+  flex: 0 0 27px;
+  height: 27px;
+  border-radius: 6px;
+}
+.skeleton-toolbar > .skeleton-tabs {
+  width: min(100%, 280px);
+}
+.skeleton-toolbar > .skeleton-line {
+  width: 125px;
+  height: 36px;
+  margin-left: auto;
+}
+.skeleton-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.skeleton-fields .skeleton-line {
+  flex: 1 1 100px;
+  max-width: 210px;
+  height: 34px;
+}
+.skeleton-scenario > div {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 540px);
+}
+.skeleton-scenario .skeleton-value {
+  width: 85%;
+}
+.skeleton-card--summary {
+  margin-bottom: 0;
+  gap: 9px !important;
+}
+.skeleton-card--summary .skeleton-value {
+  height: 19px;
+  margin: 0;
+}
 .skeleton-chart-lines {
   min-height: 180px;
   border-radius: 8px;
@@ -2268,6 +2328,33 @@ button:not(:disabled):active,
 }
 .skeleton-card--chart .skeleton-chart-lines {
   min-height: 270px;
+}
+.skeleton-card--bar-chart .skeleton-chart-lines {
+  min-height: 250px;
+}
+.skeleton-chart-bars {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(4px, 1vw, 18px);
+  height: 100%;
+  min-height: inherit;
+  padding: 0 3%;
+}
+.skeleton-chart-pair {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  flex: 1;
+}
+.skeleton-chart-pair span {
+  flex: 1;
+  height: var(--bar-height);
+  border-radius: 4px 4px 0 0;
+  background: #e3eaf2;
+}
+.skeleton-chart-pair span + span {
+  height: calc(var(--bar-height) * .58);
+  background: #edf1f5;
 }
 .chart-skeleton {
   display: grid;
@@ -2842,7 +2929,7 @@ button:not(:disabled):active,
   .connection-actions .ss-button {
     width: 100%;
   }
-  .source-tabs {
+  .source-tabs:not(.skeleton-tabs) {
     margin-left: -16px;
     margin-right: -16px;
     border-radius: 0;
@@ -2927,6 +3014,9 @@ button:not(:disabled):active,
 @media (max-width: 1023px) {
   .main-wrap {
     margin-left: 0;
+  }
+  .report-placeholder {
+    top: 92px;
   }
   .topbar {
     position: fixed;
@@ -3071,6 +3161,9 @@ button:not(:disabled):active,
 }
 
 @media (max-width: 680px) {
+  .report-placeholder {
+    top: 76px;
+  }
   .topbar {
     top: 8px;
     right: 8px;

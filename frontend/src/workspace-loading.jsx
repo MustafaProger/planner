@@ -2,62 +2,195 @@ import React from "react";
 import { ChevronRight } from "lucide-react";
 import { Card } from "./vendor/stageshow/parts/card";
 
-export function ChartSkeleton() {
+const barHeights = [83, 71, 76, 63, 58, 68, 47, 51, 39, 43, 34, 28];
+
+function ChartPlaceholder({ bar }) {
   return (
-    <div className="chart chart-skeleton" role="status">
-      <span className="loading-announcement">Загрузка графика…</span>
-      <div className="skeleton-chart-lines" aria-hidden="true" />
+    <div className="skeleton-chart-lines" aria-hidden="true">
+      {bar && <div className="skeleton-chart-bars">
+        {barHeights.map((height, index) => (
+          <div key={index} className="skeleton-chart-pair" style={{ "--bar-height": `${height}%` }}>
+            <span />
+            <span />
+          </div>
+        ))}
+      </div>}
     </div>
   );
 }
 
-function SkeletonCard({ shape = "rows", rows = 5 }) {
+export function ChartSkeleton({ bar }) {
+  return (
+    <div className="chart chart-skeleton" role="status">
+      <span className="loading-announcement">Загрузка графика…</span>
+      <ChartPlaceholder bar={bar} />
+    </div>
+  );
+}
+
+function SkeletonRows({ shape, rows }) {
+  const calendar = shape === "calendar";
+  const columns = calendar ? 32 : shape === "table" ? 5 : 2;
+  return (
+    <div className="skeleton-rows">
+      {Array.from({ length: rows }, (_, index) => (
+        <div className="skeleton-row" key={index}>
+          {Array.from({ length: columns }, (_, column) => (
+            <span className={calendar && column > 0 ? "skeleton-line skeleton-calendar-cell" : "skeleton-line"} key={column} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonFields({ count }) {
+  return (
+    <div className="skeleton-fields">
+      {Array.from({ length: count }, (_, index) => <span className="skeleton-line" key={index} />)}
+    </div>
+  );
+}
+
+function SkeletonCard({ shape = "rows", rows = 5, fields = 0 }) {
+  const metric = shape === "metric" || shape === "summary";
   return (
     <Card pad="large" className={`section skeleton-card skeleton-card--${shape}`}>
       <div className="skeleton-line skeleton-label" />
-      {shape === "metric" ? (
+      {fields > 0 && <SkeletonFields count={fields} />}
+      {metric ? (
         <>
           <div className="skeleton-line skeleton-value" />
           <div className="skeleton-line skeleton-caption" />
         </>
-      ) : shape === "chart" ? (
-        <>
-          <div className="skeleton-line skeleton-value" />
-          <div className="skeleton-chart-lines" />
-        </>
-      ) : (
-        <div className="skeleton-rows">
-          {Array.from({ length: rows }, (_, index) => (
-            <div className="skeleton-row" key={index}>
-              <span className="skeleton-line" />
-              <span className="skeleton-line" />
-            </div>
-          ))}
-        </div>
-      )}
+      ) : shape === "chart" || shape === "bar-chart" ? (
+        <ChartPlaceholder bar={shape === "bar-chart"} />
+      ) : rows > 0 && <SkeletonRows shape={shape} rows={rows} />}
     </Card>
   );
 }
 
-export function ReportSkeleton({ page }) {
-  const overview = page === "overview";
-  const ranking = ["fleet", "drivers", "clients"].includes(page);
-  const hasMetrics = overview || page === "control";
+function SkeletonTabs({ className = "", count }) {
   return (
-    <div className="report-skeleton" aria-hidden="true">
-      {hasMetrics && (
-        <div className="kpi-grid">
-          {Array.from({ length: 4 }, (_, index) => <SkeletonCard key={index} shape="metric" />)}
-        </div>
-      )}
-      {overview || ranking ? (
+    <div className={`skeleton-tabs ${className}`}>
+      {Array.from({ length: count }, (_, index) => <span className="skeleton-line" key={index} />)}
+    </div>
+  );
+}
+
+function SkeletonToolbar({ tabs = 2 }) {
+  return (
+    <div className="comparison-toolbar skeleton-toolbar">
+      <SkeletonTabs count={tabs} />
+      <span className="skeleton-line" />
+    </div>
+  );
+}
+
+function SkeletonMetrics({ compact = false }) {
+  return (
+    <div className={compact ? "control-summary" : "kpi-grid"}>
+      {Array.from({ length: 4 }, (_, index) => <SkeletonCard key={index} shape={compact ? "summary" : "metric"} />)}
+    </div>
+  );
+}
+
+function ReportPlaceholderContent({ page }) {
+  switch (page) {
+    case "overview":
+      return <>
+        <SkeletonMetrics />
         <div className="dashboard-grid">
-          <SkeletonCard shape={overview ? "chart" : "ranking"} rows={7} />
+          <SkeletonCard shape="chart" />
+          <SkeletonCard rows={5} />
+        </div>
+      </>;
+    case "fleet":
+    case "drivers":
+    case "clients":
+      return <>
+        <div className="dashboard-grid">
+          <SkeletonCard shape="ranking" rows={7} />
           <SkeletonCard rows={page === "drivers" ? 5 : 7} />
         </div>
-      ) : (
-        <SkeletonCard shape={page === "compare" ? "chart" : "rows"} rows={7} />
-      )}
+        <SkeletonCard shape="table" rows={5} />
+      </>;
+    case "compare":
+      return <>
+        <SkeletonToolbar />
+        <SkeletonCard shape="bar-chart" />
+        <SkeletonCard shape="table" rows={5} />
+      </>;
+    case "calendar":
+      return <>
+        <SkeletonToolbar />
+        <SkeletonCard shape="calendar" rows={7} fields={1} />
+      </>;
+    case "planner":
+      return <>
+        <SkeletonToolbar tabs={1} />
+        <SkeletonMetrics compact />
+        <SkeletonCard shape="table" rows={7} />
+      </>;
+    case "control":
+      return <>
+        <SkeletonMetrics compact />
+        <SkeletonToolbar />
+        <SkeletonCard shape="table" rows={7} />
+      </>;
+    case "fuel":
+      return <>
+        <SkeletonCard shape="table" fields={3} rows={5} />
+        <SkeletonMetrics />
+      </>;
+    case "routes":
+      return <>
+        <div className="scenario-intro skeleton-scenario">
+          <div>
+            <span className="skeleton-line skeleton-label" />
+            <span className="skeleton-line skeleton-value" />
+            <span className="skeleton-line skeleton-caption" />
+          </div>
+        </div>
+        <div className="dashboard-grid equal">
+          <SkeletonCard rows={5} fields={1} />
+          <SkeletonCard rows={5} fields={1} />
+        </div>
+      </>;
+    case "data":
+      return <>
+        <SkeletonTabs className="source-tabs" count={5} />
+        <SkeletonCard shape="table" rows={7} />
+      </>;
+    case "directories":
+      return <>
+        <SkeletonTabs className="catalog-tabs" count={4} />
+        <SkeletonTabs className="catalog-subtabs" count={3} />
+        <SkeletonCard shape="table" rows={7} />
+      </>;
+    case "connections":
+      return <div className="connection-grid">
+        {Array.from({ length: 4 }, (_, index) => <SkeletonCard key={index} rows={2} />)}
+      </div>;
+    case "settings":
+      return <>
+        <SkeletonCard shape="form" fields={3} rows={0} />
+        <SkeletonCard rows={5} />
+      </>;
+    case "users":
+      return <>
+        <SkeletonCard shape="table" rows={4} />
+        <SkeletonCard shape="table" rows={5} />
+      </>;
+    default:
+      return <SkeletonCard shape="table" rows={7} />;
+  }
+}
+
+export function ReportSkeleton({ page }) {
+  return (
+    <div className="report-skeleton" aria-hidden="true">
+      <ReportPlaceholderContent page={page} />
     </div>
   );
 }
